@@ -34,9 +34,21 @@ function getStackName(scope: Scope, scopeId: number): string {
     }
 }
 
-async function getProperty(outputMap: OutputMap, path: string): Promise<string> {
-    return jq.run(path, JSON.stringify(outputMap), { input: "string" }).then(value => {
-        return String(value).split('"').join('')
+async function getProperty(data: any, path: string[]): Promise<string[]> {
+    var dataJsonStr = JSON.stringify(data)
+    dataJsonStr = dataJsonStr.replaceAll("launchpad:", "")
+    var result: string[] = []
+    var getPath = async (index: number): Promise<string[]> => {
+        if (index >= path.length) {
+            return result
+        }
+        return jq.run(path[index], dataJsonStr, { input: "string" }).then(value => {
+            result.push(String(value).split('"').join(''))
+            return getPath(index + 1)
+        })
+    }
+    return getPath(0).then(v => {
+        return v;
     })
 }
 
@@ -47,18 +59,13 @@ export class MothershipDBUpdater {
         this.id = id
         const stackName = getFullyQualifiedStackName(getStackName(Scope.MOTHERSHIP, this.id))
         this.db = workspace.stackOutputs(stackName).then((output: OutputMap) => {
-            return getProperty(output, ".db.value.host").then(host => {
-                return getProperty(output, ".db.value.user").then(user => {
-                    return getProperty(output, ".db.value.password").then(password => {
-                        return getProperty(output, ".db.value.dbName").then(dbName => {
-                            const connStr = `mysql://${user}:${password}@${host}/${dbName}`
-                            console.log(`mothership db connection string : ${connStr}`)
-                            return createConnectionPool(connStr)
-                        })
-                    })
-                })
+            return getProperty(output, [".db.value.host", ".db.value.user", ".db.value.password", ".db.value.dbName"]).then(values => {
+
+                const connStr = `mysql://${values[1]}:${values[2]}@${values[0]}/${values[3]}`
+                console.log(`mothership db connection string : ${connStr}`)
+                return createConnectionPool(connStr)
             })
-        });
+        })
     }
     async exit(): Promise<void> {
         await (await this.db).dispose()
@@ -68,18 +75,23 @@ export class MothershipDBUpdater {
         const stackName = getFullyQualifiedStackName(getStackName(Scope.TIER, tierId))
         return workspace.stackOutputs(stackName).then(output => {
             const time = Date.now()
-            return getProperty(output, ".planeId.value").then(planeId => {
-                return getProperty(output, ".ingress.value.loadBalancerUrl").then(apiUrl => {
-                    apiUrl = `http://${apiUrl}/data`
-                    const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
-                    return workspace.stackOutputs(planeStackName).then(poutput => {
-                        return getProperty(poutput, ".customerId.value").then(customerId => {
-                            return this.db.then(db => {
-                                db.query(sql`INSERT INTO tier (tier_id, data_plane_id, customer_id, pulumi_stack, api_url, k8s_namespace, deleted_at, created_at, updated_at)
-                                VALUES (${tierId}, ${+planeId}, ${+customerId}, ${stackName}, ${apiUrl}, 't-${tierId}', 0, ${time}, ${time})
-                                ON DUPLICATE KEY UPDATE data_plane_id=${+planeId}, customer_id=${+customerId}, pulumi_stack=${stackName}, api_url=${apiUrl}, k8s_namespace='t-${tierId}', updated_at=${time}`)
+            return getProperty(output, [".planeId.value", ".ingress.value.loadBalancerUrl"]).then(values => {
+                const apiUrl = `http://${values[1]}/data`
+                const planeId = values[0]
+                const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
+                return workspace.stackOutputs(planeStackName).then(poutput => {
+                    return getProperty(poutput, [".customerId.value"]).then(customerId => {
+                        return workspace.refreshConfig(stackName).then(configMap => {
+                            return getProperty(configMap, [".plan.value", ".requestLimit.value"]).then(planAndLimits => {
+                                return this.db.then(db => {
+                                    db.query(sql`INSERT INTO tier (tier_id, data_plane_id, customer_id, pulumi_stack, api_url, k8s_namespace, deleted_at, created_at, updated_at, requests_limit, plan)
+                                VALUES (${tierId}, ${+planeId}, ${+customerId[0]}, ${stackName}, ${apiUrl}, 't-${tierId}', 0, ${time}, ${time}, ${+planAndLimits[1]}, ${+planAndLimits[0]})
+                                ON DUPLICATE KEY UPDATE data_plane_id=${+planeId}, customer_id=${+customerId[0]}, pulumi_stack=${stackName}, api_url=${apiUrl}, k8s_namespace='t-${tierId}', updated_at=${time}, requests_limit=${+planAndLimits[1]}, plan=${+planAndLimits[0]}`)
+                                })
                             })
+
                         })
+
                     })
                 })
             })
@@ -88,13 +100,13 @@ export class MothershipDBUpdater {
     async insertOrUpdateCustomer(planeId: number, getCustomer: (id: number) => Customer | undefined): Promise<void> {
         const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
         return workspace.stackOutputs(planeStackName).then(poutput => {
-            return getProperty(poutput, ".customerId.value").then(customerId => {
-                const customer = getCustomer(+customerId)
+            return getProperty(poutput, [".customerId.value"]).then(customerId => {
+                const customer = getCustomer(+customerId[0])
                 const time = Date.now()
                 if (customer !== undefined) {
                     return this.db.then(db => {
                         db.query(sql`INSERT INTO customer (customer_id, name, domain, deleted_at, created_at, updated_at)
-                                VALUES (${customerId}, ${customer.name}, ${customer.domain}, 0, ${time}, ${time})
+                                VALUES (${+customerId[0]}, ${customer.name}, ${customer.domain}, 0, ${time}, ${time})
                                 ON DUPLICATE KEY UPDATE name=${customer.name}, domain=${customer.domain}, updated_at=${time}`)
                     })
                 }
