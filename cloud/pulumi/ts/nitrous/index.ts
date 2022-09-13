@@ -28,6 +28,7 @@ const DEFAULT_FORCE_REPLICA_ISOLATION = true
 const DEFAULT_BINLOG_REPLICATION_FACTOR = 3;
 const DEFAULT_BINLOG_PARTITIONS = 1;
 const BINLOG_TOPIC_NAME = "nitrous_log"
+const NITROUS_REQS_TOPIC_NAME = "nitrous_req_log"
 
 // default for resource requirement configurations
 const DEFAULT_CPU_REQUEST = "1000m"
@@ -120,6 +121,19 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
         replicationFactor: input.binlog.replicationFactor || 2,
         config: config,
     }, { provider: kafkaProvider, protect: input.protect })
+    const reqTopic = new kafka.Topic(`topic-p-${input.planeId}-${NITROUS_REQS_TOPIC_NAME}-msk`, {
+        name: `p_${input.planeId}_${NITROUS_REQS_TOPIC_NAME}`,
+        partitions: input.binlog.partitions || DEFAULT_BINLOG_PARTITIONS,
+        // We set a default replication factor of 2 (has to be > 1 since this could block producers during a
+        // rolling update a broker could be brought down). For production workloads we expect this value to be >= 3
+        //
+        // since we configure 2 AZs, setting replication factor as 2 is fine for non-production workloads,
+        // but it could cause potential partial data loss - this is possible when the "leader" replica for a partition
+        // is down and one of the AZ is unreachable, kafka control plane is unable to assign a broker as the leader,
+        // which causes the new messages to be dropped
+        replicationFactor: input.binlog.replicationFactor || 2,
+        config: config,
+    }, { provider: kafkaProvider });
 
     const k8sProvider = new k8s.Provider("configs-k8s-provider-msk", {
         kubeconfig: input.kubeconfig,

@@ -21,10 +21,7 @@ import * as msk from "../msk";
 import * as assert from "assert";
 import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
 import { OutputMap } from "@pulumi/pulumi/automation";
-import { utils } from "@pulumi/pulumi";
-import tier from "./tier";
 import { MothershipDBUpdater, Customer } from "../mothership-updates"
-import { getMonitor, suppressUnhandledGrpcRejections } from "@pulumi/pulumi/runtime";
 
 const controlPlane: vpc.controlPlaneConfig = {
     region: "us-west-2",
@@ -59,6 +56,22 @@ const tierConfs: Record<number, TierConf> = {
         protectResources: false,
         planeId: 3,
         httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 3,
+                resourceConf: {
+                    cpu: {
+                        request: "1250m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+            }
+        },
+        queryServerConf: {
             podConf: {
                 minReplicas: 1,
                 maxReplicas: 3,

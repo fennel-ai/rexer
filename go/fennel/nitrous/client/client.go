@@ -213,6 +213,7 @@ type NitrousClientConfig struct {
 	TierID         ftypes.RealmID
 	ServerAddr     string
 	BinlogProducer kafka.FProducer
+	ReqsLogProducer kafka.FProducer
 }
 
 var _ resource.Config = NitrousClientConfig{}
@@ -300,6 +301,13 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 			if err := req.ctx.Err(); err != nil {
 				req.respCh <- mo.Err[[]*value.PValue](err)
 				continue
+			}
+			reqLog := &rpc.ReqLog{
+				Req: req.msg,
+				Timestamp: uint32(time.Now().UnixMilli()),
+			}
+			if err := cfg.ReqsLogProducer.LogProto(ctx, reqLog, nil); err != nil {
+				zap.L().Warn("Could not log nitrous request", zap.Error(err))
 			}
 			err := worker.Send(req.msg)
 			if err != nil {

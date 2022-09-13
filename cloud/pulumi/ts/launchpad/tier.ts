@@ -8,6 +8,7 @@ import * as kafkaconnectors from "../kafkaconnectors";
 import * as mysql from "../mysql"
 import * as httpserver from "../http-server";
 import * as queryserver from "../query-server";
+import * as queryserverShadow from "../query-server-shadow";
 import * as nitrous from "../nitrous";
 import * as countaggr from "../countaggr";
 import * as configs from "../configs";
@@ -540,7 +541,13 @@ const setupResources = async () => {
         script: input.glueSourceScript,
     })
 
-    // setup tier level permissions on the EKS instance role
+    let queryServerShadowBucketName: string | undefined;
+    if (input.queryServerConf !== undefined) {
+        queryServerShadowBucketName = `t-${input.tierId}-query-server-reqs`;
+    }
+
+    // setup tier level permissions on the EKS instance role before actually spinning up the jobs so that the
+    // jobs don't get provisioned with permission errors
     await tierEksPermissions.setup({
         region: input.region,
         roleArn: input.roleArn,
@@ -549,6 +556,7 @@ const setupResources = async () => {
         modelStoreBucket: modelStoreOutput.modelStoreBucket,
         pprofBucket: pprofBucketOutput.pprofStoreBucket,
         offlineAggregateOutputBucket: offlineAggregateOutputBucket.bucketName,
+        queryServerShadowBucket: queryServerShadowBucketName,
     })
 
     configsOutput.apply(async () => {
@@ -603,6 +611,15 @@ const setupResources = async () => {
                 useAmd64: input.queryServerConf?.podConf?.useAmd64,
                 nodeLabels: input.queryServerConf?.podConf?.nodeLabels,
                 pprofHeapAllocThresholdMegaBytes: input.queryServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
+            });
+
+            await queryserverShadow.setup({
+                roleArn: input.roleArn,
+                region: input.region,
+                kubeconfig: input.kubeconfig,
+                namespace: input.namespace,
+                tierId: input.tierId,
+                shadowBucketName: queryServerShadowBucketName!,
             });
         }
 

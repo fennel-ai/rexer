@@ -18,6 +18,7 @@ func NewLocalClient(t *testing.T, tierId ftypes.RealmID) (*rpc.Server, client.Ni
 		TierID:         tierId,
 		ServerAddr:     addr.String(),
 		BinlogProducer: n.NewBinlogProducer(t),
+		ReqsLogProducer: n.NewReqLogProducer(t),
 	}
 	r, err := config.Materialize()
 	assert.NoError(t, err)

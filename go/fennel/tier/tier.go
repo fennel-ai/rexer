@@ -308,10 +308,15 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		if !ok {
 			return tier, fmt.Errorf("failed to create nitrous client; Binlog kafka topic not configured")
 		}
+		reqslogProducer, ok := producers[libnitrous.REQS_KAFKA_TOPIC]
+		if !ok {
+			return tier, fmt.Errorf("failed to create nitrous client; Reqslog kafka topic not configured")
+		}
 		nitrousConfig := nitrous.NitrousClientConfig{
 			TierID:         args.TierID,
 			ServerAddr:     args.NitrousServer,
 			BinlogProducer: binlogProducer,
+			ReqsLogProducer: reqslogProducer,
 		}
 		client, err := nitrousConfig.Materialize()
 		if err != nil {

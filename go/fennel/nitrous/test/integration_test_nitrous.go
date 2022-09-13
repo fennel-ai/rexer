@@ -66,3 +66,18 @@ func (tn TestNitrous) NewBinlogProducer(t *testing.T) fkafka.FProducer {
 	require.NoError(t, err)
 	return p.(fkafka.FProducer)
 }
+
+func (tn TestNitrous) NewReqLogProducer(t *testing.T) fkafka.FProducer {
+	scope := resource.NewPlaneScope(tn.Nitrous.PlaneID)
+	config := fkafka.RemoteProducerConfig{
+		Scope:           scope,
+		Topic:           libnitrous.REQS_KAFKA_TOPIC,
+		BootstrapServer: tn.args.MskKafkaServer,
+		Username:        tn.args.MskKafkaUsername,
+		Password:        tn.args.MskKafkaPassword,
+		SaslMechanism:   fkafka.SaslScramSha512Mechanism,
+	}
+	p, err := config.Materialize()
+	require.NoError(t, err)
+	return p.(fkafka.FProducer)
+}
