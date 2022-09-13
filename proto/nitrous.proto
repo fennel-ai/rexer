@@ -20,6 +20,11 @@ service Nitrous {
   rpc GetLag(LagRequest) returns (LagResponse);
 }
 
+message ReqLog {
+  AggregateValuesRequest req = 1;
+  uint32 timestamp = 2;
+}
+
 enum OpType {
   AGG_EVENT = 0;
   PROFILE_UPDATE = 1;

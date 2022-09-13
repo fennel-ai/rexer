@@ -72,3 +72,15 @@ func (tn TestNitrous) NewBinlogProducer(t *testing.T) kafka.FProducer {
 	assert.NoError(t, err)
 	return p.(kafka.FProducer)
 }
+
+func (tn TestNitrous) NewReqLogProducer(t *testing.T) kafka.FProducer {
+	scope := resource.NewPlaneScope(tn.Nitrous.PlaneID)
+	mockConfig := fkafka.MockProducerConfig{
+		Broker: tn.broker,
+		Topic:  libnitrous.REQS_KAFKA_TOPIC,
+		Scope:  scope,
+	}
+	p, err := mockConfig.Materialize()
+	assert.NoError(t, err)
+	return p.(kafka.FProducer)
+}
