@@ -34,6 +34,8 @@ func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable)
 		return buildBDiskHashTable(dirname, numShards, mt)
 	case testTable:
 		return buildEmptyTable(dirname, numShards, mt)
+	case HashTable:
+		return buildHashTable(dirname, numShards, mt)
 	default:
 		return nil, fmt.Errorf("invalid table type")
 	}
@@ -53,6 +55,8 @@ func OpenTable(type_ TableType, id uint64, filepath string) (Table, error) {
 		return openBDiskHashTable(id, filepath)
 	case testTable:
 		return openEmptyTable(id)
+	case HashTable:
+		return openHashTable(id, filepath)
 	default:
 		return nil, fmt.Errorf("invalid table type: %v", type_)
 	}

@@ -6,6 +6,7 @@ const (
 	testTable      TableType = 0 // a table type used only for tests
 	BTreeTable     TableType = 1
 	BDiskHashTable TableType = 2
+	HashTable      TableType = 3
 )
 
 type Options struct {
