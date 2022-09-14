@@ -141,7 +141,8 @@ func main() {
 	cctx, controllerCancel := context.WithCancel(context.Background())
 	defer controllerCancel()
 	usageController := usage.NewController(cctx, &tier, 10*time.Second, 50, 50, 1000)
-	controller := server{tier: tier, usageController: usageController}
+	controller := NewServer(&tier, usageController)
+	defer controller.Close()
 	controller.setHandlers(router)
 	// Set handlers for the log inspector.
 	inspector := inspector.NewInspector(tier, flags.InspectorArgs)
@@ -179,6 +180,7 @@ func main() {
 	log.Println("server is ready...")
 
 	<-stopped
+	// Close Stop server so that goroutines can cleanly exit.
 	log.Println("server stopped...")
 
 	// Shutdown gracefully shuts down the server without interrupting any active connections.

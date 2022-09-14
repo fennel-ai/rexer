@@ -1,4 +1,4 @@
-import {INSTANCE_METADATA_SERVICE_ADDR} from "../lib/util";
+import { INSTANCE_METADATA_SERVICE_ADDR } from "../lib/util";
 
 export const serviceEnvs = [
     {
@@ -133,6 +133,15 @@ export const serviceEnvs = [
             secretKeyRef: {
                 name: "cache-conf",
                 key: "primary",
+            }
+        }
+    },
+    {
+        name: "REQUEST_LIMIT",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "tier-conf",
+                key: "request_limit",
             }
         }
     },
@@ -291,7 +300,8 @@ export const serviceEnvs = [
     {
         name: "INSTANCE_METADATA_SERVICE_ADDR",
         value: INSTANCE_METADATA_SERVICE_ADDR
-    }
+    },
+
 ];
 
 export const POSTGRESQL_USERNAME = "username";

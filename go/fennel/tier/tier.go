@@ -62,6 +62,7 @@ type TierArgs struct {
 	MysqlPassword    string         `arg:"--mysql-password,env:MYSQL_PASSWORD" json:"mysql_password,omitempty"`
 	TierID           ftypes.RealmID `arg:"--tier-id,env:TIER_ID" json:"tier_id,omitempty"`
 	PlaneID          ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
+	RequestLimit     int64          `arg:"--request-limit,env:REQUEST_LIMIT" default:"-1" json:"request_limit,omitempty"`
 	RedisServer      string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
 	NitrousServer    string         `arg:"--nitrous-server,env:NITROUS_SERVER_ADDRESS" json:"nitrous_server,omitempty"`
 	CachePrimary     string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
@@ -157,6 +158,7 @@ type Tier struct {
 	// value type is aggregate.Aggregate. Consider change this to something
 	// that wrap sync.Map and exposes a nicer API.
 	AggregateDefs *sync.Map
+	RequestLimit  int64
 }
 
 func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
@@ -313,9 +315,9 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 			return tier, fmt.Errorf("failed to create nitrous client; Reqslog kafka topic not configured")
 		}
 		nitrousConfig := nitrous.NitrousClientConfig{
-			TierID:         args.TierID,
-			ServerAddr:     args.NitrousServer,
-			BinlogProducer: binlogProducer,
+			TierID:          args.TierID,
+			ServerAddr:      args.NitrousServer,
+			BinlogProducer:  binlogProducer,
 			ReqsLogProducer: reqslogProducer,
 		}
 		client, err := nitrousConfig.Materialize()
@@ -455,6 +457,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		ModelStore:        modelStore,
 		Args:              *args,
 		AggregateDefs:     aggregateDefs,
+		RequestLimit:      args.RequestLimit,
 	}, nil
 }
 

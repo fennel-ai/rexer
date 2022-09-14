@@ -89,7 +89,14 @@ func Tier(t *testing.T) tier.Tier {
 		ModelStore:       modelStore,
 		Logger:           logger,
 		AggregateDefs:    new(sync.Map),
+		RequestLimit:     -1,
 	}
+}
+
+func TierWithRequestLimit(t *testing.T, requestLimit int64) tier.Tier {
+	tier := Tier(t)
+	tier.RequestLimit = requestLimit
+	return tier
 }
 
 func Teardown(tier tier.Tier) {

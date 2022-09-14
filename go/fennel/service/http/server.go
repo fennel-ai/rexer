@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fennel/controller/usage"
@@ -93,8 +94,44 @@ type server struct {
 	usageController usage.UsageController
 }
 
-func (s server) setHandlers(router *mux.Router) {
+func (s server) Close() {
+}
 
+func NewServer(tier *tier.Tier, usageController usage.UsageController) *server {
+	return &server{
+		tier:            *tier,
+		usageController: usageController,
+	}
+}
+
+func (s *server) LimitFunc(ctx context.Context, rateLimit int64) bool {
+	if rateLimit == -1 {
+		return true
+	}
+	endTime := uint64(s.tier.Clock.Now())
+	startTime := usagelib.DailyFold(endTime)
+	return func() int64 {
+		counter, err := usagemodel.GetUsageCounters(ctx, s.tier, startTime, endTime)
+		if err != nil {
+			log.Printf("failed to get usage counters from db: %s", err)
+			return 0
+		}
+		return int64(counter.Queries + counter.Actions)
+	}() <= rateLimit
+}
+
+func (s *server) SetRateLimit(handler func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	log.Printf("request limit for tier is %d", s.tier.RequestLimit)
+	return func(res http.ResponseWriter, req *http.Request) {
+		if s.LimitFunc(req.Context(), s.tier.RequestLimit) {
+			handler(res, req)
+		} else {
+			handleTooManyRequests(res, "request rejected: ", fmt.Errorf("number of requests in the day more than the limit of %d", s.tier.RequestLimit))
+		}
+	}
+}
+
+func (s server) setHandlers(router *mux.Router) {
 	// OLDER END POINTS WILL BE DEPRECATED
 
 	// Endpoints used by python client
@@ -103,12 +140,12 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/set", s.SetProfile)
 	router.HandleFunc("/set_profiles", s.SetProfiles)
 	router.HandleFunc("/log", s.Log)
-	router.HandleFunc("/log_multi", s.LogMulti)
+	router.HandleFunc("/log_multi", s.SetRateLimit(s.LogMulti))
 	router.HandleFunc("/get_multi", s.GetProfileMulti)
-	router.HandleFunc("/query", s.Query)
+	router.HandleFunc("/query", s.SetRateLimit(s.Query))
 	router.HandleFunc("/store_query", s.StoreQuery)
 	router.HandleFunc("/get_operators", s.GetOperators)
-	router.HandleFunc("/run_query", s.RunQuery)
+	router.HandleFunc("/run_query", s.SetRateLimit(s.RunQuery))
 
 	// Endpoints used by aggregate
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
@@ -129,9 +166,9 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(INT_REST_VERSION+"/profiles", s.GetProfileMulti).Methods("GET")
 	router.HandleFunc(INT_REST_VERSION+"/query_profiles", s.QueryProfiles).Methods("POST")
 	router.HandleFunc(INT_REST_VERSION+"/profiles", s.SetProfiles).Methods("POST")
-	router.HandleFunc(INT_REST_VERSION+"/log", s.LogMulti).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/log", s.SetRateLimit(s.LogMulti)).Methods("POST")
 
-	router.HandleFunc(INT_REST_VERSION+"/query", s.Query)
+	router.HandleFunc(INT_REST_VERSION+"/query", s.SetRateLimit(s.Query))
 	router.HandleFunc(INT_REST_VERSION+"/query/store", s.StoreQuery).Methods("POST")
 
 	// Endpoints used by aggregate
@@ -158,9 +195,9 @@ func (s server) setHandlers(router *mux.Router) {
 
 	// ----------------------------------External Endpoints-----------------------------------------------
 
-	router.HandleFunc(EXT_REST_VERSION+"/actions", s.LogActions)
+	router.HandleFunc(EXT_REST_VERSION+"/actions", s.SetRateLimit(s.LogActions))
 	router.HandleFunc(EXT_REST_VERSION+"/profiles", s.LogProfiles)
-	router.HandleFunc(EXT_REST_VERSION+"/query", s.RunQuery)
+	router.HandleFunc(EXT_REST_VERSION+"/query", s.SetRateLimit(s.RunQuery))
 	router.HandleFunc(EXT_REST_VERSION+"/usage_counters", s.GetusageCounters)
 }
 
@@ -1040,6 +1077,11 @@ func handleInternalServerError(w http.ResponseWriter, errorPrefix string, err er
 
 func handleServiceUnavailable(w http.ResponseWriter, errorPrefix string, err error) {
 	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusServiceUnavailable)
+	log.Printf("Error: %v", err)
+}
+
+func handleTooManyRequests(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusTooManyRequests)
 	log.Printf("Error: %v", err)
 }
 
