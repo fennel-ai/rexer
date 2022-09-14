@@ -217,6 +217,7 @@ const tierConfs: Record<number, TierConf> = {
             memoryRequests: "3Gi",
             memoryLimits: "8Gi",
         },
+        airbyteConf: {},
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
