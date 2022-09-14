@@ -32,15 +32,29 @@
     border-bottom: none;
 }
 
-.avatar {
+.avatarContainer {
     margin-left: 30px;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    padding: 1px;
 }
 
-.avatarText {
-    font-size: 12px;
+$hoverColor: colors.$purple6;
+
+.avatarContainer:hover {
+    border: 1px solid $hoverColor;
 }
 
 .documentation {
     text-decoration: none;
     color: inherit;
+}
+
+.hovering {
+    color: colors.$purple6;
+}
+
+.activeTier:hover {
+    color: $hoverColor;
 }

@@ -10,7 +10,7 @@ export interface Tier {
 }
 
 interface User {
-    lastName: string,
+    firstName: string,
 }
 
 interface Props {
@@ -62,9 +62,7 @@ function Navbar({ activeTab, tiers, user }: Props) {
 
                 <div className={styles.rightNav}>
                     <a className={styles.documentation} href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
-                    <div className={styles.avatar}>
-                        <AvatarDropdown user={user} />
-                    </div>
+                    <AvatarDropdown user={user} />
                 </div>
             </div>
         </nav>
@@ -106,18 +104,19 @@ function AvatarDropdown({ user }: { user: User }) {
         },
     ];
     return (
-        <Dropdown overlay={<Menu items={items} />} trigger={["click"]}>
-            <Avatar size={24}>
-                <div className={styles.avatarText}>
-                    { user.lastName ? user.lastName[0] : " " }
-                </div>
-            </Avatar>
-        </Dropdown>
+        <div className={styles.avatarContainer}>
+            <Dropdown overlay={<Menu items={items} />} trigger={["click"]}>
+                <Avatar style={{ width: "24px", height: "24px", lineHeight: "24px", fontSize: "12px" }}>
+                    { user.firstName ? user.firstName[0] : " " }
+                </Avatar>
+            </Dropdown>
+        </div>
     );
 }
 
 function TierDropdown({ tiers }: { tiers: Tier[] }) {
     const { tierID } = useParams();
+
     const items = tiers.map(tier => ({
         key: tier.id,
         label: (<a href={generatePath("/tier/:tierID", {tierID: tier.id})}>Tier {tier.id}</a>),
@@ -140,7 +139,7 @@ function TierDropdown({ tiers }: { tiers: Tier[] }) {
 
     return (
         <Dropdown overlay={menu} trigger={["click"]}>
-            <Space>
+            <Space className={styles.activeTier}>
                 {tierID ? `Tier ${tierID}` : "Tier Management"}
                 <DownOutlined />
             </Space>

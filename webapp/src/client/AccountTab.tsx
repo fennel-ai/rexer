@@ -267,8 +267,8 @@ function UpdatePwdModal({hideModal}: {hideModal: () => void}) {
 }
 
 function nameInitial(user: User): string {
-    if (user.lastName) {
-        return user.lastName[0];
+    if (user.firstName) {
+        return user.firstName[0];
     }
     return " ";
 }
