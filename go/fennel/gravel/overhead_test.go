@@ -20,11 +20,7 @@ func TestOverhead(t *testing.T) {
 		for i := 0; i < int(N); i++ {
 			num := rand.Uint64()
 			slot := num % Buckets
-			if _, ok := data[slot]; ok {
-				data[slot] += 1
-			} else {
-				data[slot] = 1
-			}
+			data[slot] += 1
 		}
 		l1miss := 0
 		for _, v := range data {

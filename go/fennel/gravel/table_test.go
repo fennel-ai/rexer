@@ -61,7 +61,11 @@ func testTableType(t *testing.T, type_ TableType, sz int) {
 	assert.NoError(t, err)
 	duration := time.Since(start)
 	fmt.Printf("Table build took: %f second\n", duration.Seconds())
-	defer func() { os.RemoveAll(dirname) }()
+	defer func() {
+		err := os.RemoveAll(dirname)
+		if err != nil {
+			panic(err)
+		} }()
 	presentTime := int64(0)
 	absentTime := int64(0)
 	for s := 0; s < numShards; s++ {
@@ -95,16 +99,23 @@ func benchmarkTableGet(b *testing.B, sz int, type_ TableType) {
 	for i, fname := range filenames {
 		newname := fmt.Sprintf("%d_%d%s", i, 1, SUFFIX)
 		newpath := path.Join(dirname, newname)
-		os.Rename(path.Join(dirname, fname), newpath)
+		err := os.Rename(path.Join(dirname, fname), newpath)
+		if err != nil {
+			panic(err)
+		}
 		tables[i], _ = OpenTable(type_, 1, newpath)
 	}
-	defer func() { os.RemoveAll(dirname) }()
+	defer func() {
+		err := os.RemoveAll(dirname)
+		if err != nil {
+			panic(err)
+		} }()
 	b.ReportAllocs()
 	b.ResetTimer()
 	var got Value
 	for iter := 0; iter < b.N; iter++ {
 		for s := 0; s < numShards; s++ {
-			for k, _ := range mt.Iter(uint64(s)) {
+			for k := range mt.Iter(uint64(s)) {
 				h := Hash([]byte(k))
 				b.StartTimer()
 				got, _ = tables[s].Get([]byte(k), h)
@@ -125,16 +136,23 @@ func benchmarkTableAbsent(b *testing.B, sz int, type_ TableType) {
 	for i, fname := range filenames {
 		newname := fmt.Sprintf("%d_%d%s", i, 1, SUFFIX)
 		newpath := path.Join(dirname, newname)
-		os.Rename(path.Join(dirname, fname), newpath)
+		err := os.Rename(path.Join(dirname, fname), newpath)
+		if err != nil {
+			panic(err)
+		}
 		tables[i], _ = OpenTable(type_, 1, newpath)
 	}
-	defer func() { os.RemoveAll(dirname) }()
+	defer func() {
+		err := os.RemoveAll(dirname)
+		if err != nil {
+			panic(err)
+		} }()
 	b.ReportAllocs()
 	b.ResetTimer()
 	var got Value
 	for iter := 0; iter < b.N; iter++ {
 		for s := 0; s < numShards; s++ {
-			for k, _ := range mt.Iter(uint64(s)) {
+			for k := range mt.Iter(uint64(s)) {
 				h := Hash([]byte(k))
 				q := (s + 1) % numShards // query it from the wrong shard so that each key is a miss
 				b.StartTimer()
