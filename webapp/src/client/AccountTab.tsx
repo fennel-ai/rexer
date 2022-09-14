@@ -109,7 +109,7 @@ function AccountTab() {
                         </td>
                     </tr>
                     <tr>
-                        <td>Work Email</td>
+                        <td>Email</td>
                         <td>
                             <Input
                                 value={user.email}

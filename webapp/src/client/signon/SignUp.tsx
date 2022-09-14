@@ -91,19 +91,23 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                     name="signup_form"
                     initialValues={{ remember: true }}
                     onFinish={onFinish}
+                    validateTrigger={ ["onSubmit"] }
                 >
                     <Input.Group compact>
                         <Form.Item
                             name="firstName"
                             rules={[{ required: true, message: "Name is empty" }]}
+                            className={styles.formItem}
                         >
                             <Input style={{ width: "154px" }} placeholder="First name" />
                         </Form.Item>
                         <Form.Item
                             name="lastName"
                             rules={[{ required: true, message: "Name is empty" }]}
+                            className={styles.formItem}
+                            style={{ marginLeft: "9px" }}
                         >
-                            <Input style={{ width: "154px", marginLeft: "9px" }} placeholder="Last name" />
+                            <Input style={{ width: "154px" }} placeholder="Last name" />
                         </Form.Item>
                     </Input.Group>
                     <Form.Item
@@ -114,7 +118,7 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                         ]}
                         className={styles.formItem}
                     >
-                        <Input placeholder="Work email" />
+                        <Input placeholder="Email" />
                     </Form.Item>
                     <Form.Item
                         name="password"
