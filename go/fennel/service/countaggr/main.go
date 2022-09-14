@@ -133,7 +133,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					}
 				} else {
 					timeout := time.Second * 10
-					count := 10000
+					count := 5000
 					if agg.IsOffline() {
 						timeout = time.Second * 30
 					}
