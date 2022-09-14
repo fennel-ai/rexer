@@ -1,5 +1,4 @@
 import { Button, Form, Input, notification } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
 import axios, { AxiosError } from "axios";
 import { useState } from "react";
 
@@ -85,9 +84,10 @@ function SignInForm() {
                     htmlType="submit"
                     className={styles.formButton}
                     size="large"
-                    disabled={submitting}>
+                    disabled={submitting}
+                    loading={submitting}>
 
-                    {submitting ? (<div> <LoadingOutlined spin /> Signing In... </div>) : "Sign In"}
+                    Signing In
                 </Button>
             </Form>
         </div>

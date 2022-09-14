@@ -82,7 +82,7 @@ function OnboardCreateTeam({isPersonalDomain, user, onOnboardStatusChange}: Prop
                     }
                 </Form>
             </div>
-            <Button type="primary" onClick={onContinue} disabled={submitting}>
+            <Button type="primary" onClick={onContinue} disabled={submitting} loading={submitting}>
                 Continue <ArrowRightOutlined />
             </Button>
         </div>
