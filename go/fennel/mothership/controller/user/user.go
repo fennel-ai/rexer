@@ -106,14 +106,11 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 	return user, result.Error
 }
 
-func generateConfirmationLink(token string, endpoint string) url.URL {
-	// TODO(xiao) read host from config
-	return url.URL{
-		Scheme:   "http",
-		Host:     endpoint,
-		Path:     "confirm_user",
-		RawQuery: fmt.Sprintf("token=%s", token),
-	}
+func generateConfirmationLink(token string, endpoint string) *url.URL {
+	u, _ := url.Parse(endpoint)
+	u.Path = "confirm_user"
+	u.RawQuery = fmt.Sprintf("token=%s", token)
+	return u
 }
 
 func generateConfirmationToken(db *gorm.DB) string {
@@ -136,14 +133,11 @@ func generateResetToken(db *gorm.DB) string {
 	}
 }
 
-func generateResetLink(token string, endpoint string) url.URL {
-	// TODO(xiao) read host from config
-	return url.URL{
-		Scheme:   "http",
-		Host:     endpoint,
-		Path:     "reset_password",
-		RawQuery: fmt.Sprintf("token=%s", token),
-	}
+func generateResetLink(token string, endpoint string) *url.URL {
+	u, _ := url.Parse(endpoint)
+	u.Path = "reset_password"
+	u.RawQuery = fmt.Sprintf("token=%s", token)
+	return u
 }
 
 func generateToken() string {

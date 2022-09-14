@@ -55,19 +55,19 @@ function SignInForm() {
         <div className={styles.mainForm}>
             <Form
                 name="signin_form"
-
                 initialValues={{ remember: true }}
                 onFinish={onFinish}
+                validateTrigger={ ["onSubmit"] }
             >
                 <Form.Item
                     name="email"
                     rules={[
-                        { required: true, message: "Please input your work email" },
-                        { type: "email", message: "Please input a valid email address"},
+                        { required: true, message: "Please input your email" },
+                        { type: "email", message: "Please input a valid email address" },
                     ]}
                     className={styles.formItem}
                 >
-                    <Input placeholder="Work email" />
+                    <Input placeholder="Email" />
                 </Form.Item>
                 <Form.Item
                     name="password"

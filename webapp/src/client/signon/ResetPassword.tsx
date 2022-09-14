@@ -63,6 +63,7 @@ function ResetForm() {
             <Form
                 name="reset_password_form"
                 onFinish={onFinish}
+                validateTrigger={ ["onSubmit"] }
             >
                 <Form.Item
                     name="password"

@@ -64,26 +64,27 @@ function ForgotForm() {
                 name="forgot_password_form"
                 initialValues={{ remember: true }}
                 onFinish={onFinish}
+                validateTrigger={ ["onSubmit"] }
             >
                 <Form.Item
                     name="email"
                     rules={[
-                        { required: true, message: "Please input your work email" },
-                        { type: "email", message: "Please input a valid email address"},
+                        { required: true, message: "Please input your email" },
+                        { type: "email", message: "Please input a valid email address" },
                     ]}
                     className={styles.formItem}
                 >
-                    <Input placeholder="Work email" />
+                    <Input placeholder="Email" />
                 </Form.Item>
                 <Button
-                        type="primary"
-                        htmlType="submit"
-                        className={styles.formButton}
-                        size="large"
-                        disabled={submitting}>
+                    type="primary"
+                    htmlType="submit"
+                    className={styles.formButton}
+                    size="large"
+                    disabled={submitting}>
 
-                        {submitting ? (<> <LoadingOutlined spin /> Sending... </>) : "Send a link to reset your password"}
-                    </Button>
+                    {submitting ? (<> <LoadingOutlined spin /> Sending... </>) : "Send a link to reset your password"}
+                </Button>
             </Form>
         </div>
     );
