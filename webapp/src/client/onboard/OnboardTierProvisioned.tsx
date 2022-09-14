@@ -91,7 +91,7 @@ function OnboardTierProvisioned(props: Props) {
                 :(
                     <>
                         <div className={commonStyles.content}>
-                            <h4 className={commonStyles.title}>
+                            <h4 className={styles.title}>
                                 Congrats, we got you a pre-provisioned tier 🎉
                             </h4>
                             <div>

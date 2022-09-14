@@ -8,6 +8,7 @@ interface CssExports {
   'tierURL': string;
   'tierURLContainer': string;
   'tierURLIcon': string;
+  'title': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
