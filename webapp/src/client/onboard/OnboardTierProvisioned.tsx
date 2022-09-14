@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { Button, Badge } from "antd";
+import { Button, Badge, notification } from "antd";
 import { CopyOutlined, LoadingOutlined, LockFilled, ArrowRightOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 
@@ -69,6 +69,10 @@ function OnboardTierProvisioned(props: Props) {
     const copyURL = async () => {
         const url: string = tier?.apiUrl || "";
         await navigator.clipboard.writeText(url);
+        notification.success({
+            message: "The URL has been successfully copied to your clipboard.",
+            placement: "bottomRight",
+        })
     };
 
     // TODO(xiao) polish UI
@@ -136,7 +140,7 @@ function OnboardTierProvisioned(props: Props) {
                                 </div>
                             </div>
                         </div>
-                        <Button type="primary" onClick={onContinue} disabled={submitting}>
+                        <Button type="primary" onClick={onContinue} disabled={submitting} loading={submitting}>
                             Continue <ArrowRightOutlined />
                         </Button>
                         <div className={styles.footnote}>

@@ -1,5 +1,4 @@
 import { Form, Input, Button, notification } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
 
@@ -81,9 +80,10 @@ function ForgotForm() {
                     htmlType="submit"
                     className={styles.formButton}
                     size="large"
-                    disabled={submitting}>
+                    disabled={submitting}
+                    loading={submitting}>
 
-                    {submitting ? (<> <LoadingOutlined spin /> Sending... </>) : "Send a link to reset your password"}
+                    Send a link to reset your password
                 </Button>
             </Form>
         </div>

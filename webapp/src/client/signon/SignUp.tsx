@@ -1,5 +1,5 @@
 import { Button, Form, Input, notification } from "antd";
-import { LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined } from '@ant-design/icons';
 import axios, { AxiosError } from "axios";
 import { useState, useEffect } from "react";
 
@@ -136,9 +136,10 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                         htmlType="submit"
                         className={styles.formButton}
                         size="large"
-                        disabled={submitting}>
+                        disabled={submitting}
+                        loading={submitting}>
 
-                        {submitting ? (<div> <LoadingOutlined spin /> Signing Up... </div>) : "Sign Up"}
+                        Signing Up
                     </Button>
                 </Form>
             </div>
@@ -209,7 +210,8 @@ function ResendButton({email}: {email: string}) {
                 htmlType="submit"
                 className={styles.resendButton}
                 size="large"
-                disabled={resent}>
+                disabled={resent}
+                loading={resent}>
 
                 Resend email
             </Button>

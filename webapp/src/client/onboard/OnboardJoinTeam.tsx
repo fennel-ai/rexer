@@ -68,7 +68,7 @@ function OnboardJoinTeam({ team, onOnboardStatusChange }: Props) {
                     </Avatar.Group>
                 </div>
             </div>
-            <Button type="primary" onClick={onContinue} disabled={submitting}>
+            <Button type="primary" onClick={onContinue} disabled={submitting} loading={submitting}>
                 Continue <ArrowRightOutlined />
             </Button>
         </div>

@@ -1,5 +1,4 @@
 import { Form, Input, Button, notification } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
 
@@ -102,9 +101,10 @@ function ResetForm() {
                     htmlType="submit"
                     className={styles.formButton}
                     size="large"
-                    disabled={submitting}>
+                    disabled={submitting}
+                    loading={submitting}>
 
-                    {submitting ? (<div> <LoadingOutlined spin /> Sending... </div>) : "Confirm Password Reset"}
+                    Confirm Password Reset
                 </Button>
             </Form>
         </div>
