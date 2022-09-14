@@ -459,6 +459,7 @@ const setupResources = async () => {
                 tierConfig: {
                     "tier_id": String(input.tierId),
                     "plane_id": String(input.planeId),
+                    "request_limit": String(input.requestLimit !== undefined ? input.requestLimit : -1),
                 },
                 redisConfig: pulumi.output({
                     "addr": input.redisEndpoint,
