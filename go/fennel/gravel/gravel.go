@@ -2,11 +2,8 @@ package gravel
 
 import (
 	"errors"
-	"io/ioutil"
+	"fmt"
 	"os"
-	"path"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -26,53 +23,45 @@ import (
 */
 
 type Gravel struct {
-	memtable      Memtable
-	tableList     []Table
-	tableListLock sync.RWMutex
-	commitlock    sync.Mutex
-	opts          Options
-	stats         Stats
-	flushch       chan struct{}
+	memtable   Memtable
+	manifest   *Manifest
+	commitlock sync.Mutex
+	opts       Options
+	stats      Stats
+	// TODO(mohit): Consider adding back periodic flushing if the memtable has not reached it's size limit for a while.
+	// This can happen when the write throughput is not high - and we might want to write the tables periodically
+	// to avoid startup and binlog catchup latency.
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
-	// if the directory doesn't exist, create it
-	if err := os.MkdirAll(opts.Dirname, os.ModePerm); err != nil {
-		return nil, err
+	if opts.TableType == testTable {
+		// testTable is only for testing, not for prod use cases
+		return nil, fmt.Errorf("invalid table type: %d", testTable)
 	}
-	ret = &Gravel{
-		memtable:      NewMemTable(),
-		tableListLock: sync.RWMutex{},
-		opts:          opts,
-		commitlock:    sync.Mutex{},
-		stats:         Stats{},
-		flushch:       make(chan struct{}, 1),
-	}
-	files, err := ioutil.ReadDir(opts.Dirname)
+	manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not init manifest: %w", err)
 	}
-	for _, file := range files {
-		tname := file.Name()
-		if !strings.HasSuffix(tname, SUFFIX) {
-			continue
-		}
-		table, err := OpenTable(opts.TableType, path.Join(opts.Dirname, tname))
-		if err != nil {
-			return nil, err
-		}
-		ret.addTable(table)
+	// if the DB was earlier created with a different number of shards
+	// manifest would have picked that one instead
+	opts.NumShards = manifest.numShards
+	ret = &Gravel{
+		memtable:   NewMemTable(manifest.numShards),
+		manifest:   manifest,
+		opts:       opts,
+		commitlock: sync.Mutex{},
+		stats:      Stats{},
 	}
 	go ret.reportStats()
-	go ret.periodicallyFlush()
 	return ret, nil
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
+	hash := Hash(key)
 	sample := shouldSample()
 	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(time.Now().Unix())
-	val, err := g.memtable.Get(key)
+	val, err := g.memtable.Get(key, hash)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
@@ -83,11 +72,16 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	default:
 		return nil, err
 	}
-	g.tableListLock.RLock()
-	defer g.tableListLock.RUnlock()
-	for _, table := range g.tableList {
+	shard := hash & (g.manifest.numShards - 1)
+	g.manifest.Reserve()
+	defer g.manifest.Release()
+	tables, err := g.manifest.List(shard)
+	if err != nil {
+		return nil, fmt.Errorf("invalid shard: %w", err)
+	}
+	for _, table := range tables {
 		maybeInc(sample, &g.stats.TableIndexReads)
-		val, err := table.Get(key)
+		val, err := table.Get(key, hash)
 		switch err {
 		case ErrNotFound:
 		case nil:
@@ -135,30 +129,6 @@ func handle(val Value, now Timestamp) ([]byte, error) {
 	}
 }
 
-// nextID returns an ID number for the next table file.
-// We want successive indices to be sufficiently far apart so that when we
-// do compactions, we can find numbers between any two existing indices.
-func (g *Gravel) nextID() uint64 {
-	maxsofar := uint64(0)
-	for _, t := range g.tableList {
-		id := t.ID()
-		if id > maxsofar {
-			maxsofar = id
-		}
-	}
-	return maxsofar + 100_000
-}
-
-func (g *Gravel) addTable(t Table) {
-	g.tableListLock.Lock()
-	defer g.tableListLock.Unlock()
-	g.tableList = append(g.tableList, t)
-	sort.Slice(g.tableList, func(i, j int) bool {
-		return g.tableList[i].ID() > g.tableList[j].ID()
-	})
-	g.stats.NumTables.Store(uint64(len(g.tableList)))
-}
-
 func isExpired(expires, now Timestamp) bool {
 	return expires > 0 && expires < now
 }
@@ -171,15 +141,7 @@ func (g *Gravel) Teardown() error {
 }
 
 func (g *Gravel) Close() error {
-	g.tableListLock.Lock()
-	defer g.tableListLock.Unlock()
-
-	for _, t := range g.tableList {
-		if err := t.Close(); err != nil {
-			return err
-		}
-	}
-	return nil
+	return g.manifest.Close()
 }
 
 // NOTE: the caller of flush is expected to hold commitlock
@@ -188,45 +150,29 @@ func (g *Gravel) flush() error {
 		// no valid reason to flush an empty memtable
 		return nil
 	}
-	// broadcast that we are attempting to do a flush
-	// this operation will never block because the caller
-	// of flush holds commitlock -> only one process can do flush at a time
-	// the moment one thread does a flush, the goroutine executing 'periodicallyflush'
-	// will dequeue from this channel
-	g.flushch <- struct{}{}
-	table, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.nextID())
+	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.manifest.numShards)
 	if err != nil {
 		return err
 	}
 	maybeInc(true, &g.stats.NumTableBuilds)
-	g.addTable(table)
+	if err = g.manifest.Append(tablefiles); err != nil {
+		return err
+	}
+	g.manifest.Reserve()
+	defer g.manifest.Release()
+	numTables := 0
+	for s := uint64(0); s < g.manifest.numShards; s++ {
+		tables, err := g.manifest.List(s)
+		if err != nil {
+			return err
+		}
+		numTables += len(tables)
+	}
+	g.stats.NumTables.Store(uint64(numTables))
 	if err = g.memtable.Clear(); err != nil {
 		return err
 	}
 	g.stats.MemtableSizeBytes.Store(0)
 	g.stats.MemtableKeys.Store(0)
 	return err
-}
-
-// If the write volume is low, memtable may not reach tablesize for
-// a while, and so may not flush. While it's technically not an issue,
-// flushing doesn't hurt us and can make future startup faster.
-// This function forces a flush 10 minutes after the last natural flush.
-func (g *Gravel) periodicallyFlush() {
-	ticker := time.NewTicker(10 * time.Minute)
-	for {
-		select {
-		case <-ticker.C:
-			func() {
-				g.commitlock.Lock()
-				defer g.commitlock.Unlock()
-				// in case any flush marker is in the channel, remove it
-				// without blocking on it
-				<-g.flushch
-				g.flush()
-			}()
-		case <-g.flushch:
-			ticker = time.NewTicker(10 * time.Minute)
-		}
-	}
 }

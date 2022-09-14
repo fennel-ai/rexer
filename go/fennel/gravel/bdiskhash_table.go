@@ -6,15 +6,16 @@ import (
 	"context"
 	"encoding/binary"
 	"fennel/lib/timer"
+	"fennel/lib/utils"
 	"fennel/lib/utils/math"
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 	"sort"
+	"syscall"
 
-	"github.com/cespare/xxhash/v2"
 	"go.uber.org/atomic"
-	"golang.org/x/exp/mmap"
 	"golang.org/x/sys/unix"
 )
 
@@ -38,60 +39,59 @@ const headerSize uint64 = 64
 const avgBucketSize uint64 = 12
 const invalidUint32 uint32 = 0xFFFFFFFF
 
+var incompleteFile = fmt.Errorf("expected end of file")
+
 type bDiskHashTable struct {
-	data        *mmap.ReaderAt
+	data        []byte
 	itemCount   uint64
 	bucketCount uint64
 	dataPos     uint64
 	id          uint64
 	reads       atomic.Uint64
+	numShardBit int
 }
 
 func (b *bDiskHashTable) DataReads() uint64 {
 	return b.reads.Load() * sampleRate
 }
 
-func (b *bDiskHashTable) Get(key []byte) (Value, error) {
-	hash := xxhash.Sum64(key)
+func (b *bDiskHashTable) Get(key []byte, hash uint64) (Value, error) {
 	bucketCount := b.bucketCount
-	var bucketId uint64
-	if bucketCount&(bucketCount-1) == 0 {
-		bucketId = hash & (bucketCount - 1)
-	} else {
-		bucketId = hash % b.bucketCount
+	bucketId := (hash >> b.numShardBit) & (bucketCount - 1)
+
+	pos := int(headerSize + bucketId*4)
+	if len(b.data) < pos+4 {
+		return Value{}, incompleteFile
 	}
 
-	buf4 := make([]byte, 4)
-	_, err := b.data.ReadAt(buf4, int64(headerSize+bucketId*4))
-	if err != nil {
-		return Value{}, err
-	}
-
-	relativeBucketOffset := binary.BigEndian.Uint32(buf4)
+	relativeBucketOffset := binary.BigEndian.Uint32(b.data[pos:])
 	if relativeBucketOffset == invalidUint32 {
 		return Value{}, ErrNotFound
 	}
 	bucketOffset := uint64(relativeBucketOffset) + headerSize + b.bucketCount*4
 
-	itemsInBucket := int(b.data.At(int(bucketOffset)))
-	bucketOffset += 1
+	pos = int(bucketOffset)
+	if len(b.data) <= pos {
+		return Value{}, incompleteFile
+	}
+
+	itemsInBucket := int(b.data[pos])
+	pos += 1
 	if itemsInBucket == 255 {
-		_, err := b.data.ReadAt(buf4, int64(bucketOffset))
-		if err != nil {
-			return Value{}, err
+		if len(b.data) < pos+4 {
+			return Value{}, incompleteFile
 		}
-		bucketOffset += 4
-		itemsInBucket = int(binary.BigEndian.Uint32(buf4))
+		itemsInBucket = int(binary.BigEndian.Uint32(b.data[pos:]))
+		pos += 4
 	}
 
-	bufCurrBucket := make([]byte, 5+itemsInBucket*4)
-	_, err = b.data.ReadAt(bufCurrBucket, int64(bucketOffset))
-	if err != nil {
-		return Value{}, err
+	if len(b.data) < pos+5+itemsInBucket*4 {
+		return Value{}, incompleteFile
 	}
 
+	bufCurrBucket := b.data[pos : pos+5+itemsInBucket*4]
 	dataPos := (uint64(bufCurrBucket[0]) << 32) | (uint64(bufCurrBucket[1]) << 24) | (uint64(bufCurrBucket[2]) << 16) | (uint64(bufCurrBucket[3]) << 8) | (uint64(bufCurrBucket[4]))
-	hashFP := uint32(hash & 0xFFFFFFFF)
+	hashFP := uint32((hash >> 32) & 0xFFFFFFFF)
 
 	var matchIndices []int = nil
 	for i := 0; i < itemsInBucket; i++ {
@@ -110,45 +110,36 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 			_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 			defer t.Stop()
 		}
-		curDataPos := dataPos + b.dataPos
+		pos = int(dataPos + b.dataPos)
 		matchIdx := 0
 		for i := 0; ; i++ {
 			if i >= itemsInBucket {
 				panic("file is inconsistent state")
 			}
-			_, err := b.data.ReadAt(buf4, int64(curDataPos))
-			if err != nil {
-				return Value{}, err
+			keyPos := pos + 4 + 1 + 4 + 1 + 4
+			if len(b.data) < keyPos {
+				return Value{}, incompleteFile
 			}
+
 			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
-			recordSize := binary.BigEndian.Uint32(buf4)
+			recordSize := int(binary.BigEndian.Uint32(b.data[pos:]))
 
 			if i == matchIndices[matchIdx] {
-				keyLen := uint64(b.data.At(int(curDataPos + 4)))
-				curKey := make([]byte, keyLen)
-				_, err = b.data.ReadAt(curKey, int64(curDataPos+4+1+4+1+4))
-				if err != nil {
-					return Value{}, err
+				keyLen := int(b.data[pos+4])
+				if len(b.data) < keyPos+keyLen {
+					return Value{}, incompleteFile
 				}
+				curKey := b.data[keyPos : keyPos+keyLen]
 				if bytes.Equal(curKey, key) {
 					// found
-					buf := make([]byte, 9)
-					_, err := b.data.ReadAt(buf, int64(curDataPos+4+1))
-					if err != nil {
-						return Value{}, err
+					valueSize := int(binary.BigEndian.Uint32(b.data[pos+5:]))
+					deleted := b.data[pos+9] > 0
+					expTime := binary.BigEndian.Uint32(b.data[pos+10:])
+					if len(b.data) < keyPos+keyLen+valueSize {
+						return Value{}, incompleteFile
 					}
-					valueSize := binary.BigEndian.Uint32(buf)
-					delflag := buf[4]
-					expTime := binary.BigEndian.Uint32(buf[5:])
-					deleted := false
-					if delflag > 0 {
-						deleted = true
-					}
-					value := make([]byte, valueSize)
-					_, err = b.data.ReadAt(value, int64(curDataPos+4+1+4+1+4+keyLen))
-					if err != nil {
-						return Value{}, err
-					}
+
+					value := b.data[keyPos+keyLen : keyPos+keyLen+valueSize]
 					return Value{
 						data:    value,
 						expires: Timestamp(expTime),
@@ -162,229 +153,253 @@ func (b *bDiskHashTable) Get(key []byte) (Value, error) {
 					break
 				}
 			}
-			curDataPos += uint64(recordSize)
+			pos += recordSize
 		}
 		return Value{}, ErrNotFound
 	}()
 }
 
 func (b *bDiskHashTable) Close() error {
-	return b.data.Close()
+	if b.data == nil {
+		return nil
+	}
+	data := b.data
+	b.data = nil
+	runtime.SetFinalizer(b, nil)
+	return syscall.Munmap(data)
 }
 
 func (b *bDiskHashTable) ID() uint64 {
 	return b.id
 }
 
-func buildBDiskHashTable(dirname string, id uint64, mt *Memtable) (table Table, err error) {
-	filepath := path.Join(dirname, fmt.Sprintf("%d%s", id, SUFFIX))
-	wipPath := path.Join(dirname, fmt.Sprintf("%d%s.wip", id, SUFFIX))
-	fmt.Printf("starting to build the table: %s...\n", filepath)
-
-	var f *os.File
-	if f, err = os.Create(wipPath); err != nil {
-		return nil, err
+func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
+	if numShards&(numShards-1) > 0 {
+		return nil, fmt.Errorf("shard is not a power of 2")
 	}
-	defer func() {
-		// if for any reason the rest of the function fails, remove the temp file
-		// before returning, else that file will keep taking disk space forever
+	numShardBits := 0
+	for (1 << numShardBits) < numShards {
+		numShardBits += 1
+	}
+	filenames := make([]string, uint(numShards))
+	for i := 0; i < int(numShards); i++ {
+		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempSuffix)
+		filepath := path.Join(dirname, filename)
+		filenames[i] = filename
+		fmt.Printf("starting to build the table: %s...\n", filepath)
+
+		f, err := os.Create(filepath)
 		if err != nil {
-			_ = os.Remove(wipPath)
+			return nil, err
 		}
-	}()
-	type indexObj struct {
-		HashFP   uint32
-		BucketID uint32
-		k        string
-		v        Value
-	}
-
-	buildFunc := func() error {
-		m := mt.Iter()
-
-		itemCount := len(m)
-		bucketCount := uint64(itemCount / int(avgBucketSize))
-		bucketCount = math.NextPowerOf2(bucketCount)
-		headSlice := make([]byte, bucketCount*4)
-		for i := 0; i < int(bucketCount*4); i++ {
-			headSlice[i] = 0xFF
+		type indexObj struct {
+			HashFP   uint32
+			BucketID uint32
+			k        string
+			v        Value
 		}
 
-		indexObjs := make([]indexObj, len(m))
-		idx := 0
-		for key, value := range m {
-			hash := xxhash.Sum64String(key)
-			indexObjs[idx] = indexObj{
-				HashFP:   uint32(hash & 0xFFFFFFFF),
-				BucketID: uint32(hash % bucketCount),
-				k:        key,
-				v:        value,
+		buildFunc := func(i uint) error {
+			m := mt.Iter(uint64(i))
+
+			itemCount := len(m)
+			bucketCount := uint64(itemCount / int(avgBucketSize))
+			bucketCount = math.NextPowerOf2(bucketCount)
+			headSlice := make([]byte, bucketCount*4)
+			for i := 0; i < int(bucketCount*4); i++ {
+				headSlice[i] = 0xFF
 			}
-			idx++
-		}
-		sort.Slice(indexObjs, func(i, j int) bool {
-			return indexObjs[i].BucketID < indexObjs[j].BucketID
-		})
 
-		var lastBucketId uint32 = 0xFFFFFFFF
-		var bucketsBuf []byte = nil
-
-		// calculate data start pos, to reserve the writing file offset
-		dataPos := headerSize + bucketCount*4
-		for i, indexObjItem := range indexObjs {
-			if indexObjItem.BucketID != lastBucketId {
-				bucketSize := 1
-				for ; i+bucketSize < len(indexObjs); bucketSize++ {
-					if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
-						break
-					}
+			indexObjs := make([]indexObj, len(m))
+			idx := 0
+			for key, value := range m {
+				hash := Hash([]byte(key))
+				indexObjs[idx] = indexObj{
+					HashFP: uint32((hash >> 32) & 0xFFFFFFFF),
+					// we don't want to use the bits used for sharding since they will
+					// be same for each key in that shard
+					BucketID: uint32((hash >> numShardBits) % bucketCount),
+					k:        key,
+					v:        value,
 				}
-				if bucketSize < 255 {
-					dataPos += 1
-				} else {
+				idx++
+			}
+			sort.Slice(indexObjs, func(i, j int) bool {
+				return indexObjs[i].BucketID < indexObjs[j].BucketID
+			})
+
+			var lastBucketId uint32 = 0xFFFFFFFF
+			var bucketsBuf []byte = nil
+
+			// calculate data start pos, to reserve the writing file offset
+			dataPos := headerSize + bucketCount*4
+			for i, indexObjItem := range indexObjs {
+				if indexObjItem.BucketID != lastBucketId {
+					bucketSize := 1
+					for ; i+bucketSize < len(indexObjs); bucketSize++ {
+						if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
+							break
+						}
+					}
+					if bucketSize < 255 {
+						dataPos += 1
+					} else {
+						dataPos += 5
+					}
 					dataPos += 5
+					dataPos += uint64(bucketSize * 4)
+					lastBucketId = indexObjItem.BucketID
 				}
-				dataPos += 5
-				dataPos += uint64(bucketSize * 4)
-				lastBucketId = indexObjItem.BucketID
 			}
-		}
 
-		lastBucketId = 0xFFFFFFFF
-		_, err := f.Seek(int64(dataPos), unix.SEEK_SET)
-		dataWriter := bufio.NewWriterSize(f, 1024*1024)
-		if err != nil {
-			return err
-		}
-
-		var relativeDataPos uint64 = 0
-		buf4 := make([]byte, 4)
-		for i, indexObjItem := range indexObjs {
-			if indexObjItem.BucketID != lastBucketId {
-				// flush
-				binary.BigEndian.PutUint32(headSlice[indexObjItem.BucketID*4:], uint32(len(bucketsBuf)))
-				bucketSize := 1
-				for ; i+bucketSize < len(indexObjs); bucketSize++ {
-					if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
-						break
-					}
-				}
-				if bucketSize < 255 {
-					bucketsBuf = append(bucketsBuf, byte(bucketSize))
-				} else {
-					tempBuf := make([]byte, 5)
-					tempBuf[0] = 255
-					binary.BigEndian.PutUint32(tempBuf[1:], uint32(bucketSize))
-					bucketsBuf = append(bucketsBuf, tempBuf...)
-				}
-				bucketsBuf = append(bucketsBuf, byte(relativeDataPos>>32), byte(relativeDataPos>>24), byte(relativeDataPos>>16), byte(relativeDataPos>>8), byte(relativeDataPos))
-				lastBucketId = indexObjItem.BucketID
-			}
-			binary.BigEndian.PutUint32(buf4, indexObjItem.HashFP)
-			bucketsBuf = append(bucketsBuf, buf4...)
-			// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
-			recordBuf := make([]byte, 4+1+4+1+4+len(indexObjItem.k)+len(indexObjItem.v.data))
-			binary.BigEndian.PutUint32(recordBuf[0:], uint32(len(recordBuf)))
-			recordBuf[4] = byte(len(indexObjItem.k))
-			binary.BigEndian.PutUint32(recordBuf[5:], uint32(len(indexObjItem.v.data)))
-			if indexObjItem.v.deleted {
-				recordBuf[9] = 1
-			} else {
-				recordBuf[9] = 0
-			}
-			binary.BigEndian.PutUint32(recordBuf[10:], uint32(indexObjItem.v.expires))
-			copy(recordBuf[14:], indexObjItem.k)
-			copy(recordBuf[14+recordBuf[4]:], indexObjItem.v.data)
-			// fmt.Printf("record is: %v\n", recordBuf)
-			relativeDataPos += uint64(len(recordBuf))
-			if _, err = dataWriter.Write(recordBuf); err != nil {
+			lastBucketId = 0xFFFFFFFF
+			_, err := f.Seek(int64(dataPos), unix.SEEK_SET)
+			dataWriter := bufio.NewWriterSize(f, 1024*1024)
+			if err != nil {
 				return err
 			}
+
+			var relativeDataPos uint64 = 0
+			buf4 := make([]byte, 4)
+			for i, indexObjItem := range indexObjs {
+				if indexObjItem.BucketID != lastBucketId {
+					// flush
+					binary.BigEndian.PutUint32(headSlice[indexObjItem.BucketID*4:], uint32(len(bucketsBuf)))
+					bucketSize := 1
+					for ; i+bucketSize < len(indexObjs); bucketSize++ {
+						if indexObjs[i+bucketSize].BucketID != indexObjItem.BucketID {
+							break
+						}
+					}
+					if bucketSize < 255 {
+						bucketsBuf = append(bucketsBuf, byte(bucketSize))
+					} else {
+						tempBuf := make([]byte, 5)
+						tempBuf[0] = 255
+						binary.BigEndian.PutUint32(tempBuf[1:], uint32(bucketSize))
+						bucketsBuf = append(bucketsBuf, tempBuf...)
+					}
+					bucketsBuf = append(bucketsBuf, byte(relativeDataPos>>32), byte(relativeDataPos>>24), byte(relativeDataPos>>16), byte(relativeDataPos>>8), byte(relativeDataPos))
+					lastBucketId = indexObjItem.BucketID
+				}
+				binary.BigEndian.PutUint32(buf4, indexObjItem.HashFP)
+				bucketsBuf = append(bucketsBuf, buf4...)
+				// write record: [4 bytes total size, 1 byte key size, 4 bytes value size, 1 byte delete tombstone, 4 bytes expire time, key, value]
+				recordBuf := make([]byte, 4+1+4+1+4+len(indexObjItem.k)+len(indexObjItem.v.data))
+				binary.BigEndian.PutUint32(recordBuf[0:], uint32(len(recordBuf)))
+				recordBuf[4] = byte(len(indexObjItem.k))
+				binary.BigEndian.PutUint32(recordBuf[5:], uint32(len(indexObjItem.v.data)))
+				if indexObjItem.v.deleted {
+					recordBuf[9] = 1
+				} else {
+					recordBuf[9] = 0
+				}
+				binary.BigEndian.PutUint32(recordBuf[10:], uint32(indexObjItem.v.expires))
+				copy(recordBuf[14:], indexObjItem.k)
+				copy(recordBuf[14+recordBuf[4]:], indexObjItem.v.data)
+				// fmt.Printf("record is: %v\n", recordBuf)
+				relativeDataPos += uint64(len(recordBuf))
+				if _, err = dataWriter.Write(recordBuf); err != nil {
+					return err
+				}
+			}
+
+			fmt.Println("Index size", dataPos)
+			if uint64(len(bucketsBuf))+headerSize+bucketCount*4 != dataPos {
+				panic("bad assumption")
+			}
+			err = dataWriter.Flush()
+			if err != nil {
+				return err
+			}
+
+			_, err = f.Seek(0, unix.SEEK_SET)
+			if err != nil {
+				return err
+			}
+
+			headerBuf := make([]byte, headerSize)
+			binary.BigEndian.PutUint32(headerBuf[0:], 0x20220101)            // whatever magic header
+			binary.BigEndian.PutUint32(headerBuf[4:], uint32(bucketCount))   // whatever magic header
+			binary.BigEndian.PutUint32(headerBuf[8:], uint32(itemCount))     // item count
+			binary.BigEndian.PutUint32(headerBuf[12:], uint32(dataPos))      // starting of the acutal data
+			binary.BigEndian.PutUint32(headerBuf[16:], uint32(numShardBits)) // number of bits used for sharding
+			_, err = f.Write(headerBuf)
+			if err != nil {
+				return err
+			}
+			_, err = f.Write(headSlice)
+			if err != nil {
+				return err
+			}
+
+			_, err = f.Write(bucketsBuf)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 
-		fmt.Println("Index size", dataPos)
-		if uint64(len(bucketsBuf))+headerSize+bucketCount*4 != dataPos {
-			panic("bad assumption")
+		if err = buildFunc(uint(i)); err != nil {
+			return nil, err
 		}
-		err = dataWriter.Flush()
+		// sync the file to disk before going to avoid any data loss
+		if err = f.Sync(); err != nil {
+			return nil, err
+		}
+		err = f.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		_, err = f.Seek(0, unix.SEEK_SET)
-		if err != nil {
-			return err
-		}
-
-		headerBuf := make([]byte, headerSize)
-		binary.BigEndian.PutUint32(headerBuf[0:], 0x20220101)          // whatever magic header
-		binary.BigEndian.PutUint32(headerBuf[4:], uint32(bucketCount)) // whatever magic header
-		binary.BigEndian.PutUint32(headerBuf[8:], uint32(itemCount))   // item count
-		binary.BigEndian.PutUint32(headerBuf[12:], uint32(dataPos))    // starting of the acutal data
-		_, err = f.Write(headerBuf)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write(headSlice)
-		if err != nil {
-			return err
-		}
-
-		_, err = f.Write(bucketsBuf)
-		if err != nil {
-			return err
-		}
-		return nil
 	}
-
-	if err = buildFunc(); err != nil {
-		return nil, err
-	}
-	// sync the file to disk before going to avoid any data loss
-	if err = f.Sync(); err != nil {
-		return nil, err
-	}
-	err = f.Close()
-	if err != nil {
-		return nil, err
-	}
-	if err = os.Rename(wipPath, filepath); err != nil {
-		return nil, fmt.Errorf("could not rename temp file to real file: %w", err)
-	}
-	table, err = openBDiskHashTable(id, filepath)
-	return table, err
+	return filenames, nil
 }
 
 func openBDiskHashTable(id uint64, filepath string) (Table, error) {
-	data, err := mmap.Open(filepath)
+	var data []byte = nil
+
+	f, err := os.Open(filepath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open disk hash file: %w", err)
+		return nil, err
 	}
-	if data.Len() == 0 {
-		return nil, fmt.Errorf("unable to open disk hash file: empty file")
-	}
-	buf := make([]byte, headerSize)
-	_, err = data.ReadAt(buf, 0)
+	defer f.Close()
+	fi, err := f.Stat()
 	if err != nil {
 		return nil, err
 	}
 
-	dataPos := uint64(binary.BigEndian.Uint32(buf[12:]))
-	// TODO check magic header
-	// Prefetch the index data [0, dataPos) by "touching" it
-	uselessBuf := make([]byte, dataPos)
-	_, err = data.ReadAt(uselessBuf, 0)
+	size := fi.Size()
+	if size <= int64(headerSize) {
+		return nil, fmt.Errorf("file size too small to be a valid gravel file")
+	}
+
+	data, err = syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, err
 	}
 
-	return &bDiskHashTable{
+	dataPos := uint64(binary.BigEndian.Uint32(data[12:]))
+	numShardBits := int(binary.BigEndian.Uint32(data[16:]))
+	if len(data) <= int(dataPos) {
+		_ = syscall.Munmap(data)
+		return nil, err
+	}
+
+	for i := 0; i < int(dataPos); i++ {
+		// Prefetch the index data [0, dataPos) by "touching" it
+		_ = data[i]
+	}
+
+	tableObj := &bDiskHashTable{
 		data:        data,
-		itemCount:   uint64(binary.BigEndian.Uint32(buf[8:])),
-		bucketCount: uint64(binary.BigEndian.Uint32(buf[4:])),
+		itemCount:   uint64(binary.BigEndian.Uint32(data[8:])),
+		bucketCount: uint64(binary.BigEndian.Uint32(data[4:])),
 		dataPos:     dataPos,
 		id:          id,
-	}, nil
+		numShardBit: numShardBits,
+	}
+	runtime.SetFinalizer(tableObj, (*bDiskHashTable).Close)
+	return tableObj, nil
 }
 
 var _ Table = (*bDiskHashTable)(nil)

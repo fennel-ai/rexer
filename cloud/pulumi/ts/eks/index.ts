@@ -155,13 +155,14 @@ function setupLinkerd(cluster: k8s.Provider) {
                 // clients do not issue any preamble, which breaks detection
                 //
                 // - HTTP/Query server 2425
+                // - Nitrous server 3333 (NOTE: This is a gRPC server, hence HTTP/2 connections)
                 //
                 // NOTE: it seems like these ports are marked opaque only if it is a container port on that pod
                 // and the rest are ignored
                 //
                 // TODO(mohit): Migrate away from setting HTTP/Query server port here, instead this should be
                 // configurable on a pod level. Awaiting a fix/response in - https://github.com/linkerd/linkerd2/issues/8922
-                "opaquePorts": "25,587,3306,4444,5432,6379,9300,11211,2425",
+                "opaquePorts": "25,587,3306,4444,5432,6379,9300,11211,2425,3333",
             }
         }
     }, { provider: cluster })

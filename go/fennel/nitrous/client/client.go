@@ -3,12 +3,15 @@ package client
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/keepalive"
 	"time"
 
 	"fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/lib/arena"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fennel/lib/value"
 	"fennel/nitrous/rpc"
 	"fennel/resource"
@@ -145,6 +148,8 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 }
 
 func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupkeys []value.Value, kwargs []value.Dict, output []value.Value) error {
+	ctx, t := timer.Start(ctx, nc.ID(), "nitrous.client.GetMulti")
+	defer t.Stop()
 	if len(groupkeys) != len(kwargs) {
 		return fmt.Errorf("groupkeys and kwargs must be the same length %d != %d", len(groupkeys), len(kwargs))
 	}
@@ -237,6 +242,42 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 		// TODO: Uncomment the following to enable distributed traces.
 		// grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 		// grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
+
+		// keepalive connections - these are required so that the underlying TCP connections (and hence the streams)
+		// are not broken due to inactivity from the client (and also to notify any intermediate services e.g. linkerd
+		// to avoid breaking a connection when there is no traffic)
+		//
+		// we can have query servers running for 10s of minutes even when they don't see any traffic, it is important
+		// to keep these connections alive to avoid rebuilding them on new traffic
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			// Duration after which the client starts pinging the server to check transport health
+			Time: 10 * time.Second,
+			// Timeout for the keepalive check
+			Timeout: 5 * time.Second,
+			// Whether these keepalives should be sent even if there are no RPCs
+			PermitWithoutStream: true,
+		}),
+
+		// Configure on how the new connections are to be established in both, new connections and re-establishing
+		// broken connections scenarios
+		//
+		// These are configured to be more aggressive than the default configurations since it is possible that the
+		// connection with the nitrous server is broken (due to nitrous server restart or similar) and it is better
+		// to aggressively establish connection rather than allowing multiple requests to be queued up on the servers
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				// After the first failure, try after a second
+				BaseDelay: 1 * time.Second,
+				// Don't keep the multiplier large since we want to resolve the connection ASAP (though prefer not
+				// to try every second). Defaults to 1.6
+				Multiplier: 1.1,
+				// Backoff factor, specifically this controls -
+				// nextRetryTime = now() + delay + RAND(-jitter * delay, jitter * delay), where delay = previous delay * multiplier
+				Jitter: 0.2,
+			},
+			// Timeout if we are not able to establish a connection after a second on each attempt
+			MinConnectTimeout: 1 * time.Second,
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to nitrous: %w", err)

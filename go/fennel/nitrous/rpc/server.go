@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/keepalive"
 	"io"
 	"log"
 	"net"
@@ -87,6 +88,18 @@ func NewServer(aggdb AggDB) *Server {
 			otelgrpc.UnaryServerInterceptor(),
 			NewRateLimiter(5000),
 		)),
+		// Default keepalive parameters ensure that a client connection, from the server side, established for a large
+		// enough amount of time.
+		//
+		// This is required to allow clients to valid keepalive connections - server closes connections for any client
+		// who violate this
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			// this is configured < `Time` on the client side (time after which the client start sending keepalive
+			// requests)
+			MinTime: 5 * time.Second,
+			// again same as the client - permitting the client to send keepalive even if there are no active RPCs
+			PermitWithoutStream: true,
+		}),
 	)
 	s := &Server{
 		aggdb:       aggdb,

@@ -8,7 +8,7 @@ import (
 )
 
 func TestMemTable(t *testing.T) {
-	mt := NewMemTable()
+	mt := NewMemTable(16)
 	var keys, vals [][]byte
 	var entries []Entry
 	sz := 0
@@ -31,7 +31,7 @@ func TestMemTable(t *testing.T) {
 	assert.Equal(t, uint64(0), mt.Len())
 
 	for _, k := range keys {
-		_, err := mt.Get(k)
+		_, err := mt.Get(k, Hash(k))
 		assert.Equal(t, ErrNotFound, err)
 	}
 
@@ -42,7 +42,7 @@ func TestMemTable(t *testing.T) {
 
 	// and verify each made its way
 	for i, k := range keys {
-		v, err := mt.Get(k)
+		v, err := mt.Get(k, Hash(k))
 		assert.NoError(t, err)
 		assert.Equal(t, entries[i].val, v)
 	}

@@ -1,12 +1,14 @@
 package gravel
 
 import (
+	"context"
 	"time"
 
 	"github.com/detailyang/fastrand-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
+	"google.golang.org/appengine/log"
 )
 
 const (
@@ -53,11 +55,18 @@ func (g *Gravel) reportStats() {
 			stats.WithLabelValues("memtable_size_bytes", name).Set(float64(g.stats.MemtableSizeBytes.Load()))
 			stats.WithLabelValues("memtable_keys", name).Set(float64(g.stats.MemtableKeys.Load()))
 
-			g.tableListLock.RLock()
-			defer g.tableListLock.RUnlock()
+			g.manifest.Reserve()
+			defer g.manifest.Release()
 			reads := uint64(0)
-			for _, t := range g.tableList {
-				reads += t.DataReads()
+			for s := uint64(0); s < g.manifest.numShards; s++ {
+				tables, err := g.manifest.List(s)
+				if err != nil {
+					log.Errorf(context.TODO(), "could not compute table stats. Error: %v", err)
+					return
+				}
+				for _, t := range tables {
+					reads += t.DataReads()
+				}
 			}
 			stats.WithLabelValues("table_data_reads", name).Set(float64(reads))
 		}()
