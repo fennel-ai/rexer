@@ -146,24 +146,6 @@ var ALL_MSK_TOPICS = []TopicConf{
 	},
 }
 
-func IsConfluentTopic(topic string) bool {
-	for _, t := range ALL_CONFLUENT_TOPICS {
-		if t.Topic == topic {
-			return true
-		}
-	}
-	return false
-}
-
-func IsMskTopic(topic string) bool {
-	for _, t := range ALL_MSK_TOPICS {
-		if t.Topic == topic {
-			return true
-		}
-	}
-	return false
-}
-
 func ConfigMap(server, username, password, saslMechanism string) *kafka.ConfigMap {
 	return &kafka.ConfigMap{
 		"bootstrap.servers": server,

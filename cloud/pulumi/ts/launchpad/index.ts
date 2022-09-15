@@ -108,7 +108,6 @@ const tierConfs: Record<number, TierConf> = {
             publicServer: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -228,7 +227,6 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // Lokal's staging tier
     109: {
@@ -282,7 +280,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // Convoy prod tier
     112: {
@@ -326,7 +323,6 @@ const tierConfs: Record<number, TierConf> = {
             publicServer: false,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
@@ -337,7 +333,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     117: {
         protectResources: true,
@@ -347,7 +342,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     118: {
         protectResources: true,
@@ -357,7 +351,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     119: {
         protectResources: true,
@@ -368,7 +361,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         airbyteConf: {},
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // reserver tierIds 1001 to 2000 for self-serve.
     1001: {
@@ -379,7 +371,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         airbyteConf: {},
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
         plan: Plan.BASIC,
         requestLimit: 1000,
     },
@@ -392,7 +383,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         airbyteConf: {},
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
         plan: Plan.BASIC,
         requestLimit: 1000,
     }
