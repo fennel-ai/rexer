@@ -1163,7 +1163,7 @@ if (id in dataPlaneConfs) {
     await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
     if (mothershipId !== undefined && mothership !== undefined) {
         console.log('updating mothership database...')
-        await mothership.insertOrUpdateCustomer(id, id => {
+        await mothership.insertOrUpdateDataPlane(id, id => {
             if (id == 0) {
                 return selfServeCustomer
             }
