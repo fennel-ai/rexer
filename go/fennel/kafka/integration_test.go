@@ -252,6 +252,7 @@ func integrationProducer(t *testing.T, scope resource.Scope, topic string, parti
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
+		SaslMechanism: 	 SaslScramSha512Mechanism,
 		Scope:           scope,
 	}.Materialize()
 	assert.NoError(t, err)
@@ -264,6 +265,7 @@ func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, off
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
+		SaslMechanism:   SaslScramSha512Mechanism,
 		ConsumerConfig: ConsumerConfig{
 			Scope:        scope,
 			Topic:        topic,
