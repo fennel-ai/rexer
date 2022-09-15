@@ -6,8 +6,8 @@ interface CssExports {
   'container': string;
   'divider': string;
   'documentation': string;
-  'hovering': string;
   'leftNav': string;
+  'logo': string;
   'menu': string;
   'rightNav': string;
 }

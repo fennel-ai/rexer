@@ -51,10 +51,14 @@ $hoverColor: colors.$purple6;
     color: inherit;
 }
 
-.hovering {
-    color: colors.$purple6;
+.activeTier:hover {
+    color: $hoverColor;
 }
 
-.activeTier:hover {
+.logo {
+    color: #111013;
+}
+
+.logo:hover {
     color: $hoverColor;
 }

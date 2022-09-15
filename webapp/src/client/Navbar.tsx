@@ -1,9 +1,10 @@
 import axios, { AxiosError } from "axios";
 import { useParams, generatePath } from "react-router-dom";
+import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
+import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
-import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
-import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
+import Logo from "./assets/logo_color.module.svg";
 
 export interface Tier {
     id: string,
@@ -42,7 +43,7 @@ function Navbar({ activeTab, tiers, user }: Props) {
                 <div className={styles.leftNav}>
                     <div>
                         <a href="/">
-                            <img src="/images/logo.svg" alt="logo" />
+                            <Logo className={styles.logo} />
                         </a>
                     </div>
                     <div className={styles.divider} />
