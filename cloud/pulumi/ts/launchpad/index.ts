@@ -205,7 +205,7 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
-        // createTopicsInMsk: true,
+        createTopicsInMsk: true,
         mirrorMakerConf: {
             // the tasks will be split among them
             replicas: 1,
@@ -820,7 +820,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             binlog: {
                 partitions: 32,
-                retention_ms: 7 * 24 * 60 * 60 * 1000 /* 7 days */,
+                retention_ms: 5 * 24 * 60 * 60 * 1000 /* 5 days */,
                 partition_retention_bytes: -1,
                 max_message_bytes: 2097164,
                 // TODO(mohit): Consider setting this to 2.
@@ -851,7 +851,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 2 broker nodes in each of the AZs
             numberOfBrokerNodes: 4,
-            storageVolumeSizeGiB: 1536,
+            storageVolumeSizeGiB: 1636,
         },
 
         // setup strimzi

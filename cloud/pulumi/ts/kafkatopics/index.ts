@@ -85,9 +85,7 @@ export const setup = async (input: inputType) => {
             return new kafka.Topic(`msk-topic-${topic.name}`, {
                 name: topic.name,
                 partitions: topic.partitions || DEFAULT_PARTITIONS,
-                // We set replication factor to 3 regardless of the cluster availability
-                // since that's the minimum required by confluent cloud:
-                // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
+                // We set default replication factor of 2 since we have configured MSK cluster in 2 AZs
                 replicationFactor: topic.replicationFactor || DEFAULT_MSK_REPLICATION_FACTOR,
                 config: config,
             }, { provider: mskKafkaProvider, protect: input.protect })
