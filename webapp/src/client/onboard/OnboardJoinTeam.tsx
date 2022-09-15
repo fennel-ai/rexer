@@ -53,7 +53,7 @@ function OnboardJoinTeam({ team, onOnboardStatusChange }: Props) {
             <div className={commonStyles.logoAndName}>
                 <img src="images/logo_name.svg" alt="logo" />
             </div>
-            <OnboardStepper steps={3} activeStep={1} />
+            <OnboardStepper steps={2} activeStep={1} />
 
             <div className={commonStyles.content}>
                 <h4 className={commonStyles.title}>Your team is already on Fennel!</h4>

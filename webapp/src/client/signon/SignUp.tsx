@@ -138,7 +138,7 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
                         disabled={submitting}
                         loading={submitting}>
 
-                        Signing Up
+                        Sign Up
                     </Button>
                 </Form>
             </div>

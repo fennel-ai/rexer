@@ -26,15 +26,15 @@ type Tier struct {
 }
 
 const (
-	TierPlanBasic = iota
+	TierPlanPersonal = iota
 	TierPlanStartup
 	TierPlanEnterprise
 )
 
 func (t *Tier) PlanName() string {
 	switch t.Plan {
-	case TierPlanBasic:
-		return "Basic"
+	case TierPlanPersonal:
+		return "Personal"
 	case TierPlanStartup:
 		return "Startup"
 	case TierPlanEnterprise:

@@ -80,7 +80,7 @@ func TestJoinTeam(t *testing.T) {
 
 	err = JoinTeam(ctx, db, fennel.ID, &user)
 	assert.NoError(t, err)
-	assert.Equal(t, userL.OnboardStatusTierProvisioning, user.OnboardStatus)
+	assert.Equal(t, userL.OnboardStatusDone, user.OnboardStatus)
 
 	err = JoinTeam(ctx, db, google.ID, &user)
 	assert.Error(t, err)
