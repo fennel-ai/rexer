@@ -73,6 +73,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
         createTopicsInMsk: true,
+        topicProducesToConfluent: true,
         mirrorMakerConf: {},
     },
     // Fennel staging tier using Fennel's staging data plane.
@@ -189,6 +190,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
         createTopicsInMsk: true,
+        topicProducesToConfluent: true,
         mirrorMakerConf: {
             // the tasks will be split among them
             replicas: 1,
@@ -292,6 +294,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         createTopicsInMsk: true,
         mirrorMakerConf: {},
+        topicProducesToConfluent: true,
     },
     // Yext demo tier
     115: {
@@ -1282,6 +1285,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
 
             createTopicsInMsk: tierConf.createTopicsInMsk,
             mirrorMakerConf: tierConf.mirrorMakerConf,
+            topicProducesToConfluent: tierConf.topicProducesToConfluent,
 
             mskConf: mskConf,
 
