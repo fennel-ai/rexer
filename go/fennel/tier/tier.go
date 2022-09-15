@@ -272,27 +272,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	logger.Info("Creating kafka consumer factory")
 	consumerCreator := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
-		var kafkaConsumerConfig libkafka.RemoteConsumerConfig
-		if libkafka.IsConfluentTopic(config.Topic) {
-			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
-				ConsumerConfig:  config,
-				BootstrapServer: args.KafkaServer,
-				Username:        args.KafkaUsername,
-				Password:        args.KafkaPassword,
-				SaslMechanism:   libkafka.SaslPlainMechanism,
-				AzId:            azId,
-			}
-		} else if libkafka.IsMskTopic(config.Topic) {
-			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
-				ConsumerConfig:  config,
-				BootstrapServer: args.MskKafkaServer,
-				Username:        args.MskKafkaUsername,
-				Password:        args.MskKafkaPassword,
-				SaslMechanism:   libkafka.SaslScramSha512Mechanism,
-				AzId:            azId,
-			}
-		} else {
-			return nil, fmt.Errorf("topic: %s must be belong to either confluent or MSK cluster", config.Topic)
+		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
+			ConsumerConfig:  config,
+			BootstrapServer: args.MskKafkaServer,
+			Username:        args.MskKafkaUsername,
+			Password:        args.MskKafkaPassword,
+			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
+			AzId:            azId,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
