@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 
@@ -51,10 +52,10 @@ func SetupTier(flags tier.TierArgs) error {
 	if err := setupDB(flags.TierID, flags.MysqlDB, flags.MysqlUsername, flags.MysqlPassword, flags.MysqlHost); err != nil {
 		return err
 	}
-	if err := testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.SaslPlainMechanism, fkafka.ALL_CONFLUENT_TOPICS); err != nil {
-		return err
-	}
-	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_MSK_TOPICS)
+
+	// integration tests should write and read from the MSK cluster - this is because there are no mirrors configured
+	// in this scenario
+	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, append(fkafka.ALL_MSK_TOPICS, fkafka.ALL_CONFLUENT_TOPICS...))
 }
 
 func Teardown(tr tier.Tier) error {
@@ -70,10 +71,8 @@ func Teardown(tr tier.Tier) error {
 		panic(fmt.Sprintf("error in db teardown: %v\n", err))
 	}
 
-	if err := teardownKafkaTopics(tr.ID, flags.KafkaServer, flags.KafkaUsername, flags.KafkaPassword, fkafka.SaslPlainMechanism, fkafka.ALL_CONFLUENT_TOPICS); err != nil {
-		panic(fmt.Sprintf("unable to teardown kafka topics: %v", err))
-	}
-	if err := teardownKafkaTopics(tr.ID, flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_MSK_TOPICS); err != nil {
+	// tier down all the topics from MSK
+	if err := teardownKafkaTopics(tr.ID, flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism); err != nil {
 		panic(fmt.Sprintf("unable to teardown msk kafka topics: %v", err))
 	}
 	var err error
@@ -81,11 +80,13 @@ func Teardown(tr tier.Tier) error {
 	return err
 }
 
-func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password, saslMechanism string, topics []fkafka.TopicConf) error {
+func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password, saslMechanism string) error {
 	scope := resource.NewTierScope(tierID)
-	names := make([]string, len(topics))
-	for i, topic := range topics {
-		names[i] = scope.PrefixedName(topic.Topic)
+	names := make([]string, 0)
+	for _, topic := range append(fkafka.ALL_CONFLUENT_TOPICS, fkafka.ALL_MSK_TOPICS...) {
+		if reflect.TypeOf(scope) == reflect.TypeOf(topic.Scope) {
+			names = append(names, scope.PrefixedName(topic.Topic))
+		}
 	}
 	// Create admin client.
 	c, err := kafka.NewAdminClient(fkafka.ConfigMap(host, username, password, saslMechanism))

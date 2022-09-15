@@ -82,6 +82,7 @@ export type TierConf = {
     planeId: number,
     enableNitrous?: boolean,
     createTopicsInMsk?: boolean,
+    topicProducesToConfluent?: boolean,
     mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
@@ -116,6 +117,7 @@ type inputType = {
     // create topics in msk for the tier
     createTopicsInMsk?: boolean,
     mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
+    topicProducesToConfluent?: boolean,
 
     // msk configuration
     mskConf?: TierMskConf,
@@ -189,6 +191,7 @@ const parseConfig = (): inputType => {
 
         createTopicsInMsk: config.getBoolean(nameof<inputType>("createTopicsInMsk")),
         mirrorMakerConf: config.getObject(nameof<inputType>("mirrorMakerConf")),
+        topicProducesToConfluent: config.getBoolean(nameof<inputType>("topicProducesToConfluent")),
 
         confUsername: config.require(nameof<inputType>("confUsername")),
         confPassword: config.require(nameof<inputType>("confPassword")),
@@ -453,6 +456,7 @@ const setupResources = async () => {
             // remove the last `,`
             jobNamesStr = jobNamesStr.substring(0, jobNamesStr.length - 1);
             console.log(jobNamesStr);
+            const produceToConfluent = input.topicProducesToConfluent || false ? "true": "false";
             return await configs.setup({
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
@@ -477,6 +481,7 @@ const setupResources = async () => {
                     "server": input.bootstrapServer,
                     "username": input.kafkaApiKey,
                     "password": kafkaPassword,
+                    "topicProducesToConfluent": produceToConfluent,
                 } as Record<string, string>),
                 mskConfig: pulumi.output({
                     "mskServers": input.mskConf?.bootstrapBrokers || "",
@@ -672,6 +677,7 @@ type TierInput = {
     // create topics in msk
     createTopicsInMsk?: boolean,
     mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
+    topicProducesToConfluent?: boolean,
 
     // msk configuration
     mskConf?: TierMskConf,
@@ -820,6 +826,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.mirrorMakerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("mirrorMakerConf"), { value: JSON.stringify(args.mirrorMakerConf) });
+    }
+
+    if (args.topicProducesToConfluent !== undefined) {
+        await stack.setConfig(nameof<inputType>("topicProducesToConfluent"), { value: JSON.stringify(args.topicProducesToConfluent) })
     }
 
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })

@@ -20,11 +20,10 @@ import (
 )
 
 const (
-	// TODO(mohit): Add this for MSK provided kafka topics as well
-	test_kafka_servers = "pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-	kafka_username     = "HWGB3CSLWYNXWNA3"
-	kafka_password     = "t7SYuJa4OsQI600/c4x8IBppm6zvPHevjWNC0klU501UViMydaeW0BqsEt+xFSxw"
-	kafka_sasl_mechanism = "PLAIN"
+	test_kafka_servers = "b-1.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-2.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096"
+	kafka_username     = "p-2-username"
+	kafka_password     = "p-2-password"
+	kafka_sasl_mechanism = "SCRAM-SHA-512"
 )
 
 func TestIntegration(t *testing.T) {
@@ -253,6 +252,7 @@ func integrationProducer(t *testing.T, scope resource.Scope, topic string, parti
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
+		SaslMechanism: 	 SaslScramSha512Mechanism,
 		Scope:           scope,
 	}.Materialize()
 	assert.NoError(t, err)
@@ -265,6 +265,7 @@ func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, off
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
+		SaslMechanism:   SaslScramSha512Mechanism,
 		ConsumerConfig: ConsumerConfig{
 			Scope:        scope,
 			Topic:        topic,

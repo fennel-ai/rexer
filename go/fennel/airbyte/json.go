@@ -350,7 +350,7 @@ type Protocol struct {
 }
 
 func NewKafkaConnectorConfig(topic string, cred KafkaCredentials) KafkaConnectorConfig {
-	saslConfig := fmt.Sprintf("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";", cred.Username, cred.Password)
+	saslConfig := fmt.Sprintf("org.apache.kafka.common.security.scram.ScramLoginModule required username=\"%s\" password=\"%s\";", cred.Username, cred.Password)
 	return KafkaConnectorConfig{
 		Acks:                              "all",
 		ClientId:                          "airbyte-producer",
@@ -375,7 +375,7 @@ func NewKafkaConnectorConfig(topic string, cred KafkaCredentials) KafkaConnector
 		LingerMs:                          "0",
 		Protocol: Protocol{
 			SecurityProtocol: "SASL_SSL",
-			SaslMechanism:    "PLAIN",
+			SaslMechanism:    "SCRAM-SHA-512",
 			SaslJaasConfig:   saslConfig,
 		},
 		Retries: 2147483647,

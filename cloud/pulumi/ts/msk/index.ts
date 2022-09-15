@@ -129,6 +129,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             replica.selector.class = org.apache.kafka.common.replica.RackAwareReplicaSelector
             
             auto.create.topics.enable = true
+            
+            delete.topic.enable=true
         `,
         description: `plane ${input.planeId} kafka broker configuration for kafka 3.0`,
 

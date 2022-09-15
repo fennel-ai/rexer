@@ -71,24 +71,9 @@ const tierConfs: Record<number, TierConf> = {
                 },
             }
         },
-        queryServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "1250m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                },
-            }
-        },
         enableNitrous: true,
         createTopicsInMsk: true,
+        topicProducesToConfluent: true,
         mirrorMakerConf: {},
     },
     // Fennel staging tier using Fennel's staging data plane.
@@ -124,7 +109,6 @@ const tierConfs: Record<number, TierConf> = {
             publicServer: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -205,7 +189,8 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
-        // createTopicsInMsk: true,
+        createTopicsInMsk: true,
+        topicProducesToConfluent: true,
         mirrorMakerConf: {
             // the tasks will be split among them
             replicas: 1,
@@ -244,7 +229,6 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // Lokal's staging tier
     109: {
@@ -298,7 +282,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // Convoy prod tier
     112: {
@@ -311,6 +294,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         createTopicsInMsk: true,
         mirrorMakerConf: {},
+        topicProducesToConfluent: true,
     },
     // Yext demo tier
     115: {
@@ -342,7 +326,6 @@ const tierConfs: Record<number, TierConf> = {
             publicServer: false,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
@@ -353,7 +336,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     117: {
         protectResources: true,
@@ -363,7 +345,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     118: {
         protectResources: true,
@@ -373,7 +354,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     119: {
         protectResources: true,
@@ -384,7 +364,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         airbyteConf: {},
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
     },
     // reserver tierIds 1001 to 2000 for self-serve.
     1001: {
@@ -395,7 +374,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         airbyteConf: {},
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
         plan: Plan.BASIC,
         requestLimit: 1000,
     },
@@ -408,7 +386,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         airbyteConf: {},
         createTopicsInMsk: true,
-        mirrorMakerConf: {},
         plan: Plan.BASIC,
         requestLimit: 1000,
     }
@@ -475,7 +452,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         // set up MSK cluster for integration tests
         mskConf: {
             // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
-            brokerType: "kafka.t3.small",
+            brokerType: "kafka.m5.large",
             // this will place 1 broker node in each of the AZs
             numberOfBrokerNodes: 2,
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
@@ -820,7 +797,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             binlog: {
                 partitions: 32,
-                retention_ms: 7 * 24 * 60 * 60 * 1000 /* 7 days */,
+                retention_ms: 5 * 24 * 60 * 60 * 1000 /* 5 days */,
                 partition_retention_bytes: -1,
                 max_message_bytes: 2097164,
                 // TODO(mohit): Consider setting this to 2.
@@ -851,7 +828,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 2 broker nodes in each of the AZs
             numberOfBrokerNodes: 4,
-            storageVolumeSizeGiB: 1536,
+            storageVolumeSizeGiB: 1636,
         },
 
         // setup strimzi
@@ -1308,6 +1285,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
 
             createTopicsInMsk: tierConf.createTopicsInMsk,
             mirrorMakerConf: tierConf.mirrorMakerConf,
+            topicProducesToConfluent: tierConf.topicProducesToConfluent,
 
             mskConf: mskConf,
 

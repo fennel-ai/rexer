@@ -86,10 +86,10 @@ var ALL_CONFLUENT_TOPICS = []TopicConf{
 	{Scope: resource.TierScope{}, Topic: profile.PROFILELOG_KAFKA_TOPIC},
 	{Scope: resource.TierScope{}, Topic: counter.AGGREGATE_OFFLINE_TRANSFORM_TOPIC_NAME},
 	{Scope: resource.TierScope{}, Topic: usage.HOURLY_USAGE_LOG_KAFKA_TOPIC},
-	{Scope: resource.TierScope{}, Topic: airbyte.AIRBYTE_KAFKA_TOPIC},
 }
 
 var ALL_MSK_TOPICS = []TopicConf{
+	{Scope: resource.TierScope{}, Topic: airbyte.AIRBYTE_KAFKA_TOPIC},
 	{
 		Scope: resource.PlaneScope{},
 		Topic: nitrous.BINLOG_KAFKA_TOPIC,
@@ -144,24 +144,6 @@ var ALL_MSK_TOPICS = []TopicConf{
 			"fetch.max.bytes=67109248",
 		},
 	},
-}
-
-func IsConfluentTopic(topic string) bool {
-	for _, t := range ALL_CONFLUENT_TOPICS {
-		if t.Topic == topic {
-			return true
-		}
-	}
-	return false
-}
-
-func IsMskTopic(topic string) bool {
-	for _, t := range ALL_MSK_TOPICS {
-		if t.Topic == topic {
-			return true
-		}
-	}
-	return false
 }
 
 func ConfigMap(server, username, password, saslMechanism string) *kafka.ConfigMap {

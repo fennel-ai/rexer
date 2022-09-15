@@ -56,6 +56,9 @@ type TierArgs struct {
 	MskKafkaUsername string `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
 	MskKafkaPassword string `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
 
+	// TODO(mohit): remove this once no one else set's the value false
+	ProduceToConfluent 	 bool  `arg:"--produce-to-confluent,env:PRODUCE_TO_CONFLUENT" json:"produce_to_confluent,omitempty"`
+
 	MysqlHost        string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
 	MysqlDB          string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
 	MysqlUsername    string         `arg:"--mysql-user,env:MYSQL_USERNAME" json:"mysql_username,omitempty"`
@@ -87,6 +90,15 @@ func (args TierArgs) Valid() error {
 	}
 	if args.KafkaPassword == "" {
 		missingFields = append(missingFields, "KAFKA_PASSWORD")
+	}
+	if args.MskKafkaServer == "" {
+		missingFields = append(missingFields, "MSK_KAFKA_SERVER")
+	}
+	if args.MskKafkaUsername == "" {
+		missingFields = append(missingFields, "MSK_KAFKA_USERNAME")
+	}
+	if args.MskKafkaPassword == "" {
+		missingFields = append(missingFields, "MSK_KAFKA_PASSWORD")
 	}
 	if args.MysqlHost == "" {
 		missingFields = append(missingFields, "MYSQL_SERVER_ADDRESS")
@@ -256,16 +268,18 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}()
 
 	logger.Info("Creating kafka producers")
-	producers, err := CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword, libkafka.SaslPlainMechanism, libkafka.ALL_CONFLUENT_TOPICS)
-	if err != nil {
-		return tier, err
+	var producers map[string]libkafka.FProducer
+	if args.ProduceToConfluent {
+		producers, err = CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword, libkafka.SaslPlainMechanism, libkafka.ALL_CONFLUENT_TOPICS)
+	} else {
+		producers, err = CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_CONFLUENT_TOPICS)
 	}
-	var mskProducers map[string]libkafka.FProducer
-	if args.MskKafkaServer != "" {
-		mskProducers, err = CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_MSK_TOPICS)
-		if err != nil {
-			return tier, err
-		}
+	if err != nil {
+		return tier, fmt.Errorf("failed to create producers for confluent based kafka topics: %v", err)
+	}
+	mskProducers, err := CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_MSK_TOPICS)
+	if err != nil {
+		return tier, fmt.Errorf("failed to create producers for msk based kafka topics: %v", err)
 	}
 	// merge both producers
 	for k, v := range mskProducers {
@@ -274,27 +288,13 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 
 	logger.Info("Creating kafka consumer factory")
 	consumerCreator := func(config libkafka.ConsumerConfig) (libkafka.FConsumer, error) {
-		var kafkaConsumerConfig libkafka.RemoteConsumerConfig
-		if libkafka.IsConfluentTopic(config.Topic) {
-			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
-				ConsumerConfig:  config,
-				BootstrapServer: args.KafkaServer,
-				Username:        args.KafkaUsername,
-				Password:        args.KafkaPassword,
-				SaslMechanism:   libkafka.SaslPlainMechanism,
-				AzId:            azId,
-			}
-		} else if libkafka.IsMskTopic(config.Topic) {
-			kafkaConsumerConfig = libkafka.RemoteConsumerConfig{
-				ConsumerConfig:  config,
-				BootstrapServer: args.MskKafkaServer,
-				Username:        args.MskKafkaUsername,
-				Password:        args.MskKafkaPassword,
-				SaslMechanism:   libkafka.SaslScramSha512Mechanism,
-				AzId:            azId,
-			}
-		} else {
-			return nil, fmt.Errorf("topic: %s must be belong to either confluent or MSK cluster", config.Topic)
+		kafkaConsumerConfig := libkafka.RemoteConsumerConfig{
+			ConsumerConfig:  config,
+			BootstrapServer: args.MskKafkaServer,
+			Username:        args.MskKafkaUsername,
+			Password:        args.MskKafkaPassword,
+			SaslMechanism:   libkafka.SaslScramSha512Mechanism,
+			AzId:            azId,
 		}
 		kafkaConsumer, err := kafkaConsumerConfig.Materialize()
 		if err != nil {
@@ -340,10 +340,11 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	airbyteClient := mo.None[airbyte.Client]()
 	if args.AirbyteServer != "" {
 		logger.Info("Connecting to airbyte")
+		// setup the kafka topic always in the MSK cluster
 		client, err := airbyte.NewClient(args.AirbyteServer, tierID, airbyte.KafkaCredentials{
-			Username: args.KafkaUsername,
-			Password: args.KafkaPassword,
-			Server:   args.KafkaServer,
+			Username: args.MskKafkaUsername,
+			Password: args.MskKafkaPassword,
+			Server:   args.MskKafkaServer,
 		})
 		if err != nil {
 			return tier, fmt.Errorf("failed to create airbyte client: %v", err)
