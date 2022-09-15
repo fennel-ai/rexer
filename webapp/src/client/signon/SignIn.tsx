@@ -54,7 +54,6 @@ function SignInForm() {
         <div className={styles.mainForm}>
             <Form
                 name="signin_form"
-                initialValues={{ remember: true }}
                 onFinish={onFinish}
                 validateTrigger={ ["onSubmit"] }
             >

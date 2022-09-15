@@ -61,7 +61,6 @@ function ForgotForm() {
         <div className={styles.mainForm}>
             <Form
                 name="forgot_password_form"
-                initialValues={{ remember: true }}
                 onFinish={onFinish}
                 validateTrigger={ ["onSubmit"] }
             >

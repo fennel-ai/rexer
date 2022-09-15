@@ -89,7 +89,6 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
             <div className={styles.mainForm}>
                 <Form
                     name="signup_form"
-                    initialValues={{ remember: true }}
                     onFinish={onFinish}
                     validateTrigger={ ["onSubmit"] }
                 >

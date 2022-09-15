@@ -1,11 +1,11 @@
 import { Form, Input, Checkbox, Button } from "antd";
 import { ArrowRightOutlined } from '@ant-design/icons';
-import { CheckboxChangeEvent } from "antd/lib/checkbox";
 import axios, { AxiosResponse } from "axios";
-import { useState, ChangeEvent } from "react";
+import { useState } from "react";
 
 import OnboardStepper from "./OnboardStepper";
 import commonStyles from "./styles/Onboard.module.scss";
+import styles from "./styles/OnboardCreateTeam.module.scss";
 
 interface Props {
     isPersonalDomain: boolean,
@@ -26,16 +26,14 @@ function OnboardCreateTeam({isPersonalDomain, user, onOnboardStatusChange}: Prop
     const domain = user.email.substring(user.email.lastIndexOf("@") +1);
     const suggestedName = isPersonalDomain ? `${user.firstName}'s Team` : domain.substring(0, domain.indexOf("."));
 
-    const [teamName, setTeamName] = useState<string>(suggestedName);
-    const [allowAutoJoin, setAllowAutoJoin] = useState<boolean>(!isPersonalDomain);
     const [submitting, setSubmitting] = useState(false);
 
-    const onContinue = () => {
+    const onFinish = (values: { teamName: string, allowAutoJoin: boolean }) => {
         setSubmitting(true);
 
         axios.post("/onboard/create_team", {
-            name: teamName,
-            allowAutoJoin,
+            name: values.teamName,
+            allowAutoJoin: values.allowAutoJoin,
         }).then((response: AxiosResponse<CreateTeamResponse>) => {
             onOnboardStatusChange(response.data.onboardStatus);
             setSubmitting(false);
@@ -56,35 +54,33 @@ function OnboardCreateTeam({isPersonalDomain, user, onOnboardStatusChange}: Prop
             <div className={commonStyles.content}>
                 <h4 className={commonStyles.title}>Let’s set up your team</h4>
                 <div>What is the name of your team?</div>
-                <Form name="createTeamForm">
+                <Form
+                    name="createTeamForm"
+                    autoComplete="off"
+                    onFinish={onFinish}
+                    initialValues={{ teamName: suggestedName, allowAutoJoin: !isPersonalDomain }}>
+
                     <Form.Item
                         name="teamName"
                         rules={[{ required: true, message: "Team name can't be empty" }]}
+                        className={styles.teamName}
                     >
-                        <Input
-                            autoComplete="off"
-                            value={teamName}
-                            defaultValue={teamName}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => setTeamName(e.target.value)}
-                        />
+                        <Input />
                     </Form.Item>
                     {
                         isPersonalDomain ? null : (
-                            <Form.Item name="allowAutoJoin">
-                                <Checkbox
-                                    checked={allowAutoJoin}
-                                    onChange={(e: CheckboxChangeEvent) => setAllowAutoJoin(e.target.value)}
-                                >
+                            <Form.Item name="allowAutoJoin" valuePropName="checked" className={styles.autoJoin}>
+                                <Checkbox>
                                     Users of @{domain} can automatically join
                                 </Checkbox>
                             </Form.Item>
                         )
                     }
+                    <Button htmlType="submit" type="primary" disabled={submitting} loading={submitting} className={styles.button}>
+                        Continue <ArrowRightOutlined />
+                    </Button>
                 </Form>
             </div>
-            <Button type="primary" onClick={onContinue} disabled={submitting} loading={submitting}>
-                Continue <ArrowRightOutlined />
-            </Button>
         </div>
     );
 }
