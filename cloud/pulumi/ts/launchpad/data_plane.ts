@@ -162,6 +162,7 @@ export type PlaneOutput = {
     id: number,
     customerId: number,
     mothershipId: number,
+    region: number,
 }
 
 const parseConfig = (): DataPlaneConf => {
@@ -449,6 +450,7 @@ const setupResources = async () => {
         id: input.planeId,
         mothershipId: input.mothershipId,
         customerId: input.customer === undefined ? 0 : input.customer.id,
+        region: input.region,
     }
 };
 

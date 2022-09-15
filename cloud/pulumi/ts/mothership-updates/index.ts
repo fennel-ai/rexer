@@ -63,7 +63,11 @@ export class MothershipDBUpdater {
 
                 const connStr = `mysql://${values[1]}:${values[2]}@${values[0]}/${values[3]}`
                 console.log(`mothership db connection string : ${connStr}`)
-                return createConnectionPool(connStr)
+                return createConnectionPool({
+                    connectionString: connStr,
+                    poolSize: 1,
+                    queueTimeoutMilliseconds: 120 * 1000,
+                })
             })
         })
     }
@@ -97,6 +101,25 @@ export class MothershipDBUpdater {
             })
         })
     }
+    async insertOrUpdateDataPlane(planeId: number, getCustomer: (id: number) => Customer | undefined): Promise<void> {
+        const time = Date.now()
+        await this.insertOrUpdateCustomer(planeId, getCustomer)
+        const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
+        return workspace.stackOutputs(planeStackName).then(output => {
+            console.log(output)
+            return getProperty(output, [".region.value", ".vpc.value.vpcId", ".roleArn.value"]).then(dataArr => {
+                return this.db.then(db => {
+                    const region = dataArr[0]
+                    const vpcId = dataArr[1]
+                    const awsRole = dataArr[2]
+                    db.query(sql`INSERT INTO data_plane (data_plane_id, aws_role, region, pulumi_stack, vpc_id, eks_instance_id, kafka_instance_id, db_instance_id, memory_db_instance_id, elasticache_instance_id, deleted_at, created_at, updated_at)
+                    VALUES (${planeId}, ${awsRole}, ${region}, ${planeStackName}, ${vpcId}, -1, -1, -1, -1, -1, 0, ${time}, ${time})
+                    ON DUPLICATE KEY UPDATE data_plane_id=${planeId}, aws_role=${awsRole}, region=${region}, pulumi_stack=${planeStackName}, vpc_id=${vpcId}, updated_at=${time}`)
+                })
+            })
+        })
+    }
+
     async insertOrUpdateCustomer(planeId: number, getCustomer: (id: number) => Customer | undefined): Promise<void> {
         const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
         return workspace.stackOutputs(planeStackName).then(poutput => {
