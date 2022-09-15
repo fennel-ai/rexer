@@ -5,10 +5,12 @@ import (
 
 	"fennel/mothership"
 	"fennel/mothership/model/launchrequest"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProcessCompletedRequests(t *testing.T) {
+	t.Skip("launchrequest not used right now")
 	m, err := mothership.NewTestMothership()
 	assert.NoError(t, err)
 	defer func() { err = mothership.Teardown(m); assert.NoError(t, err) }()

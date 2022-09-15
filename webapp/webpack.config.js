@@ -48,6 +48,10 @@ module.exports = {
                     }
                 ],
             },
+            {
+                test: /\.module\.svg$/i,
+                use: ['@svgr/webpack'],
+            },
         ]
     },
     resolve: {
