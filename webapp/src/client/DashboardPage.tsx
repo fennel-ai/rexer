@@ -110,8 +110,11 @@ interface RangeVector {
     values: [number, string][],
 }
 
-function generateSeriesName(metric: Record<string, string>) {
-    return Object.values(metric).join(" - ");
+function generateSeriesName(metric: Record<string, string>): string {
+    return Object.keys(metric)
+        .filter(k => k !== "Namespace")
+        .map(k => metric[k])
+        .join(" - ");
 }
 
 interface GraphData {
