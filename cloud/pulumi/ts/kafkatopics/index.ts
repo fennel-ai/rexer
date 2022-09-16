@@ -33,14 +33,14 @@ export type inputType = {
     bootstrapServer: string,
     protect: boolean,
 
-    createInMsk?: boolean,
     mskApiKey?: string,
     mskApiSecret?: string,
     mskBootstrapServers?: string,
 }
 
 export type outputType = {
-    topics: kafka.Topic[]
+    topics: kafka.Topic[],
+    mskTopics: kafka.Topic[],
 }
 
 export const setup = async (input: inputType) => {
@@ -68,32 +68,31 @@ export const setup = async (input: inputType) => {
         }, { provider: kafkaProvider, protect: input.protect })
     })
 
-    if (input.createInMsk) {
-        const bootstrapServers = input.mskBootstrapServers!.split(",");
-        const mskKafkaProvider = new kafka.Provider("msk-kafka-provider", {
-            bootstrapServers: bootstrapServers,
-            saslUsername: input.mskApiKey!,
-            saslPassword: input.mskApiSecret!,
-            saslMechanism: "scram-sha512",
-        });
+    const bootstrapServers = input.mskBootstrapServers!.split(",");
+    const mskKafkaProvider = new kafka.Provider("msk-kafka-provider", {
+        bootstrapServers: bootstrapServers,
+        saslUsername: input.mskApiKey!,
+        saslPassword: input.mskApiSecret!,
+        saslMechanism: "scram-sha512",
+    });
 
-        const mskTopics = input.topics.map((topic) => {
-            const config = {
-                "retention.ms": topic.retention_ms,
-                "retention.bytes": topic.partition_retention_bytes,
-            };
-            return new kafka.Topic(`msk-topic-${topic.name}`, {
-                name: topic.name,
-                partitions: topic.partitions || DEFAULT_PARTITIONS,
-                // We set default replication factor of 2 since we have configured MSK cluster in 2 AZs
-                replicationFactor: topic.replicationFactor || DEFAULT_MSK_REPLICATION_FACTOR,
-                config: config,
-            }, { provider: mskKafkaProvider, protect: input.protect })
-        });
-    }
+    const mskTopics = input.topics.map((topic) => {
+        const config = {
+            "retention.ms": topic.retention_ms,
+            "retention.bytes": topic.partition_retention_bytes,
+        };
+        return new kafka.Topic(`msk-topic-${topic.name}`, {
+            name: topic.name,
+            partitions: topic.partitions || DEFAULT_PARTITIONS,
+            // We set default replication factor of 2 since we have configured MSK cluster in 2 AZs
+            replicationFactor: topic.replicationFactor || DEFAULT_MSK_REPLICATION_FACTOR,
+            config: config,
+        }, { provider: mskKafkaProvider, protect: input.protect })
+    });
 
     const output: outputType = {
-        topics
+        topics: topics,
+        mskTopics: mskTopics,
     }
     return output
 }

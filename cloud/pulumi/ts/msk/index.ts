@@ -1,5 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
+import * as path from "path";
+
 
 import { fennelStdTags } from "../lib/util";
 
@@ -11,6 +13,7 @@ export type inputType = {
     planeId: number,
     region: string,
     roleArn: pulumi.Input<string>,
+    protect: boolean,
 
     // private subnets associated in this VPC
     privateSubnets: pulumi.Output<string[]>,
@@ -31,12 +34,23 @@ export type inputType = {
 export type outputType = {
     clusterName: string,
     clusterArn: string,
+    clusterSgId: string,
     mskUsername: string,
     mskPassword: string,
     zookeeperConnectString: string,
     // comma separated bootstrap servers in and across multiple AZs
     bootstrapBrokers: string,
+    // comma separated bootstrap servers in and across multiple AZs, which is to be used with IAM authentication
+    bootstrapBrokersIam: string,
     numBrokers: number,
+
+    // plugin
+    s3ConnectPluginArn: string,
+    s3ConnectPluginRevision: number,
+
+    // worker
+    s3ConnectWorkerArn: string,
+    s3ConnectWorkerRev: number,
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
@@ -96,6 +110,36 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider: awsProvider }).id);
     }
 
+    // allow self inbound traffic - this is required for MSK connect
+    sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-msk-allow-selftraffic`, {
+        securityGroupId: sg.id,
+        self: true,
+        fromPort: 0,
+        toPort: 65535,
+        type: "ingress",
+        protocol: "all",
+    }, { provider: awsProvider }).id);
+
+    // allow self outbound traffic - this is required for MSK connect
+    sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-msk-allow-outbound-selftraffic`, {
+        securityGroupId: sg.id,
+        self: true,
+        fromPort: 0,
+        toPort: 65535,
+        type: "egress",
+        protocol: "all",
+    }, { provider: awsProvider }).id);
+
+    // allow traffic to the internet
+    sgRules.push(new aws.ec2.SecurityGroupRule(`p-${input.planeId}-msk-allow-outbound-internet`, {
+        securityGroupId: sg.id,
+        cidrBlocks: ["0.0.0.0/0"],
+        fromPort: 0,
+        toPort: 65535,
+        type: "egress",
+        protocol: "all",
+    }, { provider: awsProvider }).id);
+
     // setup kafka broker configuration
     const config = new aws.msk.Configuration("msk-cluster-config", {
         // This is required to assign the closest (in the same AZ) broker to the consumer
@@ -154,12 +198,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             ebsVolumeSize: input.storageVolumeSizeGiB,
             securityGroups: [sg.id],
         },
-        // enable authentication and authorization using IAM roles
-        // see - https://docs.aws.amazon.com/msk/latest/developerguide/iam-access-control.html
         clientAuthentication: {
             sasl: {
                 scram: true,
-            }
+                // enable IAM client side authentication to allow MSK connector to be able to read the cluster
+                iam: true
+            },
         },
 
         // broker configuration
@@ -233,13 +277,51 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }, { provider: awsProvider });
     });
 
+    // create the s3 connector plugin which will be used by every tier level MSK connector to run
+    const bucketName = `p-${input.planeId}-mskconnect-plugins`;
+    const pluginBucket = new aws.s3.BucketV2("mskconnect-plugin-bucket", {
+        bucket: bucketName,
+        forceDestroy: true,
+    }, { provider: awsProvider, protect: input.protect });
+    const root = process.env.FENNEL_ROOT!;
+    const pluginPath = path.join(root, "/cloud/mskconnect/plugins2.zip")
+    const pluginObject = new aws.s3.BucketObjectv2("s3connect-zip", {
+        bucket: pluginBucket.id,
+        key: "s3connect2.zip",
+        source: new pulumi.asset.FileAsset(pluginPath),
+    }, { provider: awsProvider });
+    const customPlugin = new aws.mskconnect.CustomPlugin("s3connect-plugin", {
+        contentType: "ZIP",
+        location: {
+            s3: {
+                bucketArn: pluginBucket.arn,
+                fileKey: pluginObject.key,
+            },
+        },
+    }, { provider: awsProvider });
+    const workerConf = new aws.mskconnect.WorkerConfiguration("msk-workerconf", {
+        name: `p-${input.planeId}-msk-jsonworkerconf`,
+        description: "",
+        propertiesFileContent: `key.converter=org.apache.kafka.connect.storage.StringConverter
+        value.converter=org.apache.kafka.connect.json.JsonConverter
+        value.converter.schemas.enable=false`,
+    }, { provider: awsProvider });
+
     return pulumi.output({
         clusterName: cluster.clusterName,
         clusterArn: cluster.arn,
+        clusterSgId: sg.id,
         mskUsername: mskUserName,
         mskPassword: mskPassword,
         zookeeperConnectString: cluster.zookeeperConnectString,
         bootstrapBrokers: cluster.bootstrapBrokersSaslScram,
+        bootstrapBrokersIam: cluster.bootstrapBrokersSaslIam,
         numBrokers: input.numberOfBrokerNodes,
+
+        s3ConnectPluginArn: customPlugin.arn,
+        s3ConnectPluginRevision: customPlugin.latestRevision,
+
+        s3ConnectWorkerArn: workerConf.arn,
+        s3ConnectWorkerRev: workerConf.latestRevision,
     });
 }

@@ -110,27 +110,15 @@ const setupResources = async () => {
     })
     // setup ingress.
 
-    var subnetIds: string[]
-    var loadBalancerScheme: string
-    const usePublicSubnets = input.ingressConf !== undefined ? input.ingressConf.usePublicSubnets || false : false;
-    if (usePublicSubnets) {
-        subnetIds = [input.vpcConf.primaryPublicSubnet, input.vpcConf.secondaryPublicSubnet]
-        loadBalancerScheme = util.PUBLIC_LB_SCHEME;
-    } else {
-        subnetIds = [input.vpcConf.primaryPrivateSubnet, input.vpcConf.secondaryPrivateSubnet]
-        loadBalancerScheme = util.PRIVATE_LB_SCHEME;
-    }
-
     const ingressOutput = await ingress.setup({
         scopeId: input.planeId,
         roleArn: input.vpcConf.roleArn,
         region: input.vpcConf.region,
         kubeconfig: kconf,
         namespace: nsName,
-        subnetIds: subnetIds,
-        loadBalancerScheme: loadBalancerScheme,
-        useDedicatedMachines: input.ingressConf?.useDedicatedMachines,
-        replicas: input.ingressConf?.replicas,
+        privateSubnetIds: [input.vpcConf.primaryPrivateSubnet, input.vpcConf.secondaryPrivateSubnet],
+        publicSubnetIds: [input.vpcConf.primaryPublicSubnet, input.vpcConf.secondaryPublicSubnet],
+        ingressConf: input.ingressConf,
         clusterName: eksOutput.clusterName,
         nodeRoleArn: eksOutput.instanceRoleArn,
         scope: util.Scope.MOTHERSHIP,

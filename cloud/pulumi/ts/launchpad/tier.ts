@@ -65,10 +65,21 @@ export type AirbyteConf = {
 }
 
 export type TierMskConf = {
+    clusterArn: string,
     mskUsername: string,
     mskPassword: string,
     // comma separated bootstrap servers in and across multiple AZs
     bootstrapBrokers: string,
+    bootstrapBrokersIam: string,
+    sgId: string,
+
+    // s3connect plugin
+    s3ConnectPluginArn: string,
+    s3ConnectPluginRev: number,
+
+    // s3connect worker
+    s3ConnectWorkerArn: string,
+    s3ConnectWorkerRev: number,
 }
 
 export type TierConf = {
@@ -81,7 +92,6 @@ export type TierConf = {
     protectResources: boolean,
     planeId: number,
     enableNitrous?: boolean,
-    createTopicsInMsk?: boolean,
     topicProducesToConfluent?: boolean,
     mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     httpServerConf?: HttpServerConf,
@@ -114,13 +124,11 @@ type inputType = {
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
 
-    // create topics in msk for the tier
-    createTopicsInMsk?: boolean,
     mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     topicProducesToConfluent?: boolean,
 
     // msk configuration
-    mskConf?: TierMskConf,
+    mskConf: TierMskConf,
 
     // kafka connectors configuration
     confUsername: string,
@@ -143,10 +151,9 @@ type inputType = {
     // elasticache configuration.
     cachePrimaryEndpoint: string,
     // ingress configuration.
-    subnetIds: string[],
-    loadBalancerScheme: string,
-    ingressUseDedicatedMachines?: boolean,
-    ingressReplicas?: number,
+    vpcPublicSubnetIds: string[],
+    vpcPrivateSubnetIds: string[],
+    ingressConf?: util.IngressConf,
     clusterName: string,
     nodeInstanceRoleArn: string,
 
@@ -187,9 +194,8 @@ const parseConfig = (): inputType => {
         kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
-        mskConf: config.getObject(nameof<inputType>("mskConf")),
+        mskConf: config.requireObject(nameof<inputType>("mskConf")),
 
-        createTopicsInMsk: config.getBoolean(nameof<inputType>("createTopicsInMsk")),
         mirrorMakerConf: config.getObject(nameof<inputType>("mirrorMakerConf")),
         topicProducesToConfluent: config.getBoolean(nameof<inputType>("topicProducesToConfluent")),
 
@@ -217,10 +223,9 @@ const parseConfig = (): inputType => {
         redisEndpoint: config.require(nameof<inputType>("redisEndpoint")),
         cachePrimaryEndpoint: config.require(nameof<inputType>("cachePrimaryEndpoint")),
 
-        subnetIds: config.requireObject(nameof<inputType>("subnetIds")),
-        loadBalancerScheme: config.require(nameof<inputType>("loadBalancerScheme")),
-        ingressUseDedicatedMachines: config.getBoolean(nameof<inputType>("ingressUseDedicatedMachines")),
-        ingressReplicas: config.getNumber(nameof<inputType>("ingressReplicas")),
+        vpcPrivateSubnetIds: config.requireObject(nameof<inputType>("vpcPrivateSubnetIds")),
+        vpcPublicSubnetIds: config.requireObject(nameof<inputType>("vpcPublicSubnetIds")),
+        ingressConf: config.getObject(nameof<inputType>("ingressConf")),
         clusterName: config.require(nameof<inputType>("clusterName")),
         nodeInstanceRoleArn: config.require(nameof<inputType>("nodeInstanceRoleArn")),
 
@@ -296,10 +301,9 @@ const setupResources = async () => {
         bootstrapServer: input.bootstrapServer,
         protect: input.protect,
 
-        createInMsk: input.createTopicsInMsk,
-        mskApiKey: input.mskConf?.mskUsername,
-        mskApiSecret: input.mskConf?.mskPassword,
-        mskBootstrapServers: input.mskConf?.bootstrapBrokers,
+        mskApiKey: input.mskConf.mskUsername,
+        mskApiSecret: input.mskConf.mskPassword,
+        mskBootstrapServers: input.mskConf.bootstrapBrokers,
     });
     if (input.mirrorMakerConf) {
         const mirrorMakerOutput = await mirrorMaker.setup({
@@ -311,9 +315,9 @@ const setupResources = async () => {
             topics: input.topics,
             conf: input.mirrorMakerConf!,
 
-            mskPassword: input.mskConf!.mskPassword,
-            mskUsername: input.mskConf!.mskUsername,
-            mskBootstrapServers: input.mskConf!.bootstrapBrokers,
+            mskPassword: input.mskConf.mskPassword,
+            mskUsername: input.mskConf.mskUsername,
+            mskBootstrapServers: input.mskConf.bootstrapBrokers,
 
             confluentPassword: input.kafkaApiSecret,
             confluentUsername: input.kafkaApiKey,
@@ -329,6 +333,10 @@ const setupResources = async () => {
     // setup kafka connector to s3 bucket for the action and feature log topics.
     const kafkaConnectors = await kafkaconnectors.setup({
         tierId: input.tierId,
+        region: input.region,
+        roleArn: input.roleArn,
+        vpcId: input.vpcId,
+        protect: input.protect,
         username: input.confUsername,
         password: input.confPassword,
         clusterId: input.clusterId,
@@ -338,11 +346,23 @@ const setupResources = async () => {
         awsAccessKeyId: input.connUserAccessKey,
         awsSecretAccessKey: input.connUserSecret,
         s3BucketName: input.connBucketName,
-        protect: input.protect,
+
+        // msk
+        mskClusterArn: input.mskConf.clusterArn,
+        mskBootstrapServersIam: input.mskConf.bootstrapBrokersIam,
+        privateSubnetIds: input.vpcPrivateSubnetIds,
+        mskSgId: input.mskConf.sgId,
+        s3ConnectPluginArn: input.mskConf.s3ConnectPluginArn,
+        s3ConnectPluginRev: input.mskConf.s3ConnectPluginRev,
+        s3ConnectWorkerArn: input.mskConf.s3ConnectWorkerArn,
+        s3ConnectWorkerRev: input.mskConf.s3ConnectWorkerRev
     })
     // setup kafka connectors to s3 bucket for offline aggregate data
     const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
         tierId: input.tierId,
+        region: input.region,
+        roleArn: input.roleArn,
+        vpcId: input.vpcId,
         username: input.confUsername,
         password: input.confPassword,
         clusterId: input.clusterId,
@@ -353,6 +373,16 @@ const setupResources = async () => {
         awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
         s3BucketName: offlineAggregateStorageBucket.bucketName,
         protect: input.protect,
+
+        // msk
+        mskClusterArn: input.mskConf.clusterArn,
+        mskBootstrapServersIam: input.mskConf.bootstrapBrokersIam,
+        privateSubnetIds: input.vpcPrivateSubnetIds,
+        mskSgId: input.mskConf.sgId,
+        s3ConnectPluginArn: input.mskConf.s3ConnectPluginArn,
+        s3ConnectPluginRev: input.mskConf.s3ConnectPluginRev,
+        s3ConnectWorkerArn: input.mskConf.s3ConnectWorkerArn,
+        s3ConnectWorkerRev: input.mskConf.s3ConnectWorkerRev
     })
     // setup offline aggregate output bucket
     const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
@@ -484,9 +514,9 @@ const setupResources = async () => {
                     "topicProducesToConfluent": produceToConfluent,
                 } as Record<string, string>),
                 mskConfig: pulumi.output({
-                    "mskServers": input.mskConf?.bootstrapBrokers || "",
-                    "mskUsername": input.mskConf?.mskUsername || "",
-                    "mskPassword": input.mskConf?.mskPassword || "",
+                    "mskServers": input.mskConf.bootstrapBrokers,
+                    "mskUsername": input.mskConf.mskUsername,
+                    "mskPassword": input.mskConf.mskPassword,
                 } as Record<string, string>),
                 modelServingConfig: pulumi.output({
                     "region": input.region,
@@ -533,11 +563,10 @@ const setupResources = async () => {
         region: input.region,
         kubeconfig: input.kubeconfig,
         namespace: input.namespace,
-        subnetIds: input.subnetIds,
-        loadBalancerScheme: input.loadBalancerScheme,
+        ingressConf: input.ingressConf,
+        publicSubnetIds: input.vpcPublicSubnetIds,
+        privateSubnetIds: input.vpcPrivateSubnetIds,
         scopeId: input.tierId,
-        useDedicatedMachines: input.ingressUseDedicatedMachines,
-        replicas: input.ingressReplicas,
         clusterName: input.clusterName,
         nodeRoleArn: input.nodeInstanceRoleArn,
         scope: util.Scope.TIER,
@@ -675,12 +704,11 @@ type TierInput = {
     kafkaApiSecret: string,
 
     // create topics in msk
-    createTopicsInMsk?: boolean,
     mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     topicProducesToConfluent?: boolean,
 
     // msk configuration
-    mskConf?: TierMskConf,
+    mskConf: TierMskConf,
 
     // connector configuration
     confUsername: string,
@@ -711,10 +739,9 @@ type TierInput = {
     // elasticache configuration.
     cachePrimaryEndpoint: string,
     // ingress configuration.
-    subnetIds: string[],
-    loadBalancerScheme: string,
-    ingressUseDedicatedMachines?: boolean,
-    ingressReplicas?: number,
+    vpcPublicSubnetIds: string[],
+    vpcPrivateSubnetIds: string[],
+    ingressConf?: util.IngressConf,
     clusterName: string,
     nodeInstanceRoleArn: string,
 
@@ -774,23 +801,6 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     const projectName = `launchpad`
     const stackName = `fennel/${projectName}/tier-${args.tierId}`
 
-    // validate that if nitrous is enabled, plane had created a MSK cluster
-    if (args.enableNitrous !== undefined && args.enableNitrous && args.mskConf === undefined) {
-        console.log('nitrous is enabled but plane did not configure a MSK cluster')
-        process.exit(1);
-    }
-
-    // if create topics in MSK is enabled, msk conf must be present
-    if (args.createTopicsInMsk !== undefined && args.createTopicsInMsk && args.mskConf === undefined) {
-        console.log('mskConf must be configured to create tier topics in MSK')
-        process.exit(1);
-    }
-
-    if (args.mirrorMakerConf !== undefined && args.mskConf === undefined) {
-        console.log("mskConf must be configured to create mirror maker")
-        process.exit(1);
-    }
-
     console.info("initializing stack");
     // Create our stack
     const stackArgs: InlineProgramArgs = {
@@ -816,13 +826,7 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
     await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })
 
-    if (args.mskConf !== undefined) {
-        await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
-    }
-
-    if (args.createTopicsInMsk !== undefined) {
-        await stack.setConfig(nameof<inputType>("createTopicsInMsk"), { value: JSON.stringify(args.createTopicsInMsk) })
-    }
+    await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
 
     if (args.mirrorMakerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("mirrorMakerConf"), { value: JSON.stringify(args.mirrorMakerConf) });
@@ -860,13 +864,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("redisEndpoint"), { value: args.redisEndpoint })
     await stack.setConfig(nameof<inputType>("cachePrimaryEndpoint"), { value: args.cachePrimaryEndpoint })
 
-    await stack.setConfig(nameof<inputType>("subnetIds"), { value: JSON.stringify(args.subnetIds) })
-    await stack.setConfig(nameof<inputType>("loadBalancerScheme"), { value: args.loadBalancerScheme })
-    if (args.ingressUseDedicatedMachines !== undefined) {
-        await stack.setConfig(nameof<inputType>("ingressUseDedicatedMachines"), { value: JSON.stringify(args.ingressUseDedicatedMachines) })
-    }
-    if (args.ingressReplicas !== undefined) {
-        await stack.setConfig(nameof<inputType>("ingressReplicas"), { value: String(args.ingressReplicas) })
+    await stack.setConfig(nameof<inputType>("vpcPublicSubnetIds"), { value: JSON.stringify(args.vpcPublicSubnetIds) })
+    await stack.setConfig(nameof<inputType>("vpcPrivateSubnetIds"), { value: JSON.stringify(args.vpcPrivateSubnetIds) })
+    if (args.ingressConf !== undefined) {
+        await stack.setConfig(nameof<inputType>("ingressConf"), { value: JSON.stringify(args.ingressConf) })
     }
     await stack.setConfig(nameof<inputType>("clusterName"), { value: args.clusterName });
     await stack.setConfig(nameof<inputType>("nodeInstanceRoleArn"), { value: args.nodeInstanceRoleArn })

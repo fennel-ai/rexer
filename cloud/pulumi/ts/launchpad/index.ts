@@ -15,7 +15,7 @@ import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
 import * as milvus from "../milvus";
-import { nameof, PUBLIC_LB_SCHEME, PRIVATE_LB_SCHEME, Plan } from "../lib/util";
+import { nameof, Plan } from "../lib/util";
 import * as msk from "../msk";
 
 import * as assert from "assert";
@@ -72,7 +72,6 @@ const tierConfs: Record<number, TierConf> = {
             }
         },
         enableNitrous: true,
-        createTopicsInMsk: true,
         topicProducesToConfluent: true,
         mirrorMakerConf: {},
     },
@@ -108,7 +107,6 @@ const tierConfs: Record<number, TierConf> = {
         airbyteConf: {
             publicServer: true,
         },
-        createTopicsInMsk: true,
     },
     // Lokal prod tier on their prod data plane.
     107: {
@@ -189,7 +187,6 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
-        createTopicsInMsk: true,
         topicProducesToConfluent: true,
         mirrorMakerConf: {
             // the tasks will be split among them
@@ -228,7 +225,6 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
-        createTopicsInMsk: true,
     },
     // Lokal's staging tier
     109: {
@@ -281,7 +277,6 @@ const tierConfs: Record<number, TierConf> = {
             },
         },
         enableNitrous: true,
-        createTopicsInMsk: true,
     },
     // Convoy prod tier
     112: {
@@ -292,7 +287,6 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
-        createTopicsInMsk: true,
         mirrorMakerConf: {},
         topicProducesToConfluent: true,
     },
@@ -325,7 +319,6 @@ const tierConfs: Record<number, TierConf> = {
         airbyteConf: {
             publicServer: false,
         },
-        createTopicsInMsk: true,
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
@@ -335,7 +328,6 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
-        createTopicsInMsk: true,
     },
     117: {
         protectResources: true,
@@ -344,7 +336,6 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
-        createTopicsInMsk: true,
     },
     118: {
         protectResources: true,
@@ -353,7 +344,6 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
-        createTopicsInMsk: true,
     },
     119: {
         protectResources: true,
@@ -363,7 +353,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-        createTopicsInMsk: true,
     },
     // reserver tierIds 1001 to 2000 for self-serve.
     1001: {
@@ -373,7 +362,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-        createTopicsInMsk: true,
         plan: Plan.BASIC,
         requestLimit: 1000,
     },
@@ -385,7 +373,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-        createTopicsInMsk: true,
         plan: Plan.BASIC,
         requestLimit: 1000,
     }
@@ -1206,7 +1193,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
     const glueOutput = dataplane[nameof<PlaneOutput>("glue")].value as glueSource.outputType
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
-    const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType | undefined
+    const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType
 
     // Create/update/delete the tier.
     if (tierId !== 0) {
@@ -1215,28 +1202,21 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
         if (unprotect) {
             tierConf.protectResources = false
         }
-        // by default use private subnets
-        let subnetIds;
-        let loadBalancerScheme;
-        const usePublicSubnets = tierConf.ingressConf !== undefined ? tierConf.ingressConf.usePublicSubnets || false : false;
-        if (usePublicSubnets) {
-            subnetIds = vpcOutput.publicSubnets;
-            loadBalancerScheme = PUBLIC_LB_SCHEME;
-        } else {
-            subnetIds = vpcOutput.privateSubnets;
-            loadBalancerScheme = PRIVATE_LB_SCHEME;
-        }
 
         // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
         // defined in all node groups.
 
-        let mskConf: TierMskConf | undefined;
-        if (mskOutput !== undefined) {
-            mskConf = {
-                mskUsername: mskOutput.mskUsername,
-                mskPassword: mskOutput.mskPassword,
-                bootstrapBrokers: mskOutput.bootstrapBrokers,
-            }
+        const mskConf: TierMskConf = {
+            clusterArn: mskOutput.clusterArn,
+            mskUsername: mskOutput.mskUsername,
+            mskPassword: mskOutput.mskPassword,
+            bootstrapBrokers: mskOutput.bootstrapBrokers,
+            bootstrapBrokersIam: mskOutput.bootstrapBrokersIam,
+            sgId: mskOutput.clusterSgId,
+            s3ConnectPluginArn: mskOutput.s3ConnectPluginArn,
+            s3ConnectPluginRev: mskOutput.s3ConnectPluginRevision,
+            s3ConnectWorkerArn: mskOutput.s3ConnectWorkerArn,
+            s3ConnectWorkerRev: mskOutput.s3ConnectWorkerRev,
         }
 
         const topics: kafkatopics.topicConf[] = [
@@ -1283,7 +1263,6 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             kafkaApiKey: confluentOutput.apiKey,
             kafkaApiSecret: confluentOutput.apiSecret,
 
-            createTopicsInMsk: tierConf.createTopicsInMsk,
             mirrorMakerConf: tierConf.mirrorMakerConf,
             topicProducesToConfluent: tierConf.topicProducesToConfluent,
 
@@ -1314,10 +1293,10 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             redisEndpoint: redisOutput.clusterEndPoints[0],
             cachePrimaryEndpoint: elasticacheOutput.endpoint,
 
-            subnetIds: subnetIds,
-            loadBalancerScheme: loadBalancerScheme,
-            ingressUseDedicatedMachines: tierConf.ingressConf?.useDedicatedMachines,
-            ingressReplicas: tierConf.ingressConf?.replicas,
+            ingressConf: tierConf.ingressConf,
+            vpcPrivateSubnetIds: vpcOutput.privateSubnets,
+            vpcPublicSubnetIds: vpcOutput.publicSubnets,
+
             clusterName: eksOutput.clusterName,
             nodeInstanceRoleArn: eksOutput.instanceRoleArn,
 
