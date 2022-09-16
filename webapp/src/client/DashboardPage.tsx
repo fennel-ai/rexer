@@ -15,36 +15,48 @@ function DashboardPage() {
     const [startTime, setStartTime] = useState<number>(now - DAY_MS);
     const [endTime, setEndTime] = useState<number>(now);
     const [step, setStep] = useState<string>("1h");
+    const [selected, setSelected] = useState<string>("Last day");
+
+    const DateControlLink = ({ duration, step, text }: { duration: number, step: string, text: string }) => {
+        const klasses = [styles.dateControl];
+        if (selected === text) {
+            klasses.push(styles.selected);
+        }
+        return (
+            <a
+                className={klasses.join(" ")}
+                onClick={e => {
+                    e.preventDefault();
+                    setStartTime(now - duration);
+                    setEndTime(now);
+                    setStep(step);
+                    setSelected(text);
+                }}>
+                {text}
+            </a>
+        );
+    };
 
     return (
         <div className={commonStyles.container}>
             <div className={styles.titleSection}>
                 <h4 className={styles.title}>Dashboard</h4>
                 <Space size={24}>
-                    <a className={styles.dateControl} onClick={e => {
-                        e.preventDefault();
-                        setStartTime(now - DAY_MS);
-                        setEndTime(now);
-                        setStep("1h");
-                    }}>
-                        Last day
-                    </a>
-                    <a className={styles.dateControl} onClick={e => {
-                        e.preventDefault();
-                        setStartTime(now - WEEK_MS);
-                        setEndTime(now);
-                        setStep("6h");
-                    }}>
-                        Last week
-                    </a>
-                    <a className={styles.dateControl} onClick={e => {
-                        e.preventDefault();
-                        setStartTime(now - MONTH_MS);
-                        setEndTime(now);
-                        setStep("24h");
-                    }}>
-                        Last month
-                    </a>
+                    <DateControlLink
+                        duration={DAY_MS}
+                        step="1h"
+                        text="Last day"
+                    />
+                    <DateControlLink
+                        duration={WEEK_MS}
+                        step="6h"
+                        text="Last week"
+                    />
+                    <DateControlLink
+                        duration={MONTH_MS}
+                        step="24h"
+                        text="Last month"
+                    />
                     <DatePicker.RangePicker showTime onCalendarChange={(dates) => {
                         if (dates && dates[0] && dates[1] && dates[0] < dates[1]) {
                             const newStartTime = dates[0].toDate().getTime();
@@ -58,6 +70,7 @@ function DashboardPage() {
                             } else {
                                 setStep("24h");
                             }
+                            setSelected("Customized");
                         }
                     }}/>
                 </Space>
