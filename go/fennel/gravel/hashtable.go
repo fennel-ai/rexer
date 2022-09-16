@@ -3,7 +3,7 @@ package gravel
 /*
 	This file implements a disk based hash table optimized for immutable files.
 	It optimizes for the case where keys are not present in the table - in such
-	cases, it only takes one index read (and two in a tiny fraction of requests).
+	cases, it only takes one index read (and two for ~5% of all requests).
 	The index is small enough that we can keep the entire index in RAM.
 	As a result, the common case of absent key is blazing fast. When the key is
 	present, besides 1-2 RAM lookups, it takes upto one disk read (and even that
@@ -14,9 +14,10 @@ package gravel
 
 	Here is how the table is laid out in disk
 		Header (64 bytes)
-		Data (variable size, aligned with 64 bytes)
+		Data (variable size, followed by padding to make sure the end-of-section is aligned with 64 bytes)
 		L1 Index (variable size - fixed 64 bytes for each hash bucket)
 		L2 Index (variable size - single block for all index data that doesn't fit in L1 index)
+        4 bytes MagicTailer
 
 	Given a key, we find the bucket that that it goes to using it hash and the number
 	of total buckets (stored in header). Then we jump to L1 index for that bucket. That
@@ -32,7 +33,6 @@ package gravel
 		1 bytes encrypted (boolean - 0 or 1, currently 0 for all tables since we don't do encryption)
 		1 bytes compression type (currently this is zero for all tables since we don't do compression)
 		1 bytes number of bits used in sharding
-		4 bytes shard ID
 		4 bytes number of records (implies that no table can have more than 4B items)
 		4 bytes number of hash buckets (roughly item_count / 8)
 		8 bytes data size
@@ -48,12 +48,11 @@ package gravel
 	hash bucket. The structure of these 64 bytes are as follows:
 		1 byte - number of keys in this bucket
 		5 bytes for the location of the actual data - expressed as offset within data section
-		Optional: 4 byte offset in L2 index of the overflow fingerprints - this is present only
-			if the number of keys in the bucket could not have fit in 64 bytes
-		2 bytes fingerprint for each of the keys in this bucket
+        Then either 3 bytes * 19 == 57 bytes,  19 fingerprints, if number of keys <= 19, which means not all fingerprints can fit in the bucket
+             or     4 bytes offset in L2 index of the overflow fingerprints, then 3 bytes * 18 = 54 bytes
 
 	2nd level index stores any remaining fingerprints that could not fit within 64 bytes of L1 entry.
-	Each fingerprint is fixed 2 bytes.
+	Each fingerprint is fixed 3 bytes.
 
 	Data section stores a flat list of all the entries like this:
 		key size (varint)
@@ -70,10 +69,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fennel/lib/utils"
 	fbinary "fennel/lib/utils/binary"
-	"fennel/lib/utils/math"
 	"fennel/lib/utils/slice"
 	"fmt"
 	math2 "math"
@@ -88,17 +85,18 @@ import (
 )
 
 const (
-	emptyBucket         uint32 = 0xFFFFFFFF
 	magicHeader         uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
+	magicTailer         uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
 	v1codec_xxhash      uint8  = 1
-	numRecordsPerBucket uint32 = 8
+	numRecordsPerBucket uint32 = 13
+	fileHeaderSize      int    = 64
+	bucketSizeBytes     int    = 64 // a common cache line size
+	maxBucketFpCount    int    = 19
 )
 
-type fingerprint uint16
+type fingerprint uint32 // actually value is always 3 bytes, which means highest 8 bits are always 0
 
-// this should be 64 bytes and fit in a single cache line
 type header struct {
-	moduloMask  uint64 // note: this entry isn't written to disk but is part of memory struct
 	datasize    uint64
 	indexsize   uint32
 	numRecords  uint32
@@ -106,14 +104,12 @@ type header struct {
 	minExpiry   Timestamp
 	maxExpiry   Timestamp
 	magic       uint32
-	shardbits   uint8
 	codec       uint8
 	encrypted   bool
 	compression uint8
-	_           [16]byte
 }
 
-// record denotes a k-v pair that exists within the table
+// record denotes a k-v pair that exists within the table, for internal use only when building the table
 type record struct {
 	bucketID uint32
 	fp       fingerprint
@@ -126,175 +122,195 @@ type record struct {
 // in the file where this bucket's data is stored
 type bucket struct {
 	bucketID    uint32
-	datastart   uint64
-	firstRecord uint32
-	lastrecord  uint32
+	dataStart   uint64
+	firstRecord int
+	lastRecord  int
 }
 
 type hashTable struct {
-	head     header
-	index    []byte
-	overflow []byte
-	data     []byte
-	id       uint64
-	reads    atomic.Uint64
+	head       header
+	mappedData []byte
+	index      []byte // derived from mmappedData
+	overflow   []byte // derived from mmappedData
+	data       []byte // derived from mmappedData
+	id         uint64
+	reads      atomic.Uint64
 }
 
 func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	head := ht.head // deref in local variables to reduce address translations
-	bucketID := getBucketID(hash, head.moduloMask, head.shardbits)
+	bucketID := getBucketID(hash, head.numBuckets)
 	fp := getFingerprint(hash)
 
-	numKeys, datapos, err := ht.readIndex(bucketID, uint16(fp))
+	matchedIndices, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
 	}
-	ret, err := ht.readData(datapos, numKeys, key, uint32(head.minExpiry))
+	if matchedIndices == nil {
+		return Value{}, ErrNotFound
+	}
+	ret, err := ht.readData(dataPos, matchedIndices, numCandidates, key, uint32(head.minExpiry))
 	return ret, err
 }
 
 // readIndex reads the index for bucketID and searches for the given fingerprint.
-// If the fingerprint is found, it returns the number of keys to scan in the data section,
-// the offset within data section where scanning should begin, and the error if any
-// If the key isn't found, err is set to ErrNotFound
-func (ht *hashTable) readIndex(bucketID uint32, fp uint16) (uint32, uint64, error) {
-	indexstart := bucketID << 6
-	indexend := indexstart + 64
-	index := ht.index[indexstart:indexend]
-	if len(index) != 64 {
-		return 0, 0, fmt.Errorf("index entry is not of size 64 bytes")
+// returns the slice of indices (in current bucket) whose fingerprints matches the given, the total number of records that
+// fall into this bucket, as well as the data section offset, with error if there is any
+func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) ([]int, int, uint64, error) {
+	var matchIndices []int = nil
+
+	indexStart := int(bucketID) * bucketSizeBytes
+	indexEnd := indexStart + bucketSizeBytes
+	index := ht.index[indexStart:indexEnd]
+	if len(index) != bucketSizeBytes {
+		return nil, 0, 0, fmt.Errorf("index entry is not of size 64 bytes")
 	}
-	numKeys := index[0]
+	numKeys := int(index[0])
 	datapos := uint64(index[1])<<32 + uint64(index[2])<<24 + uint64(index[3])<<16 + uint64(index[4])<<8 + uint64(index[5])
 	var overflow uint32
 	sofar := 6
-	// if all keys don't fit, read overflow offset
-	if numKeys > 29 { // equivalent to 2 * numKeys > 64 - 1 - 5
-		overflow = binary.LittleEndian.Uint32(index[5:9])
+
+	fpInBucket := numKeys
+	// if the bucket can't hold all keys, read overflow offset
+	if numKeys > maxBucketFpCount {
+		overflow = binary.LittleEndian.Uint32(index[sofar:])
 		sofar += 4
+		fpInBucket = maxBucketFpCount - 1
 	}
-	// now read all fps one by one until one matches or we run out of them
-	curkey := uint8(0)
-	for ; curkey < numKeys && curkey < 30; curkey += 1 {
-		curfp := binary.LittleEndian.Uint16(index[sofar:])
-		sofar += 2
-		if curfp > fp {
-			// we keep fingerprints sorted so if this one is bigger, all subsequent ones are too
-			return 0, 0, ErrNotFound
+	// now compare all sorted fps one by one until seeing a bigger value which indicates a stop
+	curFpPos := 0
+	fpB1, fpB2, fpB3 := byte(fp>>16), byte(fp>>8), byte(fp)
+
+	for ; curFpPos < fpInBucket; curFpPos += 1 {
+		if index[sofar] > fpB1 {
+			return matchIndices, numKeys, datapos, nil
+		} else if index[sofar] == fpB1 {
+			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
+				matchIndices = append(matchIndices, curFpPos)
+			}
 		}
-		if curfp == fp {
-			return uint32(numKeys), datapos, nil
-		}
+		sofar += 3
 	}
-	if curkey >= numKeys {
-		return 0, 0, ErrNotFound
+	if curFpPos >= numKeys {
+		// no overflow record needs to be compared
+		return matchIndices, numKeys, datapos, nil
 	}
-	// if there were any in the overflow section, check that too
-	l2index := ht.overflow
-	for ; curkey < numKeys; curkey += 1 {
-		if overflow > uint32(len(l2index)) {
-			return 0, 0, incompleteFile
+
+	// there are extra fingerprints that are in overflow section and need to check
+	index = ht.overflow[overflow:]
+	sofar = 0
+	for ; curFpPos < numKeys; curFpPos += 1 {
+		if index[sofar] > fpB1 {
+			return matchIndices, numKeys, datapos, nil
+		} else if index[sofar] == fpB1 {
+			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
+				matchIndices = append(matchIndices, curFpPos)
+			}
 		}
-		curfp := binary.LittleEndian.Uint16(l2index[overflow:])
-		if curfp == fp {
-			return uint32(numKeys), datapos, nil
-		}
-		overflow += 2
+		sofar += 3
 	}
-	return 0, 0, ErrNotFound
+
+	return matchIndices, numKeys, datapos, nil
 }
 
 // writeIndex writes all the index data via writer and returns the number of bytes
 // written and the error if any. This assumes that both l2entries and records are
 // sorted on bucketID
 func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, records []record) (uint32, error) {
-	overflow := make([]byte, 0, 1<<24) // creating an arbitrary large buffer on stack for copying
-	buf := make([]byte, 8)
+	overflow := make([]byte, 0, 3*numBuckets*4) // reserve some size (but not too large, 4 times the number of buckets) to avoid too much copying
 	entry := make([]byte, 64)
-	for bid, l2idx := uint32(0), 0; bid < numBuckets; bid++ {
+	for bid := uint32(0); bid < numBuckets; bid++ {
 		slice.Fill(entry, 0)
-		// this bucket has no corresponding bucket => it's an empty bucket
-		if l2idx >= len(l2entries) || l2entries[l2idx].bucketID != bid {
-			if _, err := writer.Write(entry); err != nil {
-				return 0, err
-			}
-			continue
-		}
-		l2entry := l2entries[l2idx]
-		// fmt.Printf("going to create non zero l2 entry using: %+v\n", bucket)
-		l2idx += 1
-		numKeys := l2entry.lastrecord - l2entry.firstRecord
-		if numKeys > 256 {
-			return 0, fmt.Errorf("number of keys in the bucket greater than 256: %d", numKeys)
+
+		l2entry := l2entries[bid]
+		numKeys := l2entry.lastRecord - l2entry.firstRecord
+		if numKeys > 255 {
+			return 0, fmt.Errorf("number of keys in the bucket greater than 255: %d, this is not supported", numKeys)
 		}
 		// first write the number of keys in this bucket
-		entry[0] = uint8(numKeys)
-		// then write the position of this bucket's data (as offset within data segment) in 5 bytes
-		datapos := l2entry.datastart
-		if datapos >= (1 << 40) {
-			return 0, fmt.Errorf("value too large, doesn't fit in 5 bytes")
-		}
-		entry[1] = uint8(datapos>>32) & 255
-		entry[2] = uint8(datapos>>24) & 255
-		entry[3] = uint8(datapos>>16) & 255
-		entry[4] = uint8(datapos>>8) & 255
-		entry[5] = uint8(datapos & 255)
+		entry[0] = byte(numKeys)
 
-		sofar := 6
-		// if all 2 byte fingerprints don't in the 64 bytes, set the
-		// overflow offset here
-		if numKeys > 29 { // equivalent to 2 * numKeys > 64 - 6
-			binary.LittleEndian.PutUint32(entry[sofar:], uint32(len(overflow)))
-			sofar += 4
+		if numKeys > 0 {
+			// not an empty bucket
+
+			// write the position of this bucket's data (as offset within data segment) in 5 bytes
+			datapos := l2entry.dataStart
+			if datapos >= (1 << 40) {
+				return 0, fmt.Errorf("value too large, doesn't fit in 5 bytes")
+			}
+			entry[1] = byte(datapos >> 32)
+			entry[2] = byte(datapos >> 24)
+			entry[3] = byte(datapos >> 16)
+			entry[4] = byte(datapos >> 8)
+			entry[5] = byte(datapos)
+			sofar := 6
+
+			fpToPutInBucket := numKeys
+			if numKeys > maxBucketFpCount {
+				// followed by overflow section offset, if keys can't feed into the bucket
+				binary.LittleEndian.PutUint32(entry[sofar:], uint32(len(overflow)))
+				sofar += 4
+				fpToPutInBucket = maxBucketFpCount - 1 // bucket can't hold maxBucketFpCount fingerprints anymore, reduce by one
+			}
+
+			curRecord := l2entry.firstRecord
+			for ; curRecord < fpToPutInBucket+l2entry.firstRecord; curRecord += 1 {
+				entry[sofar] = byte(records[curRecord].fp >> 16)
+				entry[sofar+1] = byte(records[curRecord].fp >> 8)
+				entry[sofar+2] = byte(records[curRecord].fp)
+				sofar += 3
+			}
+
+			// and if any were left, write them to the overflow section
+			for ; curRecord < numKeys+l2entry.firstRecord; curRecord += 1 {
+				overflow = append(overflow, byte(records[curRecord].fp>>16), byte(records[curRecord].fp>>8), byte(records[curRecord].fp))
+			}
 		}
-		// now write as many fingerprints as we can within the rest of 64 bytes
-		curRecord := l2entry.firstRecord
-		for ; curRecord < l2entry.lastrecord && sofar+2 <= 64; curRecord += 1 {
-			binary.LittleEndian.PutUint16(entry[sofar:], uint16(records[curRecord].fp))
-			sofar += 2
-		}
-		// and if any were left, write them to the overflow section
-		for ; curRecord < l2entry.lastrecord; curRecord += 1 {
-			binary.LittleEndian.PutUint16(buf, uint16(records[curRecord].fp))
-			overflow = append(overflow, buf[0], buf[1])
-			sofar += 2
-		}
+
 		// now write this entry to the writer
 		if _, err := writer.Write(entry); err != nil {
 			return 0, err
 		}
 	}
 	// now write all the overflow section
-	// fmt.Printf("overflow section was: %d bytes\n", len(overflow))
 	if _, err := writer.Write(overflow); err != nil {
 		return 0, err
 	}
-	return 64*numBuckets + uint32(len(overflow)), nil
+	return uint32(bucketSizeBytes)*numBuckets + uint32(len(overflow)), nil
 }
 
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
-func (ht *hashTable) readData(start uint64, numRecords uint32, key []byte, minExpiry uint32) (Value, error) {
+func (ht *hashTable) readData(start uint64, matchedIndices []int, numRecords int, key []byte, minExpiry uint32) (Value, error) {
 	data := ht.data[start:]
-	sofar := uint32(0)
-	for i := 0; i < int(numRecords); i++ {
+	sofar := uint64(0)
+	curMatchIdx := 0
+	for i := 0; i < numRecords; i++ {
 		keylen, n, err := fbinary.ReadUvarint(data[sofar:])
 		if err != nil {
 			return Value{}, incompleteFile
 		}
-		sofar += uint32(n)
-		curkey := data[sofar : sofar+uint32(keylen)]
-		sofar += uint32(keylen)
-		if bytes.Equal(key, curkey) {
-			ret, _, err := readValue(data[sofar:], minExpiry, false)
-			return ret, err
-		} else {
-			_, m, err := readValue(data[sofar:], minExpiry, true)
-			if err != nil {
-				return Value{}, err
+		sofar += uint64(n)
+		if i == matchedIndices[curMatchIdx] {
+			// fingerprint match, a potential hit
+			curKey := data[sofar : sofar+keylen]
+			sofar += keylen
+			if bytes.Equal(key, curKey) {
+				ret, _, err := readValue(data[sofar:], minExpiry, false)
+				return ret, err
 			}
-			sofar += m
+			curMatchIdx += 1
+			if curMatchIdx == len(matchedIndices) {
+				return Value{}, ErrNotFound
+			}
+		} else {
+			sofar += keylen
 		}
+		_, m, err := readValue(data[sofar:], minExpiry, true)
+		if err != nil {
+			return Value{}, err
+		}
+		sofar += m
 	}
 	return Value{}, ErrNotFound
 }
@@ -307,9 +323,19 @@ func writeData(writer *bufio.Writer, records []record, minExpiry Timestamp, numB
 	}
 	l2entries := make([]bucket, numBuckets)
 	bucketID := uint32(0) // bucket ID of the current bucket
-	l2idx := 0            // index in l2entries list that we are observing/updating at any point of time
 	offset := uint64(0)
 	for i, r := range records {
+		if i == 0 || r.bucketID == bucketID {
+			// bucket continues
+			l2entries[bucketID].lastRecord += 1
+		} else {
+			// new bucket is opening now
+			bucketID = r.bucketID
+			l2entries[bucketID].bucketID = bucketID
+			l2entries[bucketID].dataStart = offset
+			l2entries[bucketID].firstRecord = i
+			l2entries[bucketID].lastRecord = i + 1
+		}
 		sz := uint32(0) // size of this particular record
 		n, err := writeKey(writer, r.key)
 		if err != nil {
@@ -321,40 +347,24 @@ func writeData(writer *bufio.Writer, records []record, minExpiry Timestamp, numB
 			return 0, nil, fmt.Errorf("error in writing a value: %w", err)
 		}
 		sz += n
-		if i == 0 || r.bucketID == bucketID {
-			// bucket continues
-			l2entries[l2idx].lastrecord += 1
-		} else {
-			// new bucket is opening now
-			bucketID = r.bucketID
-			l2idx += 1
-			l2entries[l2idx].bucketID = bucketID
-			l2entries[l2idx].datastart = offset
-			l2entries[l2idx].firstRecord = uint32(i)
-			l2entries[l2idx].lastrecord = uint32(i + 1)
-		}
 		offset += uint64(sz)
 	}
 	return offset, l2entries, nil
 }
 
 func (ht *hashTable) Close() error {
-	if ht.data != nil {
-		data := ht.data
+	var ret error = nil
+	if ht.mappedData != nil {
 		ht.data = nil
-		if err := syscall.Munmap(data); err != nil {
-			return err
-		}
-	}
-	if ht.index != nil {
-		index := ht.index
 		ht.index = nil
-		if err := syscall.Munmap(index); err != nil {
-			return err
+		data := ht.mappedData
+		ht.mappedData = nil
+		if err := syscall.Munmap(data); err != nil {
+			ret = err
 		}
 	}
 	runtime.SetFinalizer(ht, nil)
-	return nil
+	return ret
 }
 
 func (ht *hashTable) ID() uint64 {
@@ -368,13 +378,9 @@ func (ht *hashTable) DataReads() uint64 {
 var _ Table = (*hashTable)(nil)
 
 func buildHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
-	shardbits, err := log2(numShards)
-	if err != nil {
-		return nil, err
-	}
 	filenames := make([]string, 0, uint(numShards))
 	for shard := uint64(0); shard < numShards; shard += 1 {
-		filename, err := buildShard(shard, shardbits, dirname, mt.Iter(shard))
+		filename, err := buildShard(shard, dirname, mt.Iter(shard))
 		if err != nil {
 			return nil, err
 		}
@@ -383,7 +389,7 @@ func buildHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, e
 	return filenames, nil
 }
 
-func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]Value) (string, error) {
+func buildShard(shard uint64, dirname string, data map[string]Value) (string, error) {
 	filename := fmt.Sprintf("%d_%s%s", shard, utils.RandString(8), tempSuffix)
 	filepath := path.Join(dirname, filename)
 	f, err := os.Create(filepath)
@@ -391,16 +397,14 @@ func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]V
 		return "", err
 	}
 	numRecords := uint32(len(data))
-	numBuckets := uint64(numRecords / numRecordsPerBucket)
-	numBuckets = math.NextPowerOf2(numBuckets)
-	moduloMask := numBuckets - 1 // since numBucket is power of 2, we can & with this mask instead of taking modulo
+	numBuckets := uint32(numRecords/numRecordsPerBucket) + 1
 	records := make([]record, 0, len(data))
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
 	for k, v := range data {
 		hash := Hash([]byte(k))
 		records = append(records, record{
-			bucketID: getBucketID(hash, moduloMask, shardbits),
+			bucketID: getBucketID(hash, numBuckets),
 			fp:       getFingerprint(hash),
 			key:      k,
 			value:    v,
@@ -422,30 +426,42 @@ func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]V
 		return ri.bucketID < rj.bucketID || (ri.bucketID == rj.bucketID && ri.fp < rj.fp)
 	})
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
-	_, err = f.Seek(64, unix.SEEK_SET)
+	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
 	if err != nil {
 		return "", err
 	}
 	writer := bufio.NewWriterSize(f, 1024*1024)
-	datasize, buckets, err := writeData(writer, records, minExpiry, uint32(numBuckets))
+	datasize, buckets, err := writeData(writer, records, minExpiry, numBuckets)
 	if err != nil {
 		return "", err
 	}
+
 	// We want index data to be 64 byte aligned, so if data size is not a multiple of 64, add some filler
 	gap := 64 - (datasize & 63)
-	if _, err = writer.Write(make([]byte, gap)); err != nil {
-		return "", fmt.Errorf("failed to write data segment: %w", err)
+	if gap > 0 {
+		if _, err = writer.Write(make([]byte, gap)); err != nil {
+			return "", fmt.Errorf("failed to write data segment: %w", err)
+		}
+		datasize += gap
 	}
-	datasize += gap
+
 	// now write the index
-	indexsize, err := writeIndex(writer, uint32(numBuckets), buckets, records)
+	indexsize, err := writeIndex(writer, numBuckets, buckets, records)
 	if err != nil {
 		return "", fmt.Errorf("failed to write index segment: %w", err)
+	}
+	// write tail magic
+	tailMagicBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(tailMagicBytes, magicTailer)
+	if _, err = writer.Write(tailMagicBytes); err != nil {
+		return "", fmt.Errorf("failed to write magictailer: %w", err)
 	}
 	// flush any existing data in the writer and then go to the start to write the header
 	if err = writer.Flush(); err != nil {
 		return "", fmt.Errorf("error flushing the buffered writer %w", err)
 	}
+
+	// write header
 	_, err = f.Seek(0, unix.SEEK_SET)
 	if err != nil {
 		return "", err
@@ -456,9 +472,8 @@ func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]V
 		codec:       v1codec_xxhash,
 		encrypted:   false,
 		compression: 0,
-		shardbits:   shardbits,
 		numRecords:  numRecords,
-		numBuckets:  uint32(numBuckets),
+		numBuckets:  numBuckets,
 		datasize:    datasize,
 		indexsize:   indexsize,
 		minExpiry:   minExpiry,
@@ -467,6 +482,7 @@ func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]V
 	if err = writeHeader(writer, head); err != nil {
 		return "", err
 	}
+
 	if err = writer.Flush(); err != nil {
 		return "", fmt.Errorf("error flushing the buffered writer %w", err)
 	}
@@ -477,7 +493,7 @@ func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]V
 }
 
 func writeHeader(writer *bufio.Writer, head header) error {
-	buf := make([]byte, 64)
+	buf := make([]byte, fileHeaderSize)
 	binary.LittleEndian.PutUint32(buf, head.magic)
 	buf[4] = head.codec
 	// false for encryption
@@ -485,15 +501,12 @@ func writeHeader(writer *bufio.Writer, head header) error {
 		buf[5] = 1
 	}
 	buf[6] = head.compression
-	buf[7] = head.shardbits
-
-	binary.LittleEndian.PutUint32(buf[8:12], head.numRecords)
-	binary.LittleEndian.PutUint32(buf[12:16], head.numBuckets)
-	binary.LittleEndian.PutUint64(buf[16:24], head.datasize)
-	binary.LittleEndian.PutUint32(buf[24:28], head.indexsize)
-	binary.LittleEndian.PutUint32(buf[28:32], uint32(head.minExpiry))
-	binary.LittleEndian.PutUint32(buf[32:36], uint32(head.maxExpiry))
-	// fmt.Printf("just before writing, buf was: %v\n", buf)
+	binary.LittleEndian.PutUint32(buf[7:], head.numRecords)
+	binary.LittleEndian.PutUint32(buf[11:], head.numBuckets)
+	binary.LittleEndian.PutUint64(buf[15:], head.datasize)
+	binary.LittleEndian.PutUint32(buf[23:], head.indexsize)
+	binary.LittleEndian.PutUint32(buf[27:], uint32(head.minExpiry))
+	binary.LittleEndian.PutUint32(buf[31:], uint32(head.maxExpiry))
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
@@ -501,7 +514,7 @@ func writeHeader(writer *bufio.Writer, head header) error {
 }
 
 func readHeader(buf []byte) (header, error) {
-	if len(buf) != 64 {
+	if len(buf) != fileHeaderSize {
 		return header{}, fmt.Errorf("header buffer of incorrect size")
 	}
 	var head header
@@ -517,14 +530,12 @@ func readHeader(buf []byte) (header, error) {
 		head.encrypted = true
 	}
 	head.compression = buf[6]
-	head.shardbits = buf[7]
-	head.numRecords = binary.LittleEndian.Uint32(buf[8:12])
-	head.numBuckets = binary.LittleEndian.Uint32(buf[12:16])
-	head.datasize = binary.LittleEndian.Uint64(buf[16:24])
-	head.indexsize = binary.LittleEndian.Uint32(buf[24:28])
-	head.minExpiry = Timestamp(binary.LittleEndian.Uint32(buf[28:32]))
-	head.maxExpiry = Timestamp(binary.LittleEndian.Uint32(buf[32:36]))
-	head.moduloMask = uint64(head.numBuckets) - 1 // since numBucket is power of 2, we can & with this mask instead of taking modulo
+	head.numRecords = binary.LittleEndian.Uint32(buf[7:])
+	head.numBuckets = binary.LittleEndian.Uint32(buf[11:])
+	head.datasize = binary.LittleEndian.Uint64(buf[15:])
+	head.indexsize = binary.LittleEndian.Uint32(buf[23:])
+	head.minExpiry = Timestamp(binary.LittleEndian.Uint32(buf[27:]))
+	head.maxExpiry = Timestamp(binary.LittleEndian.Uint32(buf[31:]))
 	return head, nil
 }
 
@@ -541,18 +552,18 @@ func writeKey(writer *bufio.Writer, k string) (uint32, error) {
 }
 
 // readValue reads a value and returns the number of bytes taken by this value
-// if onlysize is true, the caller is only interested in the size of thsi value
+// if onlysize is true, the caller is only interested in the size of this value
 // so this function can avoid expensive operations in those cases
-func readValue(data []byte, minExpiry uint32, onlysize bool) (Value, uint32, error) {
+func readValue(data []byte, minExpiry uint32, onlysize bool) (Value, uint64, error) {
 	if len(data) == 0 {
 		return Value{}, 0, incompleteFile
 	}
 	if data[0] > 0 { // deleted
 		return Value{data: []byte{}, expires: 0, deleted: true}, 1, nil
 	}
-	cur := uint32(1)
+	cur := uint64(1)
 	expiry64, n, err := fbinary.ReadUvarint(data[cur:])
-	cur += uint32(n)
+	cur += uint64(n)
 	if err != nil {
 		return Value{}, 0, err
 	}
@@ -561,7 +572,7 @@ func readValue(data []byte, minExpiry uint32, onlysize bool) (Value, uint32, err
 		expiry = minExpiry + expiry - 1
 	}
 	valLen, n, err := fbinary.ReadUvarint(data[cur:])
-	cur += uint32(n)
+	cur += uint64(n)
 	if err != nil {
 		return Value{}, 0, incompleteFile
 	}
@@ -573,14 +584,14 @@ func readValue(data []byte, minExpiry uint32, onlysize bool) (Value, uint32, err
 	// 	}, cur + uint32(valLen), nil
 	// }
 	if onlysize {
-		return Value{}, cur + uint32(valLen), nil
+		return Value{}, cur + valLen, nil
 	}
-	value := data[cur : cur+uint32(valLen)]
+	value := data[cur : cur+valLen]
 	return Value{
 		data:    clonebytes(value),
 		expires: Timestamp(expiry),
 		deleted: false,
-	}, cur + uint32(valLen), nil
+	}, cur + valLen, nil
 }
 
 func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, error) {
@@ -624,21 +635,9 @@ func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, err
 	return total + uint32(vl), nil
 }
 
-func log2(n uint64) (uint8, error) {
-	if n&(n-1) > 0 {
-		return 0, errors.New("not a power of 2")
-	}
-	ret := uint8(0)
-	for n > 0 {
-		ret += 1
-		n >>= 1
-	}
-	return ret, nil
-}
-
-// take the highest order 16 bits
+// take the highest order 24 bits
 func getFingerprint(h uint64) fingerprint {
-	return fingerprint((h >> 48) & ((1 << 16) - 1))
+	return fingerprint(h >> 40)
 }
 
 func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {
@@ -653,7 +652,7 @@ func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {
 	return i + 1, buf.WriteByte(byte(x))
 }
 
-func openHashTable(id uint64, filepath string) (Table, error) {
+func openHashTable(id uint64, filepath string, warmIndex bool, warmData bool) (Table, error) {
 	f, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -665,7 +664,7 @@ func openHashTable(id uint64, filepath string) (Table, error) {
 	}
 
 	size := fi.Size()
-	if size <= int64(headerSize) {
+	if size <= int64(fileHeaderSize) {
 		return nil, fmt.Errorf("file size too small to be a valid gravel file")
 	}
 
@@ -680,36 +679,49 @@ func openHashTable(id uint64, filepath string) (Table, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading header: %w", err)
 	}
-	datastart := uint64(64)
-	dataend := datastart + header.datasize
-	data := buf[datastart:dataend]
+	expectedSize := int64(header.datasize) + int64(header.indexsize) + int64(fileHeaderSize) + 4
+	if size != expectedSize {
+		_ = syscall.Munmap(buf)
+		return nil, fmt.Errorf("incorrect file size, actual %d vs expected %d", size, expectedSize)
+	}
+	if size != int64(len(buf)) || binary.LittleEndian.Uint32(buf[size-4:]) != magicTailer {
+		_ = syscall.Munmap(buf)
+		return nil, fmt.Errorf("invalid file tail magic or mmapping unsuccessful")
+	}
+	dataStart := uint64(fileHeaderSize)
+	dataEnd := dataStart + header.datasize
+	data := buf[dataStart:dataEnd]
 
-	indexend := dataend + uint64(header.indexsize)
-	index := buf[dataend:indexend]
-	overflow := index[header.numBuckets*64:]
+	indexEnd := dataEnd + uint64(header.indexsize)
+	index := buf[dataEnd:indexEnd]
+	overflow := index[int(header.numBuckets)*bucketSizeBytes:]
 
 	// Prefetch both the index and data by "touching" it
-	for i := 0; i < len(index); i++ {
-		_ = index[i]
+	if warmIndex {
+		for i := 0; i < len(index); i++ {
+			_ = index[i]
+		}
 	}
-	for i := 0; i < len(data); i++ {
-		_ = data[i]
+
+	if warmData {
+		for i := 0; i < len(data); i++ {
+			_ = data[i]
+		}
 	}
 
 	tableObj := &hashTable{
-		head:     header,
-		overflow: overflow,
-		index:    index,
-		data:     data,
-		id:       id,
-		reads:    atomic.Uint64{},
+		head:       header,
+		overflow:   overflow,
+		mappedData: buf,
+		index:      index,
+		data:       data,
+		id:         id,
+		reads:      atomic.Uint64{},
 	}
 	runtime.SetFinalizer(tableObj, (*hashTable).Close)
 	return tableObj, nil
 }
 
-func getBucketID(hash, mask uint64, shardbits uint8) uint32 {
-	// ret := uint32((hash >> shardbits) & mask)
-	// fmt.Printf("getting bucket id for hash: %d, mask: %d, shardbits %d, ans is: %d\n", hash, mask, shardbits, ret)
-	return uint32((hash >> shardbits) & mask)
+func getBucketID(hash uint64, numBuckets uint32) uint32 {
+	return uint32(hash % uint64(numBuckets))
 }

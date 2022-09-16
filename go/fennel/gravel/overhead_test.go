@@ -1,7 +1,6 @@
 package gravel
 
 import (
-	"fennel/lib/utils/math"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -14,8 +13,8 @@ func TestOverhead(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 	for k := 0; k < 10; k++ {
 		N := uint64(rand.Intn(10_000_000))
-		PerBucket := uint64(20)
-		Buckets := math.NextPowerOf2(N / PerBucket)
+		PerBucket := uint64(13)
+		Buckets := uint64(N/PerBucket) + 1
 		data := make(map[uint64]int)
 		for i := 0; i < int(N); i++ {
 			num := rand.Uint64()
@@ -24,7 +23,7 @@ func TestOverhead(t *testing.T) {
 		}
 		l1miss := 0
 		for _, v := range data {
-			delta := v - (64-6)/2
+			delta := v - 19
 			if delta > 0 {
 				l1miss += v
 			}

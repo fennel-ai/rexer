@@ -57,11 +57,12 @@ func Open(opts Options) (ret *Gravel, failure error) {
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
+	shardHash := ShardHash(key)
 	hash := Hash(key)
 	sample := shouldSample()
 	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(time.Now().Unix())
-	val, err := g.memtable.Get(key, hash)
+	val, err := g.memtable.Get(key, shardHash)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
@@ -72,7 +73,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	default:
 		return nil, err
 	}
-	shard := hash & (g.manifest.numShards - 1)
+	shard := shardHash & (g.manifest.numShards - 1)
 	g.manifest.Reserve()
 	defer g.manifest.Release()
 	tables, err := g.manifest.List(shard)
@@ -150,7 +151,7 @@ func (g *Gravel) flush() error {
 		// no valid reason to flush an empty memtable
 		return nil
 	}
-	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.manifest.numShards)
+	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname)
 	if err != nil {
 		return err
 	}
