@@ -2,11 +2,12 @@ package main
 
 import (
 	"fennel/mothership"
-	"fennel/mothership/lib/customer"
 	"fennel/mothership/lib/dataplane"
 	tierL "fennel/mothership/lib/tier"
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/alexflint/go-arg"
 	"gorm.io/driver/mysql"
@@ -32,12 +33,8 @@ func run(args Args) error {
 		return err
 	}
 
-	var customer customer.Customer
-	if err = db.Take(&customer, "domain = ?", "fennel.ai").Error; err != nil {
-		return err
-	}
 	var tier tierL.Tier
-	if db.Take(&tier, "customer_id = ? AND api_url = ?", customer.ID, LOCALHOST).RowsAffected > 0 {
+	if db.Take(&tier, "api_url = ?", LOCALHOST).RowsAffected > 0 {
 		return nil
 	}
 
@@ -55,10 +52,10 @@ func run(args Args) error {
 	}
 	tier = tierL.Tier{
 		DataPlaneID:   dp.ID,
-		CustomerID:    customer.ID,
-		PulumiStack:   "pulumi",
+		PulumiStack:   fmt.Sprintf("%s:%v", "pulumi", time.Now().UnixMilli()),
 		ApiUrl:        LOCALHOST,
-		K8sNamespace:  "namespace",
+		K8sNamespace:  fmt.Sprintf("%s:%v", "namespace", time.Now().UnixMilli()),
+		Plan:          tierL.TierPlanPersonal,
 		RequestsLimit: 1000,
 	}
 	err = db.Create(&tier).Error

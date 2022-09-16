@@ -8,6 +8,12 @@
 }
 
 /* three items */
+.step:first-child:nth-last-child(2),
+.step:first-child:nth-last-child(2) ~ .step {
+    width: 48%;
+}
+
+/* three items */
 .step:first-child:nth-last-child(3),
 .step:first-child:nth-last-child(3) ~ .step {
     width: 32%;

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import OnboardSetupTeam from "./OnboardSetupTeam";
 import OnboardTierProvisioning from "./OnboardTierProvisioning";
@@ -22,8 +21,6 @@ function OnboardPage({user}: {user: User}): JSX.Element {
     const [onboardStatus, setOnboardStatus] = useState<number>(user.onboardStatus);
     const [tier, setTier] = useState<Tier>();
 
-    const navigate = useNavigate();
-
     const updateStatus = (newStatus: number, tier?: Tier) => {
         setOnboardStatus(newStatus);
         if (tier) {
@@ -39,7 +36,7 @@ function OnboardPage({user}: {user: User}): JSX.Element {
         case ONBOARD_STATUS_TIER_PROVISIONED:
             return <OnboardTierProvisioned tier={tier} onOnboardStatusChange={updateStatus} />;
         case ONBOARD_STATUS_DONE:
-            navigate("/");
+            window.location.href = "/";
     }
     return (<div>Not implemented</div>);
 }

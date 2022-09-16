@@ -86,7 +86,7 @@ function SignInForm() {
                     disabled={submitting}
                     loading={submitting}>
 
-                    Signing In
+                    Sign In
                 </Button>
             </Form>
         </div>

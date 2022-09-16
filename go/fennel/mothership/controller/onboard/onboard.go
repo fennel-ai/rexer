@@ -83,7 +83,7 @@ func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user *userL.User) e
 	}
 
 	return db.Model(&user).Updates(map[string]interface{}{
-		"onboard_status": userL.OnboardStatusTierProvisioning,
+		"onboard_status": userL.OnboardStatusDone,
 		"customer_id":    teamID,
 	}).Error
 }
