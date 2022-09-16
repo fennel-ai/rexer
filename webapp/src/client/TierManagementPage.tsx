@@ -1,11 +1,19 @@
-import { Table, Badge } from "antd";
+import { Table, Badge, Space, notification } from "antd";
+import { generatePath } from "react-router-dom";
+import type { ColumnsType } from 'antd/es/table';
 import { LoadingOutlined } from '@ant-design/icons';
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
 
 import pageStyles from "./styles/Page.module.scss";
 
-const columns = [
+const columns: ColumnsType<Tier> = [
+    {
+        title: "Name",
+        key: "name",
+        dataIndex: "id",
+        render: (id: string) => `Tier ${id}`,
+    },
     { title: "Plan", dataIndex: "plan", key: "plan" },
     { title: "Region", dataIndex: "location", key: "region" },
     { title: "URL", dataIndex: "apiUrl", key: "url" },
@@ -19,6 +27,24 @@ const columns = [
             </span>
         ),
     },
+    {
+        title: "Actions",
+        key: "actions",
+        render: (_, row: Tier) => (
+            <Space>
+                <a onClick={async () => {
+                    await navigator.clipboard.writeText(row.apiUrl);
+                    notification.success({
+                        message: "The URL has been successfully copied to your clipboard.",
+                        placement: "bottomRight",
+                    })
+                }}>
+                    Copy URL
+                </a>
+                <a href={generatePath("/tier/:tierID", {tierID: row.id})}>Open</a>
+            </Space>
+        ),
+    },
 ];
 
 interface TiersResponse {
@@ -29,11 +55,12 @@ interface Tier {
     apiUrl:   string,
     limit:    number,
     location: string,
+    id: string,
 }
 
 function TierManagementPage() {
     const [loading, setLoading] = useState(false);
-    const [dataSource, setDataSource]  = useState<object[]>([]);
+    const [dataSource, setDataSource]  = useState<Tier[]>([]);
 
     const queryTiers = () => {
         setLoading(true);

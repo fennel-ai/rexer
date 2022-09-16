@@ -2,6 +2,7 @@ package tier
 
 import (
 	"fennel/mothership/lib/dataplane"
+	"strconv"
 
 	"gorm.io/plugin/soft_delete"
 )
@@ -41,6 +42,10 @@ func (t *Tier) PlanName() string {
 		return "Enterprise"
 	}
 	return "Unknown"
+}
+
+func (t *Tier) IDStr() string {
+	return strconv.FormatUint(uint64(t.ID), 10)
 }
 
 type Tabler interface {
