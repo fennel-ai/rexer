@@ -418,7 +418,7 @@ func buildShard(shard uint64, shardbits uint8, dirname string, data map[string]V
 	// within the same bucket, we sort records by fingerprint. This will allow us to
 	// early termination when fingerprints don't match
 	sort.Slice(records, func(i, j int) bool {
-		ri, rj := records[i], records[j]
+		ri, rj := &records[i], &records[j]
 		return ri.bucketID < rj.bucketID || (ri.bucketID == rj.bucketID && ri.fp < rj.fp)
 	})
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
