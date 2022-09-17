@@ -3,7 +3,7 @@ package gravel
 import (
 	"errors"
 
-	"github.com/cespare/xxhash/v2"
+	"github.com/zeebo/xxh3"
 )
 
 var (
@@ -32,7 +32,7 @@ type Entry struct {
 // We retry to do this hash computation once per request and
 // pass the hash around instead of recomputing it
 func Hash(k []byte) uint64 {
-	return xxhash.Sum64(k)
+	return xxh3.Hash(k)
 }
 
 func Shard(k []byte, numShards uint64) uint64 {
