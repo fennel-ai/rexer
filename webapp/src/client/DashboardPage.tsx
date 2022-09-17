@@ -2,6 +2,7 @@ import { Collapse, Space, DatePicker } from "antd";
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
 import { Line, LineConfig } from '@ant-design/plots';
+import humanFormat from "human-format";
 
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
@@ -78,10 +79,11 @@ function DashboardPage() {
             <Collapse defaultActiveKey="qps">
                 <Collapse.Panel header="QPS" key="qps">
                     <Graph
-                        query='sum by (Namespace, path) (rate(http_requests_total{ContainerName=~"http-server|query-server", path=~"/query|/set_profile|/set_profile_multi|/log|/log_multi"}[1h]))'
+                        query='sum by (Namespace, path) (rate(http_requests_total{ContainerName=~"http-server|query-server", path=~"/query|/set_profile|/set_profile_multi|/log|/log_multi"}[2m]))'
                         startTime={startTime}
                         endTime={endTime}
                         step={step}
+                        unit="req/s"
                     />
                 </Collapse.Panel>
                 <Collapse.Panel header="Aggregate Lag" key="lag">
@@ -98,6 +100,7 @@ function DashboardPage() {
                         startTime={startTime}
                         endTime={endTime}
                         step={step}
+                        unit="s"
                     />
                 </Collapse.Panel>
             </Collapse>
@@ -128,9 +131,10 @@ interface GraphProps {
     startTime: number,
     endTime: number,
     step: string,
+    unit?: string,
 }
 
-function Graph({ query, startTime, endTime, step }: GraphProps) {
+function Graph({ query, startTime, endTime, step, unit}: GraphProps) {
     const [data, setData] = useState<GraphData[]>([]);
     const params = {
         query,
@@ -146,8 +150,8 @@ function Graph({ query, startTime, endTime, step }: GraphProps) {
             const newData = response.data.flatMap(rv => {
                 const seriesName = generateSeriesName(rv.metric);
                 return rv.values.map((scalar: [number, string]) => ({
-                    time: scalar[0],
-                    value: parseFloat(scalar[1]),
+                    time: scalar[0] * 1000,
+                    value: Math.round(parseFloat(scalar[1]) * 10 + Number.EPSILON) / 10,
                     series: seriesName,
                 }));
             });
@@ -161,12 +165,15 @@ function Graph({ query, startTime, endTime, step }: GraphProps) {
 
     const config: LineConfig = {
         data,
-        xField: 'time',
-        yField: 'value',
-        seriesField: 'series',
+        xField: "time",
+        yField: "value",
+        seriesField: "series",
         xAxis: {
+            type: "time",
+        },
+        yAxis: {
             label: {
-                formatter: (t:string) => (new Date(parseFloat(t)*1000).toLocaleString("en-US")),
+                formatter: v => unit ? `${humanFormat(parseFloat(v))} ${unit}` : `${humanFormat(parseFloat(v))}`,
             },
         },
     };
