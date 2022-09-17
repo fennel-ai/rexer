@@ -3,7 +3,7 @@ import * as aws from "@pulumi/aws";
 import * as k8s from "@pulumi/kubernetes";
 import { local } from "@pulumi/command";
 
-import { getPrefix, fennelStdTags, Scope } from "../lib/util";
+import { getPrefix, fennelStdTags, Scope, IngressConf, PRIVATE_LB_SCHEME, PUBLIC_LB_SCHEME } from "../lib/util";
 
 const DEFAULT_INGRESS_NODE_TYPE = "t3.small";
 const DEFAULT_INGRESS_NODE_COUNT = 2;
@@ -22,11 +22,10 @@ export type inputType = {
     nodeRoleArn: string | pulumi.Output<string>,
     kubeconfig: pulumi.Input<string>,
     namespace: string,
-    loadBalancerScheme: string,
-    subnetIds: pulumi.Input<string[]>,
+    privateSubnetIds: string[],
+    publicSubnetIds: string[],
+    ingressConf?: IngressConf,
     scopeId: number,
-    useDedicatedMachines?: boolean,
-    replicas?: number,
     scope: Scope,
 }
 
@@ -98,6 +97,17 @@ export const setup = async (input: inputType) => {
         }
     }, { provider: k8sProvider })
 
+    // by default use private subnets
+    let subnetIds: string[];
+    let loadBalancerScheme: string;
+    if (input.ingressConf?.usePublicSubnets) {
+        subnetIds = input.publicSubnetIds
+        loadBalancerScheme = PUBLIC_LB_SCHEME
+    } else {
+        subnetIds = input.privateSubnetIds
+        loadBalancerScheme = PRIVATE_LB_SCHEME
+    }
+
     // Create dedicated node-group for emissary ingress pods
     //
     // This is to isolate them from getting scheduled on pods where the API servers are which could potentially
@@ -109,14 +119,14 @@ export const setup = async (input: inputType) => {
         // we should schedule all components of Emissary on ON_DEMAND instances
         "eks.amazonaws.com/capacityType": "ON_DEMAND",
     };
-    const replicas = input.replicas || DEFAULT_INGRESS_NODE_COUNT;
-    if (input.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {
+    const replicas = input.ingressConf?.replicas || DEFAULT_INGRESS_NODE_COUNT;
+    if (input.ingressConf?.useDedicatedMachines || DEFAULT_USE_DEDICATED_MACHINES) {
         const ngName = `aes-${input.namespace}-ng`;
         const ngLabel = { 'node-group': ngName };
         const nodeGroup = new aws.eks.NodeGroup(ngName, {
             clusterName: input.clusterName,
             nodeRoleArn: input.nodeRoleArn,
-            subnetIds: input.subnetIds,
+            subnetIds: subnetIds,
             scalingConfig: {
                 desiredSize: replicas,
                 minSize: replicas,
@@ -188,12 +198,12 @@ export const setup = async (input: inputType) => {
                     // Use NLB in instance mode since we don't currently setup the VPC CNI plugin.
                     metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"] = "instance"
                     // Specify the load balancer scheme. Should be one of ["internal", "internet-facing"].
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = input.loadBalancerScheme
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = loadBalancerScheme
                     // Specify the subnets in which to deploy the load balancer.
                     // For internet-facing load-balancers this should be a list of public subnets and
                     // for internal load-balancers this should be a list of private subnets.
                     // metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds.toString()
+                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = subnetIds.toString()
                     obj.metadata = metadata
                     obj.spec["loadBalancerSourceRanges"] = ["0.0.0.0/0"]
                 }

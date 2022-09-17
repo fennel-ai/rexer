@@ -123,7 +123,7 @@ export type DataPlaneConf = {
     planeId: number,
     region: string,
     vpcConf: VpcConfig,
-    mskConf?: MskConf,
+    mskConf: MskConf,
     dbConf: util.DBConfig,
     confluentConf: util.ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
@@ -311,23 +311,21 @@ const setupResources = async () => {
             kubeconfig: eksOutput.kubeconfig
         });
     }
-    let mskOutput: pulumi.Output<msk.outputType> | undefined;
-    if (input.mskConf !== undefined) {
-        mskOutput = await msk.setup({
-            planeId: input.planeId,
-            region: input.region,
-            roleArn: roleArn,
-            privateSubnets: vpcOutput.privateSubnets,
-            brokerType: input.mskConf.brokerType,
-            numberOfBrokerNodes: input.mskConf.numberOfBrokerNodes,
-            storageVolumeSizeGiB: input.mskConf.storageVolumeSizeGiB,
-            vpcId: vpcOutput.vpcId,
-            connectedSecurityGroups: {
-                "eks": eksOutput.clusterSg,
-            },
-            connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
-        });
-    }
+    const mskOutput = await msk.setup({
+        planeId: input.planeId,
+        region: input.region,
+        roleArn: roleArn,
+        privateSubnets: vpcOutput.privateSubnets,
+        brokerType: input.mskConf.brokerType,
+        numberOfBrokerNodes: input.mskConf.numberOfBrokerNodes,
+        storageVolumeSizeGiB: input.mskConf.storageVolumeSizeGiB,
+        vpcId: vpcOutput.vpcId,
+        connectedSecurityGroups: {
+            "eks": eksOutput.clusterSg,
+        },
+        connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
+        protect: input.protectResources,
+    });
     if (input.strimziConf !== undefined) {
         const strimziOutput = await strimzi.setup({
             kubeconfig: eksOutput.kubeconfig,
@@ -356,8 +354,8 @@ const setupResources = async () => {
         volumeSizeGiB: input.prometheusConf?.volumeSizeGiB,
         nodeSelector: input.prometheusConf?.nodeSelector,
         // set msk brokers, so that prometheus can scrape the metrics exported at each of the metrics
-        mskBootstrapServers: mskOutput?.bootstrapBrokers,
-        numBrokers: mskOutput?.numBrokers,
+        mskBootstrapServers: mskOutput.bootstrapBrokers,
+        numBrokers: mskOutput.numBrokers,
         protect: input.protectResources,
     })
 
@@ -372,11 +370,6 @@ const setupResources = async () => {
     })
 
     if (input.nitrousConf !== undefined) {
-        // mskout has to be defined here
-        if (mskOutput === undefined) {
-            console.log('expected msk to be successfully configured for nitrous')
-            process.exit(1);
-        }
         const nitrousOutput = await nitrous.setup({
             planeId: input.planeId,
             region: input.region,
@@ -466,12 +459,6 @@ const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: 
 
     if (args.accountConf.newAccount === undefined && args.accountConf.existingAccount === undefined) {
         console.info("neither newAccount or existingAccount is set; Exactly one should be set")
-        process.exit(1);
-    }
-
-    // nitrous requires msk configuration
-    if (args.nitrousConf !== undefined && args.mskConf === undefined) {
-        console.info("nitrous configured, but msk is not; nitrous requires msk configured")
         process.exit(1);
     }
 
