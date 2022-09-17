@@ -226,7 +226,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
             "flush.size": "1000000",  // 1M
             "rotate.interval.ms": "3600000",  // 1H
-            "topics.dir": "daily_msk",
+            "topics.dir": "daily",
 
             // The following are required by TimeBasedPartitioner.
             //
