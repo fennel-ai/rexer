@@ -23,56 +23,27 @@ export type topicConf = {
 }
 
 const DEFAULT_PARTITIONS = 1;
-const DEFAULT_REPLICATION_FACTOR = 3;
 const DEFAULT_MSK_REPLICATION_FACTOR = 2;
 
 export type inputType = {
-    apiKey: string,
-    apiSecret: pulumi.Output<string>
     topics: topicConf[],
-    bootstrapServer: string,
     protect: boolean,
 
-    mskApiKey?: string,
-    mskApiSecret?: string,
-    mskBootstrapServers?: string,
+    mskApiKey: string,
+    mskApiSecret: string,
+    mskBootstrapServers: string,
 }
 
 export type outputType = {
-    topics: kafka.Topic[],
     mskTopics: kafka.Topic[],
 }
 
 export const setup = async (input: inputType) => {
-    const kafkaProvider = new kafka.Provider("kafka-provider", {
-        bootstrapServers: [input.bootstrapServer],
-        saslUsername: input.apiKey,
-        saslPassword: input.apiSecret,
-        saslMechanism: "plain",
-        tlsEnabled: true,
-    })
-
-    const topics = input.topics.map((topic) => {
-        const config = {
-            "retention.ms": topic.retention_ms,
-            "retention.bytes": topic.partition_retention_bytes,
-        };
-        return new kafka.Topic(`topic-${topic.name}`, {
-            name: topic.name,
-            partitions: topic.partitions || DEFAULT_PARTITIONS,
-            // We set replication factor to 3 regardless of the cluster availability
-            // since that's the minimum required by confluent cloud:
-            // https://github.com/Mongey/terraform-provider-kafka/issues/40#issuecomment-456897983
-            replicationFactor: topic.replicationFactor || DEFAULT_REPLICATION_FACTOR,
-            config: config,
-        }, { provider: kafkaProvider, protect: input.protect })
-    })
-
-    const bootstrapServers = input.mskBootstrapServers!.split(",");
+    const bootstrapServers = input.mskBootstrapServers.split(",");
     const mskKafkaProvider = new kafka.Provider("msk-kafka-provider", {
         bootstrapServers: bootstrapServers,
-        saslUsername: input.mskApiKey!,
-        saslPassword: input.mskApiSecret!,
+        saslUsername: input.mskApiKey,
+        saslPassword: input.mskApiSecret,
         saslMechanism: "scram-sha512",
     });
 
@@ -91,7 +62,6 @@ export const setup = async (input: inputType) => {
     });
 
     const output: outputType = {
-        topics: topics,
         mskTopics: mskTopics,
     }
     return output

@@ -117,18 +117,11 @@ type inputType = {
     connectedSecurityGroups: Record<string, string>,
     // kafka configuration.
     topics: kafkatopics.topicConf[],
-    bootstrapServer: string,
-    kafkaApiKey: string,
-    kafkaApiSecret: pulumi.Output<string>,
 
     // msk configuration
     mskConf: TierMskConf,
 
     // kafka connectors configuration
-    confUsername: string,
-    confPassword: string,
-    clusterId: string,
-    environmentId: string,
     connUserAccessKey: string,
     connUserSecret: string,
     connBucketName: string,
@@ -183,17 +176,10 @@ const parseConfig = (): inputType => {
         tierId: config.requireNumber(nameof<inputType>("tierId")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
 
-        bootstrapServer: config.require(nameof<inputType>("bootstrapServer")),
         topics: config.requireObject(nameof<inputType>("topics")),
-        kafkaApiKey: config.require(nameof<inputType>("kafkaApiKey")),
-        kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
         mskConf: config.requireObject(nameof<inputType>("mskConf")),
 
-        confUsername: config.require(nameof<inputType>("confUsername")),
-        confPassword: config.require(nameof<inputType>("confPassword")),
-        clusterId: config.require(nameof<inputType>("clusterId")),
-        environmentId: config.require(nameof<inputType>("environmentId")),
         connUserAccessKey: config.require(nameof<inputType>("connUserAccessKey")),
         connUserSecret: config.require(nameof<inputType>("connUserSecret")),
         connBucketName: config.require(nameof<inputType>("connBucketName")),
@@ -286,10 +272,7 @@ const setupResources = async () => {
     const input = parseConfig();
     // setup kakfa topics.
     const kafkaTopic = await kafkatopics.setup({
-        apiKey: input.kafkaApiKey,
-        apiSecret: input.kafkaApiSecret,
         topics: input.topics,
-        bootstrapServer: input.bootstrapServer,
         protect: input.protect,
 
         mskApiKey: input.mskConf.mskUsername,
@@ -309,12 +292,6 @@ const setupResources = async () => {
         roleArn: input.roleArn,
         vpcId: input.vpcId,
         protect: input.protect,
-        username: input.confUsername,
-        password: input.confPassword,
-        clusterId: input.clusterId,
-        environmentId: input.environmentId,
-        kafkaApiKey: input.kafkaApiKey,
-        kafkaApiSecret: input.kafkaApiSecret,
         awsAccessKeyId: input.connUserAccessKey,
         awsSecretAccessKey: input.connUserSecret,
         s3BucketName: input.connBucketName,
@@ -335,12 +312,6 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         vpcId: input.vpcId,
-        username: input.confUsername,
-        password: input.confPassword,
-        clusterId: input.clusterId,
-        environmentId: input.environmentId,
-        kafkaApiKey: input.kafkaApiKey,
-        kafkaApiSecret: input.kafkaApiSecret,
         awsAccessKeyId: offlineAggregateStorageBucket.userAccessKeyId,
         awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
         s3BucketName: offlineAggregateStorageBucket.bucketName,
@@ -450,8 +421,8 @@ const setupResources = async () => {
 
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
-        [input.dbPassword, input.kafkaApiSecret, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
-        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames, offlineAggregateOutputBucket.bucketName, airbyteEndpoint]).apply(async ([dbPassword, kafkaPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames, offlineAggrOutputBucket, airbyteServerEndpoint]) => {
+        [input.dbPassword, sagemakerOutput.roleArn, sagemakerOutput.subnetIds,
+        sagemakerOutput.securityGroup, offlineAggregateGlueJobOutput.jobNames, offlineAggregateOutputBucket.bucketName, airbyteEndpoint]).apply(async ([dbPassword, sagemakerRole, subnetIds, sagemakerSg, jobNames, offlineAggrOutputBucket, airbyteServerEndpoint]) => {
             // transform jobname map to string with the format `key1=val1 key2=val2`
             let jobNamesStr = "";
             Object.entries(jobNames).forEach(([agg, jobName]) => jobNamesStr += `${agg}=${jobName},`);
@@ -477,11 +448,6 @@ const setupResources = async () => {
                     "db": input.db,
                     "username": input.dbUsername,
                     "password": dbPassword,
-                } as Record<string, string>),
-                kafkaConfig: pulumi.output({
-                    "server": input.bootstrapServer,
-                    "username": input.kafkaApiKey,
-                    "password": kafkaPassword,
                 } as Record<string, string>),
                 mskConfig: pulumi.output({
                     "mskServers": input.mskConf.bootstrapBrokers,
@@ -669,18 +635,11 @@ type TierInput = {
     planeId: number,
     // kafka configuration.
     topics: kafkatopics.topicConf[],
-    bootstrapServer: string,
-    kafkaApiKey: string,
-    kafkaApiSecret: string,
 
     // msk configuration
     mskConf: TierMskConf,
 
     // connector configuration
-    confUsername: string,
-    confPassword: string,
-    clusterId: string,
-    environmentId: string,
     connUserAccessKey: string,
     connUserSecret: string,
     connBucketName: string,
@@ -787,21 +746,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("tierId"), { value: String(args.tierId) })
     await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })
 
-    await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
-    await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
-    await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
     await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })
 
     await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
 
-    await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
-    await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })
-    await stack.setConfig(nameof<inputType>("kafkaApiSecret"), { value: args.kafkaApiSecret, secret: true })
-
-    await stack.setConfig(nameof<inputType>("confUsername"), { value: args.confUsername })
-    await stack.setConfig(nameof<inputType>("confPassword"), { value: args.confPassword })
-    await stack.setConfig(nameof<inputType>("clusterId"), { value: args.clusterId })
-    await stack.setConfig(nameof<inputType>("environmentId"), { value: args.environmentId })
     await stack.setConfig(nameof<inputType>("connUserAccessKey"), { value: args.connUserAccessKey })
     await stack.setConfig(nameof<inputType>("connUserSecret"), { value: args.connUserSecret })
     await stack.setConfig(nameof<inputType>("connBucketName"), { value: args.connBucketName })

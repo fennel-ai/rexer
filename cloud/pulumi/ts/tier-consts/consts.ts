@@ -11,33 +11,6 @@ export const serviceEnvs = [
         }
     },
     {
-        name: "KAFKA_SERVER_ADDRESS",
-        valueFrom: {
-            secretKeyRef: {
-                name: "kafka-conf",
-                key: "server",
-            }
-        }
-    },
-    {
-        name: "KAFKA_USERNAME",
-        valueFrom: {
-            secretKeyRef: {
-                name: "kafka-conf",
-                key: "username",
-            }
-        }
-    },
-    {
-        name: "KAFKA_PASSWORD",
-        valueFrom: {
-            secretKeyRef: {
-                name: "kafka-conf",
-                key: "password",
-            }
-        }
-    },
-    {
         name: "MSK_KAFKA_SERVER_ADDRESS",
         valueFrom: {
             secretKeyRef: {
