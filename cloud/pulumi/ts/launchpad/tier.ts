@@ -25,7 +25,6 @@ import * as pprofBucket from "../pprof-bucket";
 import * as tierEksPermissions from "../tier-eks-permissions";
 import * as countersCleanup from "../counters-cleanup";
 import * as unleash from "../unleash";
-import * as mirrorMaker from "../mirror-maker";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -93,7 +92,6 @@ export type TierConf = {
     planeId: number,
     enableNitrous?: boolean,
     topicProducesToConfluent?: boolean,
-    mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
@@ -124,7 +122,6 @@ type inputType = {
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
 
-    mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     topicProducesToConfluent?: boolean,
 
     // msk configuration
@@ -196,7 +193,6 @@ const parseConfig = (): inputType => {
 
         mskConf: config.requireObject(nameof<inputType>("mskConf")),
 
-        mirrorMakerConf: config.getObject(nameof<inputType>("mirrorMakerConf")),
         topicProducesToConfluent: config.getBoolean(nameof<inputType>("topicProducesToConfluent")),
 
         confUsername: config.require(nameof<inputType>("confUsername")),
@@ -305,25 +301,6 @@ const setupResources = async () => {
         mskApiSecret: input.mskConf.mskPassword,
         mskBootstrapServers: input.mskConf.bootstrapBrokers,
     });
-    if (input.mirrorMakerConf) {
-        const mirrorMakerOutput = await mirrorMaker.setup({
-            tierId: input.tierId,
-            roleArn: input.roleArn,
-            region: input.region,
-            kubeconfig: input.kubeconfig,
-
-            topics: input.topics,
-            conf: input.mirrorMakerConf!,
-
-            mskPassword: input.mskConf.mskPassword,
-            mskUsername: input.mskConf.mskUsername,
-            mskBootstrapServers: input.mskConf.bootstrapBrokers,
-
-            confluentPassword: input.kafkaApiSecret,
-            confluentUsername: input.kafkaApiKey,
-            confluentBootstrapServers: input.bootstrapServer,
-        });
-    }
     const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
         region: input.region,
         roleArn: input.roleArn,
@@ -704,7 +681,6 @@ type TierInput = {
     kafkaApiSecret: string,
 
     // create topics in msk
-    mirrorMakerConf?: mirrorMaker.MirrorMakerConf,
     topicProducesToConfluent?: boolean,
 
     // msk configuration
@@ -827,10 +803,6 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })
 
     await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
-
-    if (args.mirrorMakerConf !== undefined) {
-        await stack.setConfig(nameof<inputType>("mirrorMakerConf"), { value: JSON.stringify(args.mirrorMakerConf) });
-    }
 
     if (args.topicProducesToConfluent !== undefined) {
         await stack.setConfig(nameof<inputType>("topicProducesToConfluent"), { value: JSON.stringify(args.topicProducesToConfluent) })
