@@ -55,7 +55,7 @@ func SetupTier(flags tier.TierArgs) error {
 
 	// integration tests should write and read from the MSK cluster - this is because there are no mirrors configured
 	// in this scenario
-	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, append(fkafka.ALL_MSK_TOPICS, fkafka.ALL_CONFLUENT_TOPICS...))
+	return testkafka.SetupKafkaTopics(resource.NewTierScope(flags.TierID), flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, append(fkafka.ALL_TOPICS))
 }
 
 func Teardown(tr tier.Tier) error {
@@ -83,7 +83,7 @@ func Teardown(tr tier.Tier) error {
 func teardownKafkaTopics(tierID ftypes.RealmID, host, username, password, saslMechanism string) error {
 	scope := resource.NewTierScope(tierID)
 	names := make([]string, 0)
-	for _, topic := range append(fkafka.ALL_CONFLUENT_TOPICS, fkafka.ALL_MSK_TOPICS...) {
+	for _, topic := range fkafka.ALL_TOPICS {
 		if reflect.TypeOf(scope) == reflect.TypeOf(topic.Scope) {
 			names = append(names, scope.PrefixedName(topic.Topic))
 		}

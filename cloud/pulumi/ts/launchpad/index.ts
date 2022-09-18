@@ -1237,8 +1237,6 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             kafkaApiKey: confluentOutput.apiKey,
             kafkaApiSecret: confluentOutput.apiSecret,
 
-            topicProducesToConfluent: tierConf.topicProducesToConfluent,
-
             mskConf: mskConf,
 
             confUsername: confluentUsername!,

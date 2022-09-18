@@ -18,8 +18,7 @@ func CreateMockKafka(tierID ftypes.RealmID) (map[string]fkafka.FProducer, tier.K
 	brokerMap := make(map[string]*fkafka.MockBroker)
 	producers := make(map[string]fkafka.FProducer)
 	scope := resource.NewTierScope(tierID)
-	allTopics := append(fkafka.ALL_CONFLUENT_TOPICS, fkafka.ALL_MSK_TOPICS...)
-	for _, topic := range allTopics {
+	for _, topic := range fkafka.ALL_TOPICS {
 		if reflect.TypeOf(scope) != reflect.TypeOf(topic.Scope) {
 			continue
 		}

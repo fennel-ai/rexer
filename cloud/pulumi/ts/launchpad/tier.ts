@@ -91,7 +91,6 @@ export type TierConf = {
     protectResources: boolean,
     planeId: number,
     enableNitrous?: boolean,
-    topicProducesToConfluent?: boolean,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
@@ -121,8 +120,6 @@ type inputType = {
     bootstrapServer: string,
     kafkaApiKey: string,
     kafkaApiSecret: pulumi.Output<string>,
-
-    topicProducesToConfluent?: boolean,
 
     // msk configuration
     mskConf: TierMskConf,
@@ -192,8 +189,6 @@ const parseConfig = (): inputType => {
         kafkaApiSecret: config.requireSecret(nameof<inputType>("kafkaApiSecret")),
 
         mskConf: config.requireObject(nameof<inputType>("mskConf")),
-
-        topicProducesToConfluent: config.getBoolean(nameof<inputType>("topicProducesToConfluent")),
 
         confUsername: config.require(nameof<inputType>("confUsername")),
         confPassword: config.require(nameof<inputType>("confPassword")),
@@ -463,7 +458,6 @@ const setupResources = async () => {
             // remove the last `,`
             jobNamesStr = jobNamesStr.substring(0, jobNamesStr.length - 1);
             console.log(jobNamesStr);
-            const produceToConfluent = input.topicProducesToConfluent || false ? "true": "false";
             return await configs.setup({
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
@@ -488,7 +482,6 @@ const setupResources = async () => {
                     "server": input.bootstrapServer,
                     "username": input.kafkaApiKey,
                     "password": kafkaPassword,
-                    "topicProducesToConfluent": produceToConfluent,
                 } as Record<string, string>),
                 mskConfig: pulumi.output({
                     "mskServers": input.mskConf.bootstrapBrokers,
@@ -680,9 +673,6 @@ type TierInput = {
     kafkaApiKey: string,
     kafkaApiSecret: string,
 
-    // create topics in msk
-    topicProducesToConfluent?: boolean,
-
     // msk configuration
     mskConf: TierMskConf,
 
@@ -803,10 +793,6 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })
 
     await stack.setConfig(nameof<inputType>("mskConf"), { value: JSON.stringify(args.mskConf) });
-
-    if (args.topicProducesToConfluent !== undefined) {
-        await stack.setConfig(nameof<inputType>("topicProducesToConfluent"), { value: JSON.stringify(args.topicProducesToConfluent) })
-    }
 
     await stack.setConfig(nameof<inputType>("bootstrapServer"), { value: args.bootstrapServer })
     await stack.setConfig(nameof<inputType>("kafkaApiKey"), { value: args.kafkaApiKey })

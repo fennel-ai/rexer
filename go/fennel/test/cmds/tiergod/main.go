@@ -41,9 +41,6 @@ func main() {
 			panic(err)
 		}
 	case "prune":
-		if err := pruneKafka(args.KafkaServer, args.KafkaUsername, args.KafkaPassword, fkafka.SaslPlainMechanism); err != nil {
-			panic(err)
-		}
 		if err := pruneKafka(args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, fkafka.SaslScramSha512Mechanism); err != nil {
 			panic(err)
 		}
