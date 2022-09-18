@@ -1,7 +1,19 @@
+{ pkgs ? import <nixpkgs> {} }:
 let
   unstable = import (fetchTarball https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz) { };
+  # Packages for python development
+  # We install python 3.9 instead of 3.10 because of a known
+  # compatibility issue between the nix version of poetry (1.1.12)
+  # and python 3.10 (https://github.com/python-poetry/poetry/issues/4210)
+  my-python = pkgs.python39Full;
+  python-with-my-packages = my-python.withPackages (p: with p; [
+    pandas
+    requests
+    cloudpickle
+    pip
+    # other python packages you want
+  ]);
 in
-{ pkgs ? import <nixpkgs> {} }:
 
 with pkgs; mkShell {
   buildInputs = [
@@ -33,14 +45,9 @@ with pkgs; mkShell {
     # `act` is used to run and test github actions locally.
     pkgs.act
 
-    # Packages for python development
-    # We install python 3.9 instead of 3.10 because of a known
-    # compatibility issue between the nix version of poetry (1.1.12)
-    # and python 3.10 (https://github.com/python-poetry/poetry/issues/4210)
-    pkgs.python39Full
+    python-with-my-packages
     pkgs.poetry
     pkgs.pipenv
-
     # Packages for javascript development
     pkgs.nodejs
 
@@ -68,6 +75,7 @@ with pkgs; mkShell {
     pkgs.delta # A syntax-highlighting pager for git
     pkgs.wget
     pkgs.inetutils
+    pkgs.bash
 
     # Tools to visualize pprof output.
     pkgs.graphviz
@@ -75,5 +83,8 @@ with pkgs; mkShell {
   shellHook =
   ''
     source bash.rc
-  '';
+    export PIP_PREFIX="$(pwd)/_build/pip_packages"
+    export PYTHONPATH="$(pwd)/_build/pip_packages/lib/python3.9/site-packages:$PYTHONPATH"
+    unset SOURCE_DATE_EPOCH
+   '';
 }

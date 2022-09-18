@@ -3,6 +3,7 @@ package aggregate
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fennel/controller/counter"
 	"fennel/engine"
 	"fennel/engine/ast"
@@ -17,8 +18,10 @@ import (
 	"fennel/lib/value"
 	"fennel/tier"
 	"fmt"
+	"github.com/buger/jsonparser"
 	"io"
 	"os"
+	"os/exec"
 	"time"
 
 	"go.uber.org/zap"
@@ -342,7 +345,13 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 
 // Update the aggregates given a kafka consumer responsible for reading any stream
 func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tier.Tier, items []I, agg aggregate.Aggregate) error {
-	table, err := Transform(tier, items, agg.Query)
+	var table value.List
+	var err error
+	if agg.Mode == aggregate.RQL {
+		table, err = Transform(tier, items, agg.Query)
+	} else if agg.Mode == aggregate.PANDAS {
+		table, err = TransformPandas(tier, items, agg.PythonQuery)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to Transform actions: %w", err)
 	}
@@ -438,6 +447,41 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 		return err
 	}
 	return nil
+}
+
+func TransformPandas(tier tier.Tier, items any, query []byte) (value.List, error) {
+	cmd := exec.Command("pwd")
+	out, err := cmd.Output()
+	if err != nil {
+		return value.NewList(), fmt.Errorf("failed to get pwd: %w", err)
+	}
+	// Transform the items
+	jsonPayload, err := json.Marshal(items)
+	if err != nil {
+		return value.NewList(), fmt.Errorf("failed to marshal items to json: %w", err)
+	}
+	cmd = exec.Command("python3", "controller/aggregate/transform_pandas.py", string(jsonPayload), string(query))
+	out, err = cmd.Output()
+	if err != nil {
+		return value.NewList(), fmt.Errorf("failed to execute python script: %w", err)
+	}
+	fmt.Println("TransformPandas: ------------------")
+	fmt.Println(string(out))
+	// Strip start and end quotes
+	transformedValues, err := value.ParseJSON(out, jsonparser.Array)
+	if err != nil {
+		return value.NewList(), fmt.Errorf("error in converting json to values: %v", err)
+	}
+	// Convert output JSON to valueList
+	// Transform the items using the query
+	ret, ok := transformedValues.(value.List)
+	if !ok {
+		return value.NewList(), fmt.Errorf("failed to convert transformed values to value.List")
+	}
+	fmt.Println("TransformValues: ------------------")
+	fmt.Println(ret)
+	fmt.Println("==========================================")
+	return ret, nil
 }
 
 func Transform(tier tier.Tier, items any, query ast.Ast) (value.List, error) {

@@ -228,6 +228,18 @@ func ToList(actions []Action) (value.List, error) {
 	return table, nil
 }
 
+func ToJsonList(actions []Action) ([][]byte, error) {
+	res := make([][]byte, len(actions))
+	for i, action := range actions {
+		actionJson, err := action.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		res[i] = actionJson
+	}
+	return res, nil
+}
+
 func (a Action) MarshalJSON() ([]byte, error) {
 	type Action_ Action
 	a_ := Action_(a)

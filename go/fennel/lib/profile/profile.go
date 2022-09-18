@@ -194,6 +194,18 @@ func FromValueDict(dict value.Dict) (ProfileItem, error) {
 	return pi, nil
 }
 
+func ToJsonList(items []ProfileItem) ([][]byte, error) {
+	res := make([][]byte, len(items))
+	for i, item := range items {
+		data, err := item.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		res[i] = data
+	}
+	return res, nil
+}
+
 // ToList takes a list of profiles and arranges that in a value.List
 // else returns errors
 func ToList(profiles []ProfileItem) (value.List, error) {

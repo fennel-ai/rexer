@@ -20,6 +20,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		Query     string           `json:"Query"`
 		Timestamp ftypes.Timestamp `json:"Timestamp"`
 		Source    ftypes.Source    `json:"Source"`
+		Mode      string           `json:"Mode"`
 		Options   struct {
 			AggType         string        `json:"Type"`
 			Durations       []uint32      `json:"Durations"`
@@ -40,6 +41,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	agg.Active = fields.Active
 	agg.Timestamp = fields.Timestamp
 	agg.Source = fields.Source
+	agg.Mode = fields.Mode
 	agg.Options.AggType = ftypes.AggType(fields.Options.AggType)
 	agg.Options.Durations = fields.Options.Durations
 	agg.Options.Window = fields.Options.Window
@@ -49,13 +51,21 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	agg.Options.Dim = fields.Options.Dim
 	agg.Options.HyperParameters = fields.Options.HyperParameters
 	// Extract query now
-	querySer, err := base64.StdEncoding.DecodeString(fields.Query)
 	if err != nil {
 		return fmt.Errorf("error decoding ast from base64: %v", err)
 	}
-	err = ast.Unmarshal(querySer, &agg.Query)
-	if err != nil {
-		return fmt.Errorf("error unmarshalling ast: %v", err)
+	if agg.Mode == RQL {
+		// Extract query now
+		querySer, err := base64.StdEncoding.DecodeString(fields.Query)
+		err = ast.Unmarshal(querySer, &agg.Query)
+		if err != nil {
+			return fmt.Errorf("error unmarshalling ast: %v", err)
+		}
+	} else if agg.Mode == PANDAS {
+		agg.PythonQuery = []byte(fields.Query)
+	} else {
+		return fmt.Errorf("unknown mode: %v", agg.Mode)
+
 	}
 	return nil
 }

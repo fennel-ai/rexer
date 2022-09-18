@@ -2,13 +2,26 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fennel/airbyte"
+	"fennel/engine"
+	"fennel/engine/interpreter/bootarg"
+	httplib "fennel/lib/http"
+	"fennel/lib/query"
+	"fennel/lib/timer"
 	"fennel/lib/usage"
 	"fennel/lib/value"
 	"fmt"
+	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
 	action2 "fennel/controller/action"
@@ -21,6 +34,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	"fennel/lib/profile"
+	profilelib "fennel/lib/profile"
 
 	connector "fennel/controller/data_integration"
 	"fennel/lib/data_integration"
@@ -38,6 +52,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
+
+const INT_REST_VERSION = "/internal/v1"
 
 var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "aggregator_backlog",
@@ -64,6 +80,89 @@ var aggregate_errors = promauto.NewCounterVec(
 		Name: "aggregate_errors",
 		Help: "Stats on aggregate failures",
 	}, []string{"aggregate"})
+
+//
+type server struct {
+	tier tier.Tier
+}
+
+func (s server) setHandlers(router *mux.Router) {
+	//--------------------------------Version Based Apis--------------------------------------------------
+	// Format is <version>/<resource>/<verb>
+	// ----------------------------------------/v1--------------------------------------------------------
+
+	router.HandleFunc(INT_REST_VERSION+"/profiles", s.GetProfileMulti).Methods("GET")
+
+	router.HandleFunc(INT_REST_VERSION+"/query", s.Query).Methods("POST")
+}
+
+func readRequest(req *http.Request) ([]byte, error) {
+	defer req.Body.Close()
+	return ioutil.ReadAll(req.Body)
+}
+
+func handleBadRequest(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusBadRequest)
+	log.Printf("Error: %v", err)
+}
+
+func handleInternalServerError(w http.ResponseWriter, errorPrefix string, err error) {
+	http.Error(w, fmt.Sprintf("%s%v", errorPrefix, err), http.StatusInternalServerError)
+	log.Printf("Error: %v", err)
+}
+
+func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var request []profilelib.ProfileItemKey
+	if err := json.Unmarshal(data, &request); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	// send to controller
+	profiles, err := profile2.GetBatch(req.Context(), m.tier, request)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	fmt.Println("profiles countaggr", profiles)
+	ser, err := json.Marshal(profiles)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	_, _ = w.Write(ser)
+}
+
+func (m server) Query(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	cCtx, span := timer.Start(req.Context(), m.tier.ID, "server.Query")
+	defer span.Stop()
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	_, querySpan := timer.Start(cCtx, m.tier.ID, "query.FromBoundQueryJSON")
+	tree, args, _, err := query.FromBoundQueryJSON(data)
+	querySpan.Stop()
+	if err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+
+	// execute the tree
+	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
+	ret, err := executor.Exec(cCtx, tree, args)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	_, _ = w.Write(value.ToJSON(ret))
+
+}
 
 func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan struct{}) error {
 	var consumer kafka.FConsumer
@@ -133,12 +232,12 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					}
 				} else {
 					timeout := time.Second * 10
-					count := 5000
+					count := 10
 					if agg.IsOffline() {
 						timeout = time.Second * 30
 					}
 					if agg.IsAutoML() {
-						count = 1000000
+						count = 100000
 						timeout = time.Minute * 5
 					}
 					actions, err := action2.ReadBatch(ctx, consumer, count, timeout)
@@ -381,39 +480,41 @@ func startProfileDBInsertion(tr tier.Tier) error {
 }
 
 func startAggregateProcessing(tr tier.Tier) error {
-	// Map from aggregate name to channel to stop the aggregate processing.
-	processedAggregates := make(map[ftypes.AggName]chan<- struct{})
-	ticker := time.NewTicker(time.Second * 15)
-	for ; true; <-ticker.C {
-		aggs, err := aggregate.RetrieveActive(context.Background(), tr)
-		if err != nil {
-			return err
-		}
-		if unleash.IsEnabled("disable-aggregates") {
-			aggregates_disabled.Set(float64(1))
-			continue
-		}
-		aggNames := make(map[ftypes.AggName]struct{}, len(aggs))
-		for _, agg := range aggs {
-			aggNames[agg.Name] = struct{}{}
-			if _, ok := processedAggregates[agg.Name]; !ok {
-				log.Printf("Retrieved a new aggregate: %s", agg.Name)
-				ch := make(chan struct{})
-				err := processAggregate(tr, agg, ch)
-				if err != nil {
-					tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
+	go func(tr tier.Tier) {
+		// Map from aggregate name to channel to stop the aggregate processing.
+		processedAggregates := make(map[ftypes.AggName]chan<- struct{})
+		ticker := time.NewTicker(time.Second * 15)
+		for ; true; <-ticker.C {
+			aggs, err := aggregate.RetrieveActive(context.Background(), tr)
+			if err != nil {
+				tr.Logger.Error("error while retrieving active aggregates", zap.Error(err))
+			}
+			if unleash.IsEnabled("disable-aggregates") {
+				aggregates_disabled.Set(float64(1))
+				continue
+			}
+			aggNames := make(map[ftypes.AggName]struct{}, len(aggs))
+			for _, agg := range aggs {
+				aggNames[agg.Name] = struct{}{}
+				if _, ok := processedAggregates[agg.Name]; !ok {
+					log.Printf("Retrieved a new aggregate: %s", agg.Name)
+					ch := make(chan struct{})
+					err := processAggregate(tr, agg, ch)
+					if err != nil {
+						tr.Logger.Error("Could not start aggregate processing", zap.String("aggregateName", string(agg.Name)), zap.Error(err))
+					}
+					processedAggregates[agg.Name] = ch
 				}
-				processedAggregates[agg.Name] = ch
+			}
+			// Stop processing any aggregates that are no longer active.
+			for a := range processedAggregates {
+				if _, ok := aggNames[a]; !ok {
+					close(processedAggregates[a])
+					delete(processedAggregates, a)
+				}
 			}
 		}
-		// Stop processing any aggregates that are no longer active.
-		for a := range processedAggregates {
-			if _, ok := aggNames[a]; !ok {
-				close(processedAggregates[a])
-				delete(processedAggregates, a)
-			}
-		}
-	}
+	}(tr)
 	return nil
 }
 
@@ -485,6 +586,13 @@ func startConnectorProcessing(tr tier.Tier) error {
 	return nil
 }
 
+func installPythonPackages(tier tier.Tier) error {
+	cmd := exec.Command("pip3", "install", "--extra-index-url=https://token:e117e0d0267d75d4bd73bb8ca0c5b5819b9a549f@api.packagr.app/mVIM1fJ", "rexerclient==0.24.2")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func main() {
 	// seed random number generator so that all uses of rand work well
 	rand.Seed(time.Now().UnixNano())
@@ -537,5 +645,53 @@ func main() {
 	if err = startAggregateProcessing(tr); err != nil {
 		panic(err)
 	}
+	// Install python packages.
+	//go func() {
+	err = installPythonPackages(tr)
+	if err != nil {
+		panic(err)
+	}
+	//}()
 
+	// Start a server to handle incoming requests for profile and aggregate requests.
+
+	router := mux.NewRouter()
+	controller := server{tier: tr}
+	controller.setHandlers(router)
+
+	addr := fmt.Sprintf(":%d", httplib.COUNTAGG_PORT)
+	log.Printf("starting countaggr http service on %s...", addr)
+
+	stopped := make(chan os.Signal, 1)
+	signal.Notify(stopped, syscall.SIGTERM, syscall.SIGINT)
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: router,
+	}
+	go func() {
+		// `ListenAndServer` listens on the TCP network address at `srv.Addr` and then calls Server to handle
+		// requests on incoming connections
+		if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("Serve(): %v", err)
+		}
+	}()
+
+	log.Println("Countaggr HTTP server is ready...")
+
+	<-stopped
+	log.Println("Countaggr HTTP server stopped...")
+	cmd := exec.Command("deactivate")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Countaggr HTTP server shutdown failed: %v", err)
+	}
+	log.Println("Countaggr HTTP server exited properly...")
 }

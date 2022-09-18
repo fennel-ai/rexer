@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	PORT = 2425
+	PORT          = 2425
+	COUNTAGG_PORT = 3425
 )
 
 // TODO: write a test

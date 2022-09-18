@@ -522,6 +522,8 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
+	fmt.Println("profiles query", profiles)
+
 	ser, err := json.Marshal(profiles)
 	if err != nil {
 		handleInternalServerError(w, "", err)
