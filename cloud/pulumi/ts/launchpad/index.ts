@@ -72,8 +72,6 @@ const tierConfs: Record<number, TierConf> = {
             }
         },
         enableNitrous: true,
-        topicProducesToConfluent: true,
-        mirrorMakerConf: {},
     },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
@@ -187,18 +185,6 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
-        topicProducesToConfluent: true,
-        mirrorMakerConf: {
-            // the tasks will be split among them
-            replicas: 1,
-            sourceConnectorTasks: 10,
-            // consumer groups for action log is high
-            checkpointConnectorTasks: 10,
-            cpuRequests: "2",
-            cpuLimits: "4",
-            memoryRequests: "3Gi",
-            memoryLimits: "8Gi",
-        },
         airbyteConf: {},
     },
     // Convoy staging tier using Fennel's staging data plane.
@@ -287,8 +273,6 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
-        mirrorMakerConf: {},
-        topicProducesToConfluent: true,
     },
     // Yext demo tier
     115: {
@@ -562,9 +546,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // consider expanding this in the future if each broker needs more storage capacity
             storageVolumeSizeGiB: 128,
         },
-
-        // setup strimzi
-        strimziConf: {},
     },
     // Lokal's prod tier data plane
     5: {
@@ -817,9 +798,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numberOfBrokerNodes: 4,
             storageVolumeSizeGiB: 1636,
         },
-
-        // setup strimzi
-        strimziConf: {},
     },
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
@@ -894,8 +872,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
-        // setup strimzi
-        strimziConf: {},
     },
     10: {
         protectResources: true,
@@ -970,8 +946,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
-        // setup strimzi
-        strimziConf: {},
     },
 }
 
