@@ -13,7 +13,6 @@ export type inputType = {
     redisConfig: pulumi.Input<Record<string, string>>,
     cacheConfig: pulumi.Input<Record<string, string>>,
     dbConfig: pulumi.Input<Record<string, string>>,
-    kafkaConfig: pulumi.Input<Record<string, string>>,
     mskConfig: pulumi.Input<Record<string, string>>,
     modelServingConfig: pulumi.Input<Record<string, string>>,
     glueConfig: pulumi.Input<Record<string, string>>,
@@ -45,13 +44,6 @@ export const setup = async (input: inputType) => {
         stringData: input.cacheConfig,
         metadata: {
             name: "cache-conf"
-        }
-    }, { provider, deleteBeforeReplace: true })
-
-    const kafkaCreds = new k8s.core.v1.Secret("kafka-config", {
-        stringData: input.kafkaConfig,
-        metadata: {
-            name: "kafka-conf",
         }
     }, { provider, deleteBeforeReplace: true })
 

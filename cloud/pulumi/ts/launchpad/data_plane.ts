@@ -9,7 +9,6 @@ import * as account from "../account";
 import * as aurora from "../aurora";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
-import * as confluentenv from "../confluentenv";
 import * as telemetry from "../telemetry";
 import * as prometheus from "../prometheus";
 import * as connectorSink from "../connectorsink";
@@ -119,7 +118,6 @@ export type DataPlaneConf = {
     vpcConf: VpcConfig,
     mskConf: MskConf,
     dbConf: util.DBConfig,
-    confluentConf: util.ConfluentConfig,
     controlPlaneConf: vpc.controlPlaneConfig,
     redisConf?: RedisConfig,
     cacheConf?: CacheConfg,
@@ -142,7 +140,6 @@ export type PlaneOutput = {
     vpc: vpc.outputType,
     redis: redis.outputType,
     elasticache: elasticache.outputType,
-    confluent: confluentenv.outputType,
     db: aurora.outputType,
     postgresDb: postgres.outputType,
     prometheus: prometheus.outputType,
@@ -172,7 +169,6 @@ const setupPlugins = async (stack: pulumi.automation.Stack) => {
         ...aurora.plugins,
         ...elasticache.plugins,
         ...redis.plugins,
-        ...confluentenv.plugins,
         ...telemetry.plugins,
         ...connectorSink.plugins,
         ...glueSource.plugins,
@@ -319,13 +315,6 @@ const setupResources = async () => {
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         protect: input.protectResources,
     });
-    const confluentOutput = await confluentenv.setup({
-        region: input.region,
-        username: input.confluentConf.username,
-        password: pulumi.output(input.confluentConf.password),
-        envName: `plane-${input.planeId}`,
-        protect: input.protectResources,
-    })
     const connectorSinkOutput = await connectorSink.setup({
         region: input.region,
         roleArn: roleArn,
@@ -419,7 +408,6 @@ const setupResources = async () => {
         vpc: vpcOutput,
         redis: redisOutput,
         elasticache: elasticacheOutput,
-        confluent: confluentOutput,
         db: auroraOutput,
         postgresDb: postgresDbOutput,
         trainingData: connectorSinkOutput,
