@@ -43,7 +43,7 @@ func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	t.Setenv("PLANE_ID", fmt.Sprintf("%d", p.PlaneID))
 	// Create plane-level kafka topics.
 	scope := resource.NewPlaneScope(p.PlaneID)
-	err = kafka.SetupKafkaTopics(scope, flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_MSK_TOPICS)
+	err = kafka.SetupKafkaTopics(scope, flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_TOPICS)
 	assert.NoError(t, err)
 
 	return TestNitrous{

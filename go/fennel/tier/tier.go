@@ -48,16 +48,10 @@ type TierArgs struct {
 	milvus.MilvusArgs           `json:"milvus_._milvus_args"`
 
 	Region        string `arg:"--aws-region,env:AWS_REGION" json:"aws_region,omitempty"`
-	KafkaServer   string `arg:"--kafka-server,env:KAFKA_SERVER_ADDRESS" json:"kafka_server,omitempty"`
-	KafkaUsername string `arg:"--kafka-user,env:KAFKA_USERNAME" json:"kafka_username,omitempty"`
-	KafkaPassword string `arg:"--kafka-password,env:KAFKA_PASSWORD" json:"kafka_password,omitempty"`
 	// MSK configuration
 	MskKafkaServer   string `arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
 	MskKafkaUsername string `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
 	MskKafkaPassword string `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
-
-	// TODO(mohit): remove this once no one else set's the value false
-	ProduceToConfluent 	 bool  `arg:"--produce-to-confluent,env:PRODUCE_TO_CONFLUENT" json:"produce_to_confluent,omitempty"`
 
 	MysqlHost        string         `arg:"--mysql-host,env:MYSQL_SERVER_ADDRESS" json:"mysql_host,omitempty"`
 	MysqlDB          string         `arg:"--mysql-db,env:MYSQL_DATABASE_NAME" json:"mysql_db,omitempty"`
@@ -82,15 +76,6 @@ type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, err
 
 func (args TierArgs) Valid() error {
 	missingFields := make([]string, 0)
-	if args.KafkaServer == "" {
-		missingFields = append(missingFields, "KAFKA_SERVER")
-	}
-	if args.KafkaUsername == "" {
-		missingFields = append(missingFields, "KAFKA_USERNAME")
-	}
-	if args.KafkaPassword == "" {
-		missingFields = append(missingFields, "KAFKA_PASSWORD")
-	}
 	if args.MskKafkaServer == "" {
 		missingFields = append(missingFields, "MSK_KAFKA_SERVER")
 	}
@@ -268,22 +253,9 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	}()
 
 	logger.Info("Creating kafka producers")
-	var producers map[string]libkafka.FProducer
-	if args.ProduceToConfluent {
-		producers, err = CreateKafka(tierID, args.PlaneID, args.KafkaServer, args.KafkaUsername, args.KafkaPassword, libkafka.SaslPlainMechanism, libkafka.ALL_CONFLUENT_TOPICS)
-	} else {
-		producers, err = CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_CONFLUENT_TOPICS)
-	}
+	producers, err := CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_TOPICS)
 	if err != nil {
 		return tier, fmt.Errorf("failed to create producers for confluent based kafka topics: %v", err)
-	}
-	mskProducers, err := CreateKafka(tierID, args.PlaneID, args.MskKafkaServer, args.MskKafkaUsername, args.MskKafkaPassword, libkafka.SaslScramSha512Mechanism, libkafka.ALL_MSK_TOPICS)
-	if err != nil {
-		return tier, fmt.Errorf("failed to create producers for msk based kafka topics: %v", err)
-	}
-	// merge both producers
-	for k, v := range mskProducers {
-		producers[k] = v
 	}
 
 	logger.Info("Creating kafka consumer factory")

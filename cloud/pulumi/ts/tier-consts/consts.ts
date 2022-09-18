@@ -38,15 +38,6 @@ export const serviceEnvs = [
         }
     },
     {
-        name: "PRODUCE_TO_CONFLUENT",
-        valueFrom: {
-            secretKeyRef: {
-                name: "kafka-conf",
-                key: "topicProducesToConfluent",
-            }
-        }
-    },
-    {
         name: "MSK_KAFKA_SERVER_ADDRESS",
         valueFrom: {
             secretKeyRef: {
