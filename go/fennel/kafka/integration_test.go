@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	test_kafka_servers = "b-1.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-2.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096"
+	test_kafka_servers = "b-2.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-1.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-3.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096"
 	kafka_username     = "p-2-username"
 	kafka_password     = "p-2-password"
 	kafka_sasl_mechanism = "SCRAM-SHA-512"
