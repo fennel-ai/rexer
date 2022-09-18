@@ -107,7 +107,6 @@ func uploadFilesToBucket(s3Client s3.Client, gorDir, bucketName string) error {
 
 func Query(w http.ResponseWriter, req *http.Request) {
 	// do nothing here
-	zap.L().Info("got request", zap.String("host", req.Host), zap.String("method", req.Method))
 	w.WriteHeader(http.StatusOK)
 }
 
