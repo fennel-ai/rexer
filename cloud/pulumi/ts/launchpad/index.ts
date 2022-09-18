@@ -8,7 +8,6 @@ import * as aurora from "../aurora";
 import * as postgres from "../postgres";
 import * as elasticache from "../elasticache";
 import * as redis from "../redis";
-import * as confluentenv from "../confluentenv";
 import * as connsink from "../connectorsink";
 import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
@@ -43,11 +42,6 @@ const selfServeCustomer: Customer = {
 }
 
 //================ Static data plane / tier configurations =====================
-
-const confluentUsername = process.env.CONFLUENT_CLOUD_USERNAME;
-assert.ok(confluentUsername, "CONFLUENT_CLOUD_USERNAME must be set");
-const confluentPassword = process.env.CONFLUENT_CLOUD_PASSWORD;
-assert.ok(confluentPassword, "CONFLUENT_CLOUD_PASSWORD must be set");
 
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
@@ -385,10 +379,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             password: "foundationdb",
             skipFinalSnapshot: true,
         },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
         controlPlaneConf: controlPlane,
         redisConf: {
             numShards: 1,
@@ -450,10 +440,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             maxCapacity: 4,
             password: "foundationdb",
             skipFinalSnapshot: true,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
         },
         controlPlaneConf: controlPlane,
         redisConf: {
@@ -567,10 +553,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             maxCapacity: 16,
             password: "password",
             skipFinalSnapshot: false,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
         },
         cacheConf: {
             nodeType: "cache.t4g.medium",
@@ -844,10 +826,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             password: "password",
             skipFinalSnapshot: true,
         },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
-        },
         controlPlaneConf: controlPlane,
         redisConf: {
             numShards: 1,
@@ -893,10 +871,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             maxCapacity: 4,
             password: "foundationdb",
             skipFinalSnapshot: true,
-        },
-        confluentConf: {
-            username: confluentUsername,
-            password: confluentPassword
         },
         controlPlaneConf: controlPlane,
         redisConf: {
@@ -1155,7 +1129,6 @@ if (id in dataPlaneConfs) {
 
 async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: DataPlaneConf, preview: boolean, destroy: boolean, unprotect: boolean) {
     const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
-    const confluentOutput = dataplane[nameof<PlaneOutput>("confluent")].value as confluentenv.outputType
     const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
     const postgresDbOutput = dataplane[nameof<PlaneOutput>("postgresDb")].value as postgres.outputType
     const eksOutput = dataplane[nameof<PlaneOutput>("eks")].value as eks.outputType
@@ -1232,17 +1205,9 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             tierId: Number(tierId),
             planeId: Number(planeId),
 
-            bootstrapServer: confluentOutput.bootstrapServer,
             topics: topics,
-            kafkaApiKey: confluentOutput.apiKey,
-            kafkaApiSecret: confluentOutput.apiSecret,
-
             mskConf: mskConf,
 
-            confUsername: confluentUsername!,
-            confPassword: confluentPassword!,
-            clusterId: confluentOutput.clusterId,
-            environmentId: confluentOutput.environmentId,
             connUserAccessKey: trainingDataOutput.userAccessKeyId,
             connUserSecret: trainingDataOutput.userSecretAccessKey,
             connBucketName: trainingDataOutput.bucketName,
