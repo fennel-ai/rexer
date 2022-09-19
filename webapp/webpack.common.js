@@ -11,7 +11,6 @@ module.exports = {
         filename: "[name].js",
         clean: true,
     },
-    devtool: "source-map",
     module: {
         rules: [
             {
