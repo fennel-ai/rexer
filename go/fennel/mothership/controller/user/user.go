@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"html/template"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -148,7 +149,9 @@ func generateToken() string {
 }
 
 func ResendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string, mothership *mothership.Mothership) error {
+	email = normalizeEmail(email)
 	var user userL.User
+
 	result := db.Take(&user, "email = ?", email)
 	if result.Error != nil {
 		return &lib.ErrorUserNotFound
@@ -159,8 +162,8 @@ func ResendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Cl
 
 // TODO(xiao) add a test
 // TODO(xiao) do not regenerate token if sent_at recent enough
-// TODO(xiao) DRY the tmpl file
 func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Client, email string, mothership *mothership.Mothership) error {
+	email = normalizeEmail(email)
 	var user userL.User
 
 	result := db.Take(&user, "email = ?", email)
@@ -211,6 +214,10 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 }
 
 func SignUp(c context.Context, db *gorm.DB, firstName, lastName, email, password string) (userL.User, error) {
+	email = normalizeEmail(email)
+	firstName = strings.TrimSpace(firstName)
+	lastName = strings.TrimSpace(lastName)
+
 	var user userL.User
 
 	if _, err := netmail.ParseAddress(email); err != nil {
@@ -233,6 +240,8 @@ func SignUp(c context.Context, db *gorm.DB, firstName, lastName, email, password
 var REMEMBER_TOKEN_TTL_MICRO = (30 * 24 * time.Hour).Microseconds()
 
 func SignIn(c context.Context, db *gorm.DB, email, password string) (userL.User, error) {
+	email = normalizeEmail(email)
+
 	var user userL.User
 
 	err := db.Take(&user, "email = ?", email).Error
@@ -306,8 +315,8 @@ func Logout(c context.Context, db *gorm.DB, user userL.User) (userL.User, error)
 }
 
 func UpdateUserNames(c context.Context, db *gorm.DB, user userL.User, firstName, lastName string) error {
-	user.FirstName = firstName
-	user.LastName = lastName
+	user.FirstName = strings.TrimSpace(firstName)
+	user.LastName = strings.TrimSpace(lastName)
 	return db.Save(&user).Error
 }
 
@@ -322,4 +331,8 @@ func UpdatePassword(c context.Context, db *gorm.DB, user userL.User, currentPass
 	user.EncryptedPassword = newHash
 	err = db.Save(&user).Error
 	return user, err
+}
+
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
