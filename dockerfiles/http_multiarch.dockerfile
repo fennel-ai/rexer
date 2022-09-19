@@ -10,7 +10,7 @@
 # these build stages will act as the foundation for the executor build stages
 
 # builder_arm64
-FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS builder_arm64
+FROM --platform=$TARGETPLATFORM golang:1.19-bullseye AS builder_arm64
 RUN apt -y update && apt -y install libssl-dev libzstd-dev
 WORKDIR /kafka
 RUN git clone https://github.com/edenhill/librdkafka.git
@@ -24,7 +24,7 @@ WORKDIR /app/go/fennel
 RUN go build -tags dynamic -o server fennel/service/http
 
 # builder_amd64
-FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS builder_amd64
+FROM --platform=$TARGETPLATFORM golang:1.19-bullseye AS builder_amd64
 WORKDIR /app
 COPY go/fennel/ ./
 WORKDIR /app/go/fennel
@@ -38,7 +38,7 @@ RUN go build -o server fennel/service/http
 # these build stages are later used in the runner build stage
 
 # executor_arm64
-FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS executor_arm64
+FROM --platform=$TARGETPLATFORM golang:1.19-bullseye AS executor_arm64
 RUN touch /etc/ld.so.conf.d/librdkafka.conf
 WORKDIR /kafka/lib
 COPY --from=builder_arm64 /usr/local/lib .
@@ -48,7 +48,7 @@ COPY --from=builder_arm64 /app/go/fennel/server ./
 RUN ldconfig
 
 # executor_amd64
-FROM --platform=$TARGETPLATFORM golang:1.18-bullseye AS executor_amd64
+FROM --platform=$TARGETPLATFORM golang:1.19-bullseye AS executor_amd64
 WORKDIR /root/
 COPY --from=builder_amd64 /app/go/fennel/server ./
 
