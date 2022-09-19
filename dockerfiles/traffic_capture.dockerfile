@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=linux/arm64 golang:1.18-bullseye AS builder
+FROM --platform=linux/arm64 golang:1.19-bullseye AS builder
 RUN apt update -y && apt install flex bison -y
 RUN wget http://www.tcpdump.org/release/libpcap-1.7.4.tar.gz && tar xzf libpcap-1.7.4.tar.gz && cd libpcap-1.7.4 && ./configure && make install
 WORKDIR /trafficcapture
@@ -9,7 +9,7 @@ COPY go/fennel/ ./
 WORKDIR /app/go/fennel
 RUN go build -o server fennel/service/trafficcapture
 
-FROM --platform=linux/arm64 golang:1.18-bullseye
+FROM --platform=linux/arm64 golang:1.19-bullseye
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/server ./
 COPY --from=builder /trafficcapture/goreplay/gor ./
