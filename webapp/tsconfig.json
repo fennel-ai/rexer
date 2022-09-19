@@ -15,5 +15,6 @@
         "moduleResolution": "node",
         "noFallthroughCasesInSwitch": true,
         "sourceMap": true,
+        "allowSyntheticDefaultImports": true,
     }
 }

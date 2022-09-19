@@ -2,6 +2,7 @@ import { Collapse, Space, DatePicker } from "antd";
 import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
 import { Line, LineConfig } from '@ant-design/plots';
+import humanFormat from "human-format";
 
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
@@ -15,36 +16,48 @@ function DashboardPage() {
     const [startTime, setStartTime] = useState<number>(now - DAY_MS);
     const [endTime, setEndTime] = useState<number>(now);
     const [step, setStep] = useState<string>("1h");
+    const [selected, setSelected] = useState<string>("Last day");
+
+    const DateControlLink = ({ duration, step, text }: { duration: number, step: string, text: string }) => {
+        const klasses = [styles.dateControl];
+        if (selected === text) {
+            klasses.push(styles.selected);
+        }
+        return (
+            <a
+                className={klasses.join(" ")}
+                onClick={e => {
+                    e.preventDefault();
+                    setStartTime(now - duration);
+                    setEndTime(now);
+                    setStep(step);
+                    setSelected(text);
+                }}>
+                {text}
+            </a>
+        );
+    };
 
     return (
         <div className={commonStyles.container}>
             <div className={styles.titleSection}>
                 <h4 className={styles.title}>Dashboard</h4>
                 <Space size={24}>
-                    <a className={styles.dateControl} onClick={e => {
-                        e.preventDefault();
-                        setStartTime(now - DAY_MS);
-                        setEndTime(now);
-                        setStep("1h");
-                    }}>
-                        Last day
-                    </a>
-                    <a className={styles.dateControl} onClick={e => {
-                        e.preventDefault();
-                        setStartTime(now - WEEK_MS);
-                        setEndTime(now);
-                        setStep("6h");
-                    }}>
-                        Last week
-                    </a>
-                    <a className={styles.dateControl} onClick={e => {
-                        e.preventDefault();
-                        setStartTime(now - MONTH_MS);
-                        setEndTime(now);
-                        setStep("24h");
-                    }}>
-                        Last month
-                    </a>
+                    <DateControlLink
+                        duration={DAY_MS}
+                        step="1h"
+                        text="Last day"
+                    />
+                    <DateControlLink
+                        duration={WEEK_MS}
+                        step="6h"
+                        text="Last week"
+                    />
+                    <DateControlLink
+                        duration={MONTH_MS}
+                        step="24h"
+                        text="Last month"
+                    />
                     <DatePicker.RangePicker showTime onCalendarChange={(dates) => {
                         if (dates && dates[0] && dates[1] && dates[0] < dates[1]) {
                             const newStartTime = dates[0].toDate().getTime();
@@ -58,6 +71,7 @@ function DashboardPage() {
                             } else {
                                 setStep("24h");
                             }
+                            setSelected("Customized");
                         }
                     }}/>
                 </Space>
@@ -65,13 +79,14 @@ function DashboardPage() {
             <Collapse defaultActiveKey="qps">
                 <Collapse.Panel header="QPS" key="qps">
                     <Graph
-                        query='sum by (Namespace, path) (rate(http_requests_total{ContainerName=~"http-server|query-server", path=~"/query|/set_profile|/set_profile_multi|/log|/log_multi"}[1h]))'
+                        query='sum by (Namespace, path) (rate(http_requests_total{ContainerName=~"http-server|query-server", path=~"/query|/set_profile|/set_profile_multi|/log|/log_multi"}[2m]))'
                         startTime={startTime}
                         endTime={endTime}
                         step={step}
+                        unit="req/s"
                     />
                 </Collapse.Panel>
-                <Collapse.Panel header="Backlog" key="backlog">
+                <Collapse.Panel header="Aggregate Lag" key="lag">
                     <Graph
                         query='sum by (Namespace, aggregate_name) (label_replace(aggregator_backlog{consumer_group!~"^locustfennel.*"}, "aggregate_name", "$1", "consumer_group", "(.*)"))'
                         startTime={startTime}
@@ -85,6 +100,7 @@ function DashboardPage() {
                         startTime={startTime}
                         endTime={endTime}
                         step={step}
+                        unit="s"
                     />
                 </Collapse.Panel>
             </Collapse>
@@ -97,8 +113,11 @@ interface RangeVector {
     values: [number, string][],
 }
 
-function generateSeriesName(metric: Record<string, string>) {
-    return Object.values(metric).join(" - ");
+function generateSeriesName(metric: Record<string, string>): string {
+    return Object.keys(metric)
+        .filter(k => k !== "Namespace")
+        .map(k => metric[k])
+        .join(" - ");
 }
 
 interface GraphData {
@@ -112,9 +131,10 @@ interface GraphProps {
     startTime: number,
     endTime: number,
     step: string,
+    unit?: string,
 }
 
-function Graph({ query, startTime, endTime, step }: GraphProps) {
+function Graph({ query, startTime, endTime, step, unit}: GraphProps) {
     const [data, setData] = useState<GraphData[]>([]);
     const params = {
         query,
@@ -130,8 +150,8 @@ function Graph({ query, startTime, endTime, step }: GraphProps) {
             const newData = response.data.flatMap(rv => {
                 const seriesName = generateSeriesName(rv.metric);
                 return rv.values.map((scalar: [number, string]) => ({
-                    time: scalar[0],
-                    value: parseFloat(scalar[1]),
+                    time: scalar[0] * 1000,
+                    value: Math.round(parseFloat(scalar[1]) * 10 + Number.EPSILON) / 10,
                     series: seriesName,
                 }));
             });
@@ -145,12 +165,15 @@ function Graph({ query, startTime, endTime, step }: GraphProps) {
 
     const config: LineConfig = {
         data,
-        xField: 'time',
-        yField: 'value',
-        seriesField: 'series',
+        xField: "time",
+        yField: "value",
+        seriesField: "series",
         xAxis: {
+            type: "time",
+        },
+        yAxis: {
             label: {
-                formatter: (t:string) => (new Date(parseFloat(t)*1000).toLocaleString("en-US")),
+                formatter: v => unit ? `${humanFormat(parseFloat(v))} ${unit}` : `${humanFormat(parseFloat(v))}`,
             },
         },
     };

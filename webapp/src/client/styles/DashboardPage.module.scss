@@ -1,3 +1,5 @@
+@use "./colors";
+
 .titleSection {
     display: flex;
     flex-direction: row;
@@ -13,4 +15,8 @@
 .dateControl {
     text-decoration: none;
     color: inherit;
+}
+
+.dateControl.selected {
+    color: colors.$purple6;
 }
