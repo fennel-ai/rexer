@@ -92,7 +92,8 @@ func NewServer() (server, error) {
 }
 
 const (
-	SignInURL = "/signin"
+	SignInURL         = "/signin"
+	TierManagementURL = "/tier_management"
 )
 
 func (s *server) setupRouter() {
@@ -117,8 +118,8 @@ func (s *server) setupRouter() {
 	auth.GET("/onboard", s.Onboard)
 
 	onboarded := auth.Group("/", Onboarded(s.db))
-	onboarded.GET("/", s.TierManagement)
-	onboarded.GET("/tier_management", s.TierManagement)
+	onboarded.GET("/", s.Home)
+	onboarded.GET(TierManagementURL, s.TierManagement)
 	onboarded.GET("/settings", s.Settings)
 
 	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
@@ -358,6 +359,25 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) Home(c *gin.Context) {
+	user, _ := CurrentUser(c)
+
+	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		respondError(c, err, "fetch tiers")
+		return
+	}
+	if len(tiers) == 0 {
+		c.Redirect(http.StatusFound, TierManagementURL)
+	}
+	tier := tiers[0]
+	c.Redirect(http.StatusFound, tierDashboardURL(tier))
+}
+
+func tierDashboardURL(tier tierL.Tier) string {
+	return fmt.Sprintf("/tier/%v/dashboard", tier.ID)
 }
 
 func (s *server) Onboard(c *gin.Context) {
