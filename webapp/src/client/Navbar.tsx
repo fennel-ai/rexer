@@ -62,7 +62,7 @@ function Navbar({ activeTab, tiers, user }: Props) {
                 </div>
 
                 <div className={styles.rightNav}>
-                    <a className={styles.documentation} href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
+                    <a target="_blank" rel="noreferrer" className={styles.documentation} href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
                     <AvatarDropdown user={user} />
                 </div>
             </div>

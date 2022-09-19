@@ -6,7 +6,6 @@ import (
 	dataplaneL "fennel/mothership/lib/dataplane"
 	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -32,7 +31,7 @@ func customerTiers(db *gorm.DB, customerID uint) string {
 	}
 	var data = lo.Map(tiers, func(tier tierL.Tier, _ int) gin.H {
 		return map[string]interface{}{
-			"id": strconv.FormatUint(uint64(tier.ID), 10),
+			"id": tier.IDStr(),
 		}
 	})
 	bytes, _ := json.Marshal(data)
@@ -45,6 +44,7 @@ func tierInfo(tier tierL.Tier, dp dataplaneL.DataPlane) map[string]any {
 		"limit":    tier.RequestsLimit,
 		"location": dp.Region,
 		"plan":     tier.PlanName(),
+		"id":       tier.IDStr(),
 	}
 }
 
