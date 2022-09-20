@@ -12,6 +12,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	_ "net/http/pprof"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -169,6 +170,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(INT_REST_VERSION+"/log", s.SetRateLimit(s.LogMulti)).Methods("POST")
 
 	router.HandleFunc(INT_REST_VERSION+"/query", s.SetRateLimit(s.Query))
+	router.HandleFunc(INT_REST_VERSION+"/query/pandas", s.SetRateLimit(s.QueryPandas))
 	router.HandleFunc(INT_REST_VERSION+"/query/store", s.StoreQuery).Methods("POST")
 
 	// Endpoints used by aggregate
@@ -567,6 +569,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 			}
 		}()
 	}
+	fmt.Println("Going to execute query", tree, args)
 	// execute the tree
 	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
 	ret, err := executor.Exec(cCtx, tree, args)
@@ -577,6 +580,61 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 	m.usageController.IncCounter(&usagelib.UsageCountersProto{Queries: 1})
 	_, _ = w.Write(value.ToJSON(ret))
 
+}
+
+func runPandasQuery(queryStr, args, types string) (string, error) {
+	cmd := exec.Command("python3", "service/http/transform_pandas.py", queryStr, args, types)
+	out, err := cmd.Output()
+	fmt.Println("out", string(out))
+	if err != nil {
+		return "", fmt.Errorf("failed to execute python script: %w", err)
+	}
+	return string(out), nil
+}
+
+func (m server) QueryPandas(w http.ResponseWriter, req *http.Request) {
+	// disable-query-calls is configured with random stickiness, which returns random true/false based on the
+	// percentage configured.
+	if unleash.IsEnabled("disable-query-calls") {
+		totalUnleashQueryRequestsDropped.Inc()
+		_, _ = w.Write([]byte("{}"))
+		return
+	}
+
+	data, err := readRequest(req)
+	_, span := timer.Start(req.Context(), m.tier.ID, "server.QueryPandas")
+	defer span.Stop()
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	queryStr, err := jsonparser.GetString(data, "Query")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	args, _, _, err := jsonparser.Get(data, "Args")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	types, _, _, err := jsonparser.Get(data, "Types")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	fmt.Println("queryStr", queryStr)
+	fmt.Println("args", args)
+	fmt.Println("types", types)
+
+	if ret, err := runPandasQuery(queryStr, string(args), string(types)); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	} else {
+		_, _ = w.Write([]byte(ret))
+	}
+
+	m.usageController.IncCounter(&usagelib.UsageCountersProto{Queries: 1})
 }
 
 func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {

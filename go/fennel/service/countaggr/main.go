@@ -128,7 +128,6 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	fmt.Println("profiles countaggr", profiles)
 	ser, err := json.Marshal(profiles)
 	if err != nil {
 		handleInternalServerError(w, "", err)
@@ -145,6 +144,7 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
+
 	_, querySpan := timer.Start(cCtx, m.tier.ID, "query.FromBoundQueryJSON")
 	tree, args, _, err := query.FromBoundQueryJSON(data)
 	querySpan.Stop()
@@ -232,7 +232,7 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 					}
 				} else {
 					timeout := time.Second * 10
-					count := 10
+					count := 50
 					if agg.IsOffline() {
 						timeout = time.Second * 30
 					}
@@ -586,8 +586,8 @@ func startConnectorProcessing(tr tier.Tier) error {
 	return nil
 }
 
-func installPythonPackages(tier tier.Tier) error {
-	cmd := exec.Command("pip3", "install", "--extra-index-url=https://token:e117e0d0267d75d4bd73bb8ca0c5b5819b9a549f@api.packagr.app/mVIM1fJ", "rexerclient==0.24.2")
+func installPythonPackages() error {
+	cmd := exec.Command("pip3", "install", "--extra-index-url=https://token:e117e0d0267d75d4bd73bb8ca0c5b5819b9a549f@api.packagr.app/mVIM1fJ", "aditya-rexerclient==0.24.7")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -645,13 +645,12 @@ func main() {
 	if err = startAggregateProcessing(tr); err != nil {
 		panic(err)
 	}
+
 	// Install python packages.
-	//go func() {
-	err = installPythonPackages(tr)
+	err = installPythonPackages()
 	if err != nil {
 		panic(err)
 	}
-	//}()
 
 	// Start a server to handle incoming requests for profile and aggregate requests.
 

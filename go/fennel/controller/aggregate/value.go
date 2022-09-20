@@ -450,23 +450,16 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 }
 
 func TransformPandas(tier tier.Tier, items any, query []byte) (value.List, error) {
-	cmd := exec.Command("pwd")
-	out, err := cmd.Output()
-	if err != nil {
-		return value.NewList(), fmt.Errorf("failed to get pwd: %w", err)
-	}
 	// Transform the items
 	jsonPayload, err := json.Marshal(items)
 	if err != nil {
 		return value.NewList(), fmt.Errorf("failed to marshal items to json: %w", err)
 	}
-	cmd = exec.Command("python3", "controller/aggregate/transform_pandas.py", string(jsonPayload), string(query))
-	out, err = cmd.Output()
+	cmd := exec.Command("python3", "controller/aggregate/transform_pandas.py", string(jsonPayload), string(query))
+	out, err := cmd.Output()
 	if err != nil {
 		return value.NewList(), fmt.Errorf("failed to execute python script: %w", err)
 	}
-	fmt.Println("TransformPandas: ------------------")
-	fmt.Println(string(out))
 	// Strip start and end quotes
 	transformedValues, err := value.ParseJSON(out, jsonparser.Array)
 	if err != nil {
@@ -478,9 +471,6 @@ func TransformPandas(tier tier.Tier, items any, query []byte) (value.List, error
 	if !ok {
 		return value.NewList(), fmt.Errorf("failed to convert transformed values to value.List")
 	}
-	fmt.Println("TransformValues: ------------------")
-	fmt.Println(ret)
-	fmt.Println("==========================================")
 	return ret, nil
 }
 
