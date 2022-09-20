@@ -65,7 +65,6 @@ func (a AggValue) Apply(ctx context.Context, staticKwargs operators.Kwargs, in o
 	}
 	field := string(staticKwargs.GetUnsafe("field").(value.String))
 	outs.Grow(len(rows))
-	fmt.Println("rows", len(rows))
 	for i, row := range rows {
 		var out value.Value
 		if len(field) > 0 {

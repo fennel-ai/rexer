@@ -524,7 +524,6 @@ func (m server) GetProfileMulti(w http.ResponseWriter, req *http.Request) {
 		handleInternalServerError(w, "", err)
 		return
 	}
-	fmt.Println("profiles query", profiles)
 
 	ser, err := json.Marshal(profiles)
 	if err != nil {
@@ -569,7 +568,6 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 			}
 		}()
 	}
-	fmt.Println("Going to execute query", tree, args)
 	// execute the tree
 	executor := engine.NewQueryExecutor(bootarg.Create(m.tier))
 	ret, err := executor.Exec(cCtx, tree, args)
@@ -585,7 +583,6 @@ func (m server) Query(w http.ResponseWriter, req *http.Request) {
 func runPandasQuery(queryStr, args, types string) (string, error) {
 	cmd := exec.Command("python3", "service/http/transform_pandas.py", queryStr, args, types)
 	out, err := cmd.Output()
-	fmt.Println("out", string(out))
 	if err != nil {
 		return "", fmt.Errorf("failed to execute python script: %w", err)
 	}
@@ -623,9 +620,6 @@ func (m server) QueryPandas(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	fmt.Println("queryStr", queryStr)
-	fmt.Println("args", args)
-	fmt.Println("types", types)
 
 	if ret, err := runPandasQuery(queryStr, string(args), string(types)); err != nil {
 		handleInternalServerError(w, "", err)

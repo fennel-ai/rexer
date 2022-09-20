@@ -16,7 +16,6 @@ import (
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	var querySer []byte
 	var err error
-	fmt.Println("Storing", agg.Query)
 	if agg.Mode == aggregate.RQL {
 		querySer, err = ast.Marshal(agg.Query)
 		if err != nil {

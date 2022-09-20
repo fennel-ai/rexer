@@ -460,13 +460,11 @@ func TransformPandas(tier tier.Tier, items any, query []byte) (value.List, error
 	if err != nil {
 		return value.NewList(), fmt.Errorf("failed to execute python script: %w", err)
 	}
-	// Strip start and end quotes
 	transformedValues, err := value.ParseJSON(out, jsonparser.Array)
 	if err != nil {
 		return value.NewList(), fmt.Errorf("error in converting json to values: %v", err)
 	}
 	// Convert output JSON to valueList
-	// Transform the items using the query
 	ret, ok := transformedValues.(value.List)
 	if !ok {
 		return value.NewList(), fmt.Errorf("failed to convert transformed values to value.List")
