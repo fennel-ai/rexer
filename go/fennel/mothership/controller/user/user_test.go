@@ -25,10 +25,10 @@ func TestSignInAndLogout(t *testing.T) {
 	_, err = SignIn(ctx, db, "test@fennel.ai", "12345")
 	assert.ErrorIs(t, err, &lib.ErrorUserNotFound)
 
-	_, err = SignUp(ctx, db, "John", "Doe", "bademail", "12345")
+	_, err = SignUp(ctx, db, " John", "Doe", "bademail", "12345")
 	assert.ErrorIs(t, err, &lib.ErrorBadEmail)
 
-	user, err := SignUp(ctx, db, "John", "Doe", "test@fennel.ai", "12345")
+	user, err := SignUp(ctx, db, "  John", " Doe  ", "Test@FENNEL.ai ", "12345")
 	assert.NoError(t, err)
 	assert.Equal(t, "John", user.FirstName)
 	assert.Equal(t, "Doe", user.LastName)
