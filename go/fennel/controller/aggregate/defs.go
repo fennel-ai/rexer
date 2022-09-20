@@ -131,7 +131,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 		// if they are the same, activate the aggregate in case it was deactivated.
 		// if they are different, return error
 		queryEquals := false
-		if agg.Mode == agg2.Mode && agg.Mode == aggregate.RQL && agg.Query == agg2.Query {
+		if agg.Mode == agg2.Mode && agg.Mode == aggregate.RQL && agg.Query.Equals(agg2.Query) {
 			queryEquals = true
 		}
 		if agg.Mode == agg2.Mode && agg.Mode == aggregate.PANDAS && string(agg.PythonQuery) == string(agg2.PythonQuery) {

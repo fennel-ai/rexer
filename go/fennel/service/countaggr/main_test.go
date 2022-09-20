@@ -42,6 +42,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_1", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "sum", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      1,
 			},
@@ -56,6 +57,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_2", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: libaggregate.TIMESERIES_SUM, Window: ftypes.Window_HOUR, Limit: 4},
 				Id:      2,
 			},
@@ -68,6 +70,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "list", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      3,
 			},
@@ -83,6 +86,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_4", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "min", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      4,
 			},
@@ -97,6 +101,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_5", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "max", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      5,
 			},
@@ -111,6 +116,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_6", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "stddev", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      6,
 			},
@@ -125,6 +131,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_7", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "average", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      7,
 			},
@@ -139,6 +146,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_8", Query: getQueryRate(), Timestamp: 123,
 				Source: libaggregate.SOURCE_ACTION,
+				Mode:   "rql",
 				Options: libaggregate.Options{
 					AggType:   "rate",
 					Durations: []uint32{3 * 3600, 6 * 3600, 3600},
@@ -157,6 +165,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_9", Query: getQueryTopK(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "topk", Durations: []uint32{3 * 3600, 6 * 3600, 3600}, Limit: 1},
 				Id:      9,
 			},
@@ -242,6 +251,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_prof_1", Query: getProfileQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_PROFILE,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "sum", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      1,
 			},
@@ -256,6 +266,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			libaggregate.Aggregate{
 				Name: "agg_prof_2", Query: getProfileQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_PROFILE,
+				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "min", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
 				Id:      2,
 			},

@@ -22,15 +22,15 @@ func TestAggregateJSON(t *testing.T) {
 	}
 	var tests []test
 	aggs := []Aggregate{
-		{},
-		{Name: "some name", Timestamp: 123,
+		{Mode: "rql"},
+		{Name: "some name", Timestamp: 123, Mode: "rql",
 			Options: Options{
 				AggType:   "some type",
 				Durations: []uint32{120, 12 * 3600},
 				Window:    1,
 				Limit:     10},
 		},
-		{Timestamp: math.MaxUint32,
+		{Timestamp: math.MaxUint32, Mode: "rql",
 			Options: Options{
 				Durations: []uint32{math.MaxUint32},
 				Limit:     math.MaxUint32,
@@ -52,7 +52,7 @@ func TestAggregateJSON(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, tst.agg.Equals(agg))
 	}
-	// Test marshal
+	//// Test marshal
 	for _, tst := range tests {
 		// Ast does not serialize to a unique string
 		// So test by converting to and from JSON
@@ -115,20 +115,24 @@ func TestGetAggValueRequestJSON(t *testing.T) {
 }
 
 func makeAggregateJSON(agg *Aggregate) (string, error) {
-	querySer, err := ast.Marshal(agg.Query)
-	if err != nil {
-		return "", err
+	var queryStr string
+	if agg.Mode == RQL {
+		querySer, err := ast.Marshal(agg.Query)
+		if err != nil {
+			return "", err
+		}
+		queryStr = base64.StdEncoding.EncodeToString(querySer)
+	} else if agg.Mode == PANDAS {
+		queryStr = string(agg.PythonQuery)
 	}
-	queryStr := base64.StdEncoding.EncodeToString(querySer)
-
 	var dStr []string
 	for _, d := range agg.Options.Durations {
 		dStr = append(dStr, strconv.FormatUint(uint64(d), 10))
 	}
 	return fmt.Sprintf(
-			`{"Name":"%s","Query":"%s","Timestamp":%d,`+
+			`{"Name":"%s","Query":"%s","Timestamp":%d,"Mode":"%s",`+
 				`"Options":{"Type":"%s","Durations":%s,"Window":%d,"Limit":%d}}`,
-			agg.Name, queryStr, agg.Timestamp,
+			agg.Name, queryStr, agg.Timestamp, agg.Mode,
 			agg.Options.AggType, "["+strings.Join(dStr, ",")+"]", agg.Options.Window, agg.Options.Limit),
 		nil
 }
