@@ -150,7 +150,10 @@ jobs:
           python -m ensurepip --upgrade
       - name: install rexerclient using pip
         run: |
+          pip install pandas
+          pip install cloudpickle
           pip install --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/${{ secrets.PACKAGR_HASH_ID }}/ -U rexerclient
+
       # Run the test
       - name: Run test
         env:

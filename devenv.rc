@@ -3,7 +3,7 @@ export KAFKA_SERVER_ADDRESS="pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
 export KAFKA_USERNAME="SJLSMRYRKYALJ4Q4"
 export KAFKA_PASSWORD="fXy4iNu+x0SY0Qmiwm60YFl+BV5LzXqPPVdy1NoK+xeffGEggv77MXxCGT7YTNyk"
 
-export MSK_KAFKA_SERVER_ADDRESS="b-1.p3kafkacluster.hv6sse.c10.kafka.us-west-2.amazonaws.com:9096,b-2.p3kafkacluster.hv6sse.c10.kafka.us-west-2.amazonaws.com:9096"
+export MSK_KAFKA_SERVER_ADDRESS="b-1.p3kafkacluster.97sfo3.c10.kafka.us-west-2.amazonaws.com:9096,b-2.p3kafkacluster.97sfo3.c10.kafka.us-west-2.amazonaws.com:9096"
 export MSK_KAFKA_USERNAME="p-3-username"
 export MSK_KAFKA_PASSWORD="p-3-password"
 

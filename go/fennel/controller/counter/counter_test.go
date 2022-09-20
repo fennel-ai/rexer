@@ -27,6 +27,7 @@ func TestRolling(t *testing.T) {
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
+		Mode:      "rql",
 		Options: libaggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600 * 24, 3600 * 28},
@@ -78,6 +79,7 @@ func TestTimeseries(t *testing.T) {
 	agg := libaggregate.Aggregate{
 		Id:        1,
 		Name:      "mycounter",
+		Mode:      "rql",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
 		// at any time, we want data from last 9 hours

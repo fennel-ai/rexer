@@ -21,6 +21,7 @@ func TestRetrieveActive(t *testing.T) {
 	ctx := context.Background()
 	agg := aggregate.Aggregate{
 		Timestamp: 1,
+		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600 * 24, 3600 * 24 * 2},
@@ -56,6 +57,7 @@ func TestDuplicate(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Name:      "test_counter",
 		Query:     &ast.Query{},
+		Mode:      "rql",
 		Timestamp: 1,
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -93,6 +95,7 @@ func TestDeactivate(t *testing.T) {
 		Name:      "my_counter",
 		Query:     ast.MakeInt(4),
 		Timestamp: 1,
+		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600 * 24 * 7},
@@ -130,6 +133,7 @@ func TestReactivate(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Name:      "my-aggregate",
 		Timestamp: 1,
+		Mode:      "rql",
 		Query:     ast.MakeInt(1),
 		Options: aggregate.Options{
 			AggType:   "sum",

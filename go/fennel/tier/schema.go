@@ -200,4 +200,5 @@ var Schema = db.Schema{
 		INDEX tx(timestamp)
 	);`,
 	// ==================== END Schema for usage counters ===================
+	24: `ALTER TABLE aggregate_config ADD COLUMN mode VARCHAR(64) DEFAULT 'rql';`,
 }
