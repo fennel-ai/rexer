@@ -347,7 +347,7 @@ export const setup = async (input: inputType) => {
             },
             "requestPolicy": {
                 "insecure": {
-                    "action": "Route",
+                    "action": "Redirect",
                 }
             }
         }
