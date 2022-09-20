@@ -83,16 +83,19 @@ function AvatarDropdown({ user }: { user: User }) {
                 });
             });
     };
+    const itemStyle = { paddingTop: "6px", paddingBottom: "6px", paddingRight: "20px" }; // default is 12
     const items: MenuProps["items"] = [
         {
             icon: <UserOutlined />,
             label: (<a href="/settings#account">Account</a>),
             key: "account",
+            style: itemStyle,
         },
         {
             icon: <TeamOutlined />,
             label: (<a href="/settings#team">Team</a>),
             key: "team",
+            style: itemStyle,
         },
         {
             type: "divider",
@@ -102,6 +105,7 @@ function AvatarDropdown({ user }: { user: User }) {
             label: "Log out",
             key: "logout",
             onClick: onLogout,
+            style: itemStyle,
         },
     ];
     return (
