@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
+	"fennel/mothership/lib"
 	"fennel/mothership/lib/customer"
 	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
@@ -15,10 +15,10 @@ import (
 )
 
 func TeamMatch(ctx context.Context, db *gorm.DB, user userL.User) (bool, customer.Customer, bool) {
-	domain := extractEmailDomain(user.Email)
+	domain := lib.ExtractEmailDomain(user.Email)
 	var customer customer.Customer
 
-	isPersonal := isPersonalDomain(domain)
+	isPersonal := lib.IsPersonalDomain(domain)
 	if isPersonal {
 		return false, customer, isPersonal
 	}
@@ -50,8 +50,8 @@ func CreateTeam(ctx context.Context, db *gorm.DB, name string, allowAutoJoin boo
 
 	customer.Name = name
 	if allowAutoJoin {
-		domain := extractEmailDomain(user.Email)
-		if isPersonalDomain(domain) {
+		domain := lib.ExtractEmailDomain(user.Email)
+		if lib.IsPersonalDomain(domain) {
 			return customer, fmt.Errorf("personal domain %s not allowed to auto join", user.Email)
 		}
 
@@ -78,7 +78,7 @@ func JoinTeam(ctx context.Context, db *gorm.DB, teamID uint, user *userL.User) e
 	if db.Take(&customer, teamID).Error != nil {
 		return fmt.Errorf("team (%v) not found", teamID)
 	}
-	if !customer.Domain.Valid || extractEmailDomain(user.Email) != customer.Domain.String {
+	if !customer.Domain.Valid || lib.ExtractEmailDomain(user.Email) != customer.Domain.String {
 		return fmt.Errorf("join team (%v) not allowed for email (%s)", teamID, user.Email)
 	}
 
@@ -121,16 +121,4 @@ func FetchTier(ctx context.Context, db *gorm.DB, customerID uint) (tier tierL.Ti
 
 func TierProvisioned(ctx context.Context, db *gorm.DB, user *userL.User) (err error) {
 	return db.Model(&user).Update("onboard_status", userL.OnboardStatusDone).Error
-}
-
-func isPersonalDomain(domain string) bool {
-	return domain == "gmail.com" || domain == "yahoo.com" || domain == "hotmail.com" || domain == "aol.com" || domain == "hotmail.co.uk" || domain == "	hotmail.fr" || domain == "msn.com"
-}
-
-func extractEmailDomain(email string) string {
-	idx := strings.Index(email, "@")
-	if idx < 0 {
-		return ""
-	}
-	return strings.ToLower(email[idx+1:])
 }
