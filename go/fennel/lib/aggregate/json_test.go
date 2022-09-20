@@ -52,7 +52,7 @@ func TestAggregateJSON(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, tst.agg.Equals(agg))
 	}
-	//// Test marshal
+	// Test marshal
 	for _, tst := range tests {
 		// Ast does not serialize to a unique string
 		// So test by converting to and from JSON

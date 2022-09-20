@@ -67,7 +67,7 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	} else if agg.Mode == PANDAS {
 		agg.PythonQuery = []byte(fields.Query)
 	} else {
-		return fmt.Errorf("unknown mode2: %v", agg.Mode)
+		return fmt.Errorf("unknown mode: %v", agg.Mode)
 
 	}
 	return nil
