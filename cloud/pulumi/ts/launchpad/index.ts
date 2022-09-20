@@ -747,7 +747,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             binlog: {
                 partitions: 32,
-                retention_ms: 5 * 24 * 60 * 60 * 1000 /* 5 days */,
+                retention_ms: -1,
                 partition_retention_bytes: -1,
                 max_message_bytes: 2097164,
                 // TODO(mohit): Consider setting this to 2.
