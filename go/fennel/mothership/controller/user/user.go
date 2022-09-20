@@ -223,6 +223,9 @@ func SignUp(c context.Context, db *gorm.DB, firstName, lastName, email, password
 	if _, err := netmail.ParseAddress(email); err != nil {
 		return user, &lib.ErrorBadEmail
 	}
+	if ok := lib.IsEmailDomainWhitelisted(email); !ok {
+		return user, &lib.ErrorDomainNotWhitelisted
+	}
 
 	result := db.Take(&user, "email = ?", email)
 	if result.RowsAffected > 0 {

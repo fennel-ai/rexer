@@ -28,6 +28,9 @@ func TestSignInAndLogout(t *testing.T) {
 	_, err = SignUp(ctx, db, " John", "Doe", "bademail", "12345")
 	assert.ErrorIs(t, err, &lib.ErrorBadEmail)
 
+	_, err = SignUp(ctx, db, "John", " Doe  ", "Test@FENNEL.io ", "12345")
+	assert.ErrorIs(t, err, &lib.ErrorDomainNotWhitelisted)
+
 	user, err := SignUp(ctx, db, "  John", " Doe  ", "Test@FENNEL.ai ", "12345")
 	assert.NoError(t, err)
 	assert.Equal(t, "John", user.FirstName)
