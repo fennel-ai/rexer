@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import axios, { AxiosResponse } from "axios";
 import { Line, LineConfig } from '@ant-design/plots';
 import humanFormat from "human-format";
+import { useParams, generatePath } from "react-router-dom";
 
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
@@ -142,9 +143,10 @@ function Graph({ query, startTime, endTime, step, unit}: GraphProps) {
         end: new Date(endTime).toISOString(),
         step,
     };
+    const { tierID } = useParams();
 
     const queryMetrics = () => {
-        axios.get("/metrics/query_range", {
+        axios.get(generatePath("/tier/:tierID/metrics/query_range", { tierID }), {
             params,
         }).then((response: AxiosResponse<RangeVector[]>) => {
             const newData = response.data.flatMap(rv => {

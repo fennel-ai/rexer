@@ -27,11 +27,11 @@ function Navbar({ activeTab, tiers, user }: Props) {
     if (tierID) {
         items.push(
             {
-                label: (<a href={generatePath("/tier/:tierID/dashboard", {tierID})}>Dashboard</a>),
+                label: (<a href={generatePath("/tier/:tierID/dashboard", { tierID })}>Dashboard</a>),
                 key: "dashboard",
             },
             {
-                label: (<a href={generatePath("/tier/:tierID/data", {tierID})}>Data</a>),
+                label: (<a href={generatePath("/tier/:tierID/data", { tierID })}>Data</a>),
                 key: "data",
             },
         );

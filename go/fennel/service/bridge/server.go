@@ -13,7 +13,6 @@ import (
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
 	customerL "fennel/mothership/lib/customer"
-
 	dataplaneL "fennel/mothership/lib/dataplane"
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
@@ -21,6 +20,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/alexflint/go-arg"
@@ -129,9 +129,7 @@ func (s *server) setupRouter() {
 	tier.GET("/profiles", s.Profiles)
 	tier.GET("/actions", s.Actions)
 	tier.GET("/features", s.Features)
-
-	// TODO(xiao) group under tier
-	metrics := auth.Group("/metrics")
+	metrics := tier.Group("/metrics")
 	metrics.GET("/query_range", s.QueryRangeMetrics)
 
 	// ajax endpoints
@@ -693,6 +691,8 @@ type queryRangeRequest struct {
 }
 
 func (s *server) QueryRangeMetrics(c *gin.Context) {
+	tier, _ := CurrentTier(c)
+
 	var req queryRangeRequest
 	if err := c.ShouldBind(&req); err != nil {
 		respondError(c, err, "parse query range metrics params")
@@ -704,12 +704,33 @@ func (s *server) QueryRangeMetrics(c *gin.Context) {
 		return
 	}
 
-	result, err := metricC.QueryRange(c.Request.Context(), req.Query, start, end, step)
+	address, err := s.tierMetricsAddress(tier.ApiUrl)
+	if err != nil {
+		respondError(c, err, "get tier metrics address")
+		return
+	}
+
+	result, err := metricC.QueryRange(c.Request.Context(), address, req.Query, start, end, step)
 	if err != nil {
 		respondError(c, err, "query range metrics")
 		return
 	}
 	c.JSON(http.StatusOK, result)
+}
+
+func (s *server) tierMetricsAddress(apiUrl string) (string, error) {
+	if s.isDev() {
+		// TODO(xiao): ideally change it to staging server address
+		// use lokal for local dev
+		return "http://a535b3af4b7e7400bab17167a1f5f7a4-766178462.ap-south-1.elb.amazonaws.com/", nil
+	}
+	u, err := url.Parse(apiUrl)
+	if err != nil {
+		return "", err
+	}
+	// our api url contains the /data that we don't need to query metrics
+	u.Path = ""
+	return u.String(), nil
 }
 
 func (req queryRangeRequest) parseParams() (time.Time, time.Time, time.Duration, error) {

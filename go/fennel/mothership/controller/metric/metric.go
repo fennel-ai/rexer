@@ -10,11 +10,10 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// TODO(xiao) add a test
-func QueryRange(ctx context.Context, query string, start, end time.Time, step time.Duration) (model.Value, error) {
-	// TODO(xiao) change address
+func QueryRange(ctx context.Context, address string, query string, start, end time.Time, step time.Duration) (model.Value, error) {
+
 	client, err := api.NewClient(api.Config{
-		Address: "http://a535b3af4b7e7400bab17167a1f5f7a4-766178462.ap-south-1.elb.amazonaws.com/",
+		Address: address, //"http://a535b3af4b7e7400bab17167a1f5f7a4-766178462.ap-south-1.elb.amazonaws.com/",
 	})
 	if err != nil {
 		return nil, err
@@ -31,7 +30,7 @@ func QueryRange(ctx context.Context, query string, start, end time.Time, step ti
 		return nil, err
 	}
 	if len(warnings) > 0 {
-		fmt.Printf("Warnings: %v\n", warnings)
+		fmt.Printf("Warnings: [metric] %v\n", warnings)
 	}
 	return result, err
 }
