@@ -3,7 +3,6 @@ package gravel
 import (
 	"fennel/lib/utils"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"path"
@@ -24,7 +23,7 @@ func TestManifest(t *testing.T) {
 	for round := 0; round < sz; round += 1 {
 		this := make([]string, 0, 16)
 		for shard := 0; shard < 16; shard++ {
-			filename := fmt.Sprintf("%d_%s%s", shard, utils.RandString(8), tempSuffix)
+			filename := fmt.Sprintf("%d_%s%s", shard, utils.RandString(8), tempFileExtension)
 			this = append(this, filename)
 		}
 		// this should fail because none of the files exist
@@ -39,21 +38,6 @@ func TestManifest(t *testing.T) {
 		assert.NoError(t, m.Append(this))
 		filenames[round] = this
 	}
-
-	// now verify that tables have appropriate files/IDs
-	for i := 0; i < 16; i++ {
-		maxsofar := uint64(math.MaxUint64)
-		m.Reserve()
-		tables, err := m.List(uint64(i))
-		assert.NoError(t, err)
-		assert.Len(t, tables, sz)
-		for _, table := range tables {
-			id := table.ID()
-			assert.True(t, id < maxsofar)
-			maxsofar = id
-		}
-		m.Release()
-	}
 }
 
 func TestEmptyInit(t *testing.T) {
@@ -67,13 +51,6 @@ func TestEmptyInit(t *testing.T) {
 			assert.Equal(t, uint64(i), m.numShards)
 			assert.Equal(t, dirname, m.dirname)
 			assert.Equal(t, BDiskHashTable, m.tableType)
-			for s := 0; s < i; s++ {
-				m.Reserve()
-				tables, err := m.List(uint64(s))
-				assert.NoError(t, err)
-				assert.Empty(t, tables)
-				m.Release()
-			}
 		}
 	}
 }

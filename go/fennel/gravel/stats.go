@@ -1,14 +1,12 @@
 package gravel
 
 import (
-	"context"
 	"time"
 
 	"github.com/detailyang/fastrand-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
-	"google.golang.org/appengine/log"
 )
 
 const (
@@ -29,7 +27,6 @@ type Stats struct {
 	MemtableSizeBytes atomic.Uint64
 	MemtableKeys      atomic.Uint64
 	NumTableBuilds    atomic.Uint64
-	NumTables         atomic.Uint64
 }
 
 var stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -50,25 +47,15 @@ func (g *Gravel) reportStats() {
 			stats.WithLabelValues("dels", name).Set(float64(g.stats.Dels.Load() * sampleRate))
 			stats.WithLabelValues("commits", name).Set(float64(g.stats.Commits.Load() * sampleRate))
 
-			stats.WithLabelValues("num_tables", name).Set(float64(g.stats.NumTables.Load()))
 			stats.WithLabelValues("num_table_builds", name).Set(float64(g.stats.NumTableBuilds.Load()))
 			stats.WithLabelValues("memtable_size_bytes", name).Set(float64(g.stats.MemtableSizeBytes.Load()))
 			stats.WithLabelValues("memtable_keys", name).Set(float64(g.stats.MemtableKeys.Load()))
 
-			g.manifest.Reserve()
-			defer g.manifest.Release()
-			reads := uint64(0)
-			for s := uint64(0); s < g.manifest.numShards; s++ {
-				tables, err := g.manifest.List(s)
-				if err != nil {
-					log.Errorf(context.TODO(), "could not compute table stats. Error: %v", err)
-					return
-				}
-				for _, t := range tables {
-					reads += t.DataReads()
-				}
-			}
-			stats.WithLabelValues("table_data_reads", name).Set(float64(reads))
+			tableManagerStats := g.tm.GetStats()
+			stats.WithLabelValues("table_data_reads", name).Set(float64(tableManagerStats[StatsTotalReads]))
+			stats.WithLabelValues("num_tables", name).Set(float64(tableManagerStats[StatsNumTables]))
+			stats.WithLabelValues("total_file_size", name).Set(float64(tableManagerStats[StatsTotalSize]))
+			stats.WithLabelValues("total_num_records", name).Set(float64(tableManagerStats[StatsTotalReads]))
 		}()
 	}
 }

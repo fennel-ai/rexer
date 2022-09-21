@@ -1,6 +1,7 @@
 package gravel
 
 import (
+	"encoding/binary"
 	"fennel/lib/utils"
 	"fmt"
 	"math/rand"
@@ -75,4 +76,107 @@ func TestGravelTooLargeBatch(t *testing.T) {
 	// else we can not commit
 	assert.Error(t, canWrite(100))
 
+}
+
+func TestFull(t *testing.T) {
+	//t.Skip("Test takes too long so skipping it. We do have some coverage in more generate test_table")
+	dirname := t.TempDir()
+
+	opt := DefaultOptions()
+	opt.Dirname = dirname
+	opt.NumShards = 16
+	opt.MaxMemtableSize = 1024 * 1024 * 10
+
+	g, err := Open(opt)
+	assert.NoError(t, err)
+
+	//shards := uint64(4)
+	//manifest, err := InitManifest(dirname, HashTable, shards)
+
+	itemCnt := 10_000_000
+	//mt := NewMemTable(shards)
+	key := make([]byte, 8)
+
+	t1 := time.Now()
+	b := g.NewBatch()
+	for i := 0; i < itemCnt; i++ {
+		value := make([]byte, 16+i%50)
+		binary.BigEndian.PutUint64(key, uint64(i))
+		binary.BigEndian.PutUint64(value, uint64(i))
+		binary.BigEndian.PutUint64(value[8:], uint64(i))
+		err := b.Set(key, value, 0)
+		assert.NoError(t, err)
+		if len(b.Entries()) > 1000 {
+			err = b.Commit()
+			assert.NoError(t, err)
+		}
+	}
+	if len(b.Entries()) > 0 {
+		err = b.Commit()
+		assert.NoError(t, err)
+	}
+	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
+
+	fmt.Println("sleeping 10 secs, wait for compaction work to start")
+	time.Sleep(10 * time.Second) // wait for compaction
+
+	fmt.Println("overwrite all records with different values and expires")
+	t1 = time.Now()
+	b = g.NewBatch()
+	for i := 0; i < itemCnt; i++ {
+		expires := uint32(0)
+		if i%5 == 0 {
+			expires = uint32(time.Now().Unix()) + 10
+		}
+		value := make([]byte, 16+i%50)
+		binary.BigEndian.PutUint64(key, uint64(i))
+		binary.BigEndian.PutUint64(value, uint64(i*2))
+		binary.BigEndian.PutUint64(value[8:], uint64(i*2))
+		err := b.Set(key, value, expires)
+		assert.NoError(t, err)
+		if len(b.Entries()) > 1000 {
+			err = b.Commit()
+			assert.NoError(t, err)
+		}
+	}
+	if len(b.Entries()) > 0 {
+		err = b.Commit()
+		assert.NoError(t, err)
+	}
+	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
+
+	fmt.Println("sleeping another 10 secs, wait for more compaction work to be done")
+	time.Sleep(10 * time.Second) // wait for compaction
+
+	t1 = time.Now()
+	for i := 0; i < itemCnt; i++ {
+		binary.BigEndian.PutUint64(key, uint64(i))
+		v, err := g.Get(key)
+		if i%5 == 0 {
+			assert.Error(t, ErrNotFound, err)
+		} else {
+			assert.NoError(t, err)
+			valueNum := int(binary.BigEndian.Uint64(v))
+			assert.Equal(t, i*2, valueNum)
+			assert.Equal(t, i%50+16, len(v))
+		}
+
+	}
+	fmt.Println("time_ms read from file:", time.Since(t1).Milliseconds())
+
+	key = make([]byte, 9)
+	// query nonexist records
+	var keys [][]byte
+	for i := 0; i < itemCnt; i++ {
+		curKey := make([]byte, 9)
+		binary.BigEndian.PutUint64(curKey, uint64(rand.Int()))
+		keys = append(keys, curKey)
+	}
+
+	t1 = time.Now()
+	for _, curKey := range keys {
+		_, err := g.Get(curKey)
+		assert.Error(t, ErrNotFound, err)
+	}
+	fmt.Println("time_ms read from file for non-exist records:", time.Since(t1).Milliseconds())
 }

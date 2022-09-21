@@ -42,13 +42,21 @@ const invalidUint32 uint32 = 0xFFFFFFFF
 var incompleteFile = fmt.Errorf("expected end of file")
 
 type bDiskHashTable struct {
+	fileName    string
 	data        []byte
 	itemCount   uint64
 	bucketCount uint64
 	dataPos     uint64
-	id          uint64
 	reads       atomic.Uint64
 	numShardBit int
+}
+
+func (b *bDiskHashTable) Name() string {
+	panic("implement me")
+}
+
+func (b *bDiskHashTable) NumRecords() uint64 {
+	panic("implement me")
 }
 
 func (b *bDiskHashTable) DataReads() uint64 {
@@ -169,10 +177,6 @@ func (b *bDiskHashTable) Close() error {
 	return syscall.Munmap(data)
 }
 
-func (b *bDiskHashTable) ID() uint64 {
-	return b.id
-}
-
 func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
 	if numShards&(numShards-1) > 0 {
 		return nil, fmt.Errorf("shard is not a power of 2")
@@ -183,7 +187,7 @@ func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]stri
 	}
 	filenames := make([]string, uint(numShards))
 	for i := 0; i < int(numShards); i++ {
-		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempSuffix)
+		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempFileExtension)
 		filepath := path.Join(dirname, filename)
 		filenames[i] = filename
 		fmt.Printf("starting to build the table: %s...\n", filepath)
@@ -355,7 +359,15 @@ func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]stri
 	return filenames, nil
 }
 
-func openBDiskHashTable(id uint64, filepath string) (Table, error) {
+func (b *bDiskHashTable) GetAll(_ map[string]Value) error {
+	panic("not implemented")
+}
+
+func (b *bDiskHashTable) Size() uint64 {
+	panic("not implemented")
+}
+
+func openBDiskHashTable(filepath string) (Table, error) {
 	var data []byte = nil
 
 	f, err := os.Open(filepath)
@@ -395,7 +407,6 @@ func openBDiskHashTable(id uint64, filepath string) (Table, error) {
 		itemCount:   uint64(binary.BigEndian.Uint32(data[8:])),
 		bucketCount: uint64(binary.BigEndian.Uint32(data[4:])),
 		dataPos:     dataPos,
-		id:          id,
 		numShardBit: numShardBits,
 	}
 	runtime.SetFinalizer(tableObj, (*bDiskHashTable).Close)

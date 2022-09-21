@@ -69,19 +69,17 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"fennel/lib/utils"
 	fbinary "fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
+	"go.uber.org/atomic"
+	"golang.org/x/sys/unix"
 	math2 "math"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"syscall"
-
-	"go.uber.org/atomic"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -128,20 +126,53 @@ type bucket struct {
 }
 
 type hashTable struct {
+	name       string
 	head       header
 	mappedData []byte
 	index      []byte // derived from mmappedData
 	overflow   []byte // derived from mmappedData
 	data       []byte // derived from mmappedData
-	id         uint64
+	size       uint64
 	reads      atomic.Uint64
+}
+
+func (ht *hashTable) Name() string {
+	return ht.name
+}
+
+func (ht *hashTable) NumRecords() uint64 {
+	return uint64(ht.head.numRecords)
+}
+
+func (ht *hashTable) GetAll(m map[string]Value) error {
+	data := ht.data
+	sofar := 0
+	for i := uint32(0); i < ht.head.numRecords; i++ {
+		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
+		if err != nil {
+			return incompleteFile
+		}
+		sofar += n
+		curKey := string(data[sofar : sofar+int(keyLen)])
+		sofar += int(keyLen)
+		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false)
+		if err != nil {
+			return incompleteFile
+		}
+		sofar += n
+		m[curKey] = v
+	}
+	return nil
+}
+
+func (ht *hashTable) Size() uint64 {
+	return ht.size
 }
 
 func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	head := ht.head // deref in local variables to reduce address translations
 	bucketID := getBucketID(hash, head.numBuckets)
 	fp := getFingerprint(hash)
-
 	matchedIndices, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
@@ -149,7 +180,7 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	if matchedIndices == nil {
 		return Value{}, ErrNotFound
 	}
-	ret, err := ht.readData(dataPos, matchedIndices, numCandidates, key, uint32(head.minExpiry))
+	ret, err := ht.readData(dataPos, matchedIndices, numCandidates, key, head.minExpiry)
 	return ret, err
 }
 
@@ -281,20 +312,20 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
-func (ht *hashTable) readData(start uint64, matchedIndices []int, numRecords int, key []byte, minExpiry uint32) (Value, error) {
+func (ht *hashTable) readData(start uint64, matchedIndices []int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
 	data := ht.data[start:]
-	sofar := uint64(0)
+	sofar := 0
 	curMatchIdx := 0
 	for i := 0; i < numRecords; i++ {
-		keylen, n, err := fbinary.ReadUvarint(data[sofar:])
+		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
 		if err != nil {
 			return Value{}, incompleteFile
 		}
-		sofar += uint64(n)
+		sofar += n
 		if i == matchedIndices[curMatchIdx] {
 			// fingerprint match, a potential hit
-			curKey := data[sofar : sofar+keylen]
-			sofar += keylen
+			curKey := data[sofar : sofar+int(keyLen)]
+			sofar += int(keyLen)
 			if bytes.Equal(key, curKey) {
 				ret, _, err := readValue(data[sofar:], minExpiry, false)
 				return ret, err
@@ -304,7 +335,7 @@ func (ht *hashTable) readData(start uint64, matchedIndices []int, numRecords int
 				return Value{}, ErrNotFound
 			}
 		} else {
-			sofar += keylen
+			sofar += int(keyLen)
 		}
 		_, m, err := readValue(data[sofar:], minExpiry, true)
 		if err != nil {
@@ -367,37 +398,23 @@ func (ht *hashTable) Close() error {
 	return ret
 }
 
-func (ht *hashTable) ID() uint64 {
-	return ht.id
-}
-
 func (ht *hashTable) DataReads() uint64 {
 	return ht.reads.Load() * sampleRate
 }
 
 var _ Table = (*hashTable)(nil)
 
-func buildHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
-	filenames := make([]string, 0, uint(numShards))
-	for shard := uint64(0); shard < numShards; shard += 1 {
-		filename, err := buildShard(shard, dirname, mt.Iter(shard))
-		if err != nil {
-			return nil, err
-		}
-		filenames = append(filenames, filename)
-	}
-	return filenames, nil
-}
-
-func buildShard(shard uint64, dirname string, data map[string]Value) (string, error) {
-	filename := fmt.Sprintf("%d_%s%s", shard, utils.RandString(8), tempSuffix)
-	filepath := path.Join(dirname, filename)
+func buildHashTable(filepath string, data map[string]Value) error {
 	f, err := os.Create(filepath)
 	if err != nil {
-		return "", err
+		return err
 	}
 	numRecords := uint32(len(data))
-	numBuckets := uint32(numRecords/numRecordsPerBucket) + 1
+	numBuckets := numRecords / numRecordsPerBucket
+	if numBuckets == 0 {
+		numBuckets = 1
+	}
+
 	records := make([]record, 0, len(data))
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
@@ -428,19 +445,19 @@ func buildShard(shard uint64, dirname string, data map[string]Value) (string, er
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
 	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
 	if err != nil {
-		return "", err
+		return err
 	}
 	writer := bufio.NewWriterSize(f, 1024*1024)
 	datasize, buckets, err := writeData(writer, records, minExpiry, numBuckets)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// We want index data to be 64 byte aligned, so if data size is not a multiple of 64, add some filler
 	gap := 64 - (datasize & 63)
 	if gap > 0 {
 		if _, err = writer.Write(make([]byte, gap)); err != nil {
-			return "", fmt.Errorf("failed to write data segment: %w", err)
+			return fmt.Errorf("failed to write data segment: %w", err)
 		}
 		datasize += gap
 	}
@@ -448,23 +465,23 @@ func buildShard(shard uint64, dirname string, data map[string]Value) (string, er
 	// now write the index
 	indexsize, err := writeIndex(writer, numBuckets, buckets, records)
 	if err != nil {
-		return "", fmt.Errorf("failed to write index segment: %w", err)
+		return fmt.Errorf("failed to write index segment: %w", err)
 	}
 	// write tail magic
 	tailMagicBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(tailMagicBytes, magicTailer)
 	if _, err = writer.Write(tailMagicBytes); err != nil {
-		return "", fmt.Errorf("failed to write magictailer: %w", err)
+		return fmt.Errorf("failed to write magictailer: %w", err)
 	}
 	// flush any existing data in the writer and then go to the start to write the header
 	if err = writer.Flush(); err != nil {
-		return "", fmt.Errorf("error flushing the buffered writer %w", err)
+		return fmt.Errorf("error flushing the buffered writer %w", err)
 	}
 
 	// write header
 	_, err = f.Seek(0, unix.SEEK_SET)
 	if err != nil {
-		return "", err
+		return err
 	}
 	writer.Reset(f)
 	head := header{
@@ -480,16 +497,16 @@ func buildShard(shard uint64, dirname string, data map[string]Value) (string, er
 		maxExpiry:   maxExpiry,
 	}
 	if err = writeHeader(writer, head); err != nil {
-		return "", err
+		return err
 	}
 
 	if err = writer.Flush(); err != nil {
-		return "", fmt.Errorf("error flushing the buffered writer %w", err)
+		return fmt.Errorf("error flushing the buffered writer %w", err)
 	}
 	if err = f.Sync(); err != nil {
-		return "", err
+		return err
 	}
-	return filename, f.Close()
+	return f.Close()
 }
 
 func writeHeader(writer *bufio.Writer, head header) error {
@@ -554,25 +571,25 @@ func writeKey(writer *bufio.Writer, k string) (uint32, error) {
 // readValue reads a value and returns the number of bytes taken by this value
 // if onlysize is true, the caller is only interested in the size of this value
 // so this function can avoid expensive operations in those cases
-func readValue(data []byte, minExpiry uint32, onlysize bool) (Value, uint64, error) {
+func readValue(data []byte, minExpiry Timestamp, onlysize bool) (Value, int, error) {
 	if len(data) == 0 {
 		return Value{}, 0, incompleteFile
 	}
 	if data[0] > 0 { // deleted
 		return Value{data: []byte{}, expires: 0, deleted: true}, 1, nil
 	}
-	cur := uint64(1)
+	cur := 1
 	expiry64, n, err := fbinary.ReadUvarint(data[cur:])
-	cur += uint64(n)
+	cur += n
 	if err != nil {
 		return Value{}, 0, err
 	}
-	expiry := uint32(expiry64)
+	expiry := Timestamp(expiry64)
 	if expiry > 0 {
 		expiry = minExpiry + expiry - 1
 	}
 	valLen, n, err := fbinary.ReadUvarint(data[cur:])
-	cur += uint64(n)
+	cur += n
 	if err != nil {
 		return Value{}, 0, incompleteFile
 	}
@@ -584,14 +601,14 @@ func readValue(data []byte, minExpiry uint32, onlysize bool) (Value, uint64, err
 	// 	}, cur + uint32(valLen), nil
 	// }
 	if onlysize {
-		return Value{}, cur + valLen, nil
+		return Value{}, cur + int(valLen), nil
 	}
-	value := data[cur : cur+valLen]
+	value := data[cur : cur+int(valLen)]
 	return Value{
 		data:    clonebytes(value),
-		expires: Timestamp(expiry),
+		expires: expiry,
 		deleted: false,
-	}, cur + valLen, nil
+	}, cur + int(valLen), nil
 }
 
 func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, error) {
@@ -652,8 +669,9 @@ func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {
 	return i + 1, buf.WriteByte(byte(x))
 }
 
-func openHashTable(id uint64, filepath string, warmIndex bool, warmData bool) (Table, error) {
-	f, err := os.Open(filepath)
+func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, error) {
+	name := filepath.Base(fullFileName)
+	f, err := os.Open(fullFileName)
 	if err != nil {
 		return nil, err
 	}
@@ -710,12 +728,13 @@ func openHashTable(id uint64, filepath string, warmIndex bool, warmData bool) (T
 	}
 
 	tableObj := &hashTable{
+		name:       name,
 		head:       header,
 		overflow:   overflow,
 		mappedData: buf,
 		index:      index,
 		data:       data,
-		id:         id,
+		size:       uint64(size),
 		reads:      atomic.Uint64{},
 	}
 	runtime.SetFinalizer(tableObj, (*hashTable).Close)

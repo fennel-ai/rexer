@@ -21,16 +21,27 @@ import (
 type bTreeTable struct {
 	db *bbolt.DB
 	// bloom *Bloom
-	id    uint64
 	reads atomic.Uint64
+}
+
+func (t *bTreeTable) Name() string {
+	panic("implement me")
+}
+
+func (t *bTreeTable) NumRecords() uint64 {
+	panic("implement me")
 }
 
 func (t *bTreeTable) DataReads() uint64 {
 	return t.reads.Load()
 }
 
-func (t *bTreeTable) ID() uint64 {
-	return t.id
+func (t *bTreeTable) GetAll(_ map[string]Value) error {
+	panic("implement me")
+}
+
+func (t *bTreeTable) Size() uint64 {
+	panic("implement me")
 }
 
 var _ Table = (*bTreeTable)(nil)
@@ -73,7 +84,7 @@ func buildBTreeTable(dirname string, numShards uint64, mt *Memtable) ([]string, 
 	for i := 0; i < int(numShards); i++ {
 		iter := mt.Iter(uint64(i))
 		// filter := NewBloomFilter(uint64(len(iter)), 0.001)
-		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempSuffix)
+		filename := fmt.Sprintf("%d_%s%s", i, utils.RandString(8), tempFileExtension)
 		filepath := path.Join(dirname, filename)
 		filenames[i] = filename
 		db, err := bbolt.Open(filepath, 0666, nil)
@@ -150,7 +161,7 @@ func buildBTreeTable(dirname string, numShards uint64, mt *Memtable) ([]string, 
 	return filenames, nil
 }
 
-func openBTreeTable(id uint64, filepath string) (Table, error) {
+func openBTreeTable(filepath string) (Table, error) {
 	_, err := os.Open(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("the file doesn't exist")
@@ -174,6 +185,5 @@ func openBTreeTable(id uint64, filepath string) (Table, error) {
 	return &bTreeTable{
 		db: db,
 		// bloom: filter,
-		id: id,
 	}, nil
 }

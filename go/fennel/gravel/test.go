@@ -8,7 +8,14 @@ import (
 )
 
 type emptyTable struct {
-	id uint64
+}
+
+func (d emptyTable) Name() string {
+	return "whatever"
+}
+
+func (d emptyTable) NumRecords() uint64 {
+	return 0
 }
 
 func (d emptyTable) Get(key []byte, hash uint64) (Value, error) {
@@ -19,23 +26,28 @@ func (d emptyTable) Close() error {
 	return nil
 }
 
-func (d emptyTable) ID() uint64 {
-	return d.id
+func (d emptyTable) DataReads() uint64 {
+	return 0
 }
 
-func (d emptyTable) DataReads() uint64 {
+func (d emptyTable) GetAll(_ map[string]Value) error {
+	return nil
+}
+
+func (d emptyTable) Size() uint64 {
 	return 0
 }
 
 var _ Table = (*emptyTable)(nil)
 
-func openEmptyTable(id uint64) (Table, error) {
-	return emptyTable{id: id}, nil
+func openEmptyTable() (Table, error) {
+	return emptyTable{}, nil
 }
+
 func buildEmptyTable(dirname string, numShards uint64, _ *Memtable) ([]string, error) {
 	filenames := make([]string, 0)
 	for i := 0; i < int(numShards); i++ {
-		fname := fmt.Sprintf("%d_%s%s", i, utils.RandString(5), tempSuffix)
+		fname := fmt.Sprintf("%d_%s%s", i, utils.RandString(5), tempFileExtension)
 		filenames = append(filenames, fname)
 		f, err := os.Create(path.Join(dirname, fname))
 		if err != nil {
