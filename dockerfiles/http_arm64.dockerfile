@@ -21,5 +21,13 @@ COPY --from=builder /usr/local/lib .
 RUN echo /kafka/lib >> /etc/ld.so.conf.d/librdkafka.conf
 WORKDIR /root/
 COPY --from=builder /app/go/fennel/server ./
+# TODO(mohit.aditya): This should be removed
+RUN apt-get update \
+    && apt-get install -y python3-pip python3-dev \
+    && cd /usr/local/bin \
+    && ln -s /usr/bin/python3 python \
+    && pip3 --no-cache-dir install --upgrade pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 --no-cache-dir install pandas requests cloudpickle
 RUN ldconfig
 CMD ["./server"]
