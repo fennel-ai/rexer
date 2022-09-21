@@ -160,6 +160,7 @@ type inputType = {
     countAggrConf?: CountAggrConf,
     counterCleanupConf?: CounterCleanupConf,
     enableNitrous?: boolean,
+    nitrousBinLogPartitions?: number,
 
     // third-party services configuration
     sagemakerConf?: SagemakerConf,
@@ -221,6 +222,7 @@ const parseConfig = (): inputType => {
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
         counterCleanupConf: config.getObject(nameof<inputType>("counterCleanupConf")),
         enableNitrous: config.getObject(nameof<inputType>("enableNitrous")),
+        nitrousBinLogPartitions: config.requireNumber(nameof<inputType>("nitrousBinLogPartitions")),
 
         sagemakerConf: config.getObject(nameof<inputType>("sagemakerConf")),
 
@@ -487,6 +489,7 @@ const setupResources = async () => {
                 } as Record<string, string>),
                 nitrousConfig: pulumi.output({
                     "addr": input.enableNitrous ? `${nitrous.name}.${nitrous.namespace}:${nitrous.servicePort}` : "",
+                    "binlogPartitions": input.nitrousBinLogPartitions ? `${input.nitrousBinLogPartitions}`: "",
                 } as Record<string, string>),
                 airbyteConfig: pulumi.output({
                     "endpoint": airbyteServerEndpoint,
@@ -691,6 +694,7 @@ type TierInput = {
 
     // flag to enable nitrous.
     enableNitrous?: boolean,
+    nitrousBinLogPartitions?: number,
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
@@ -740,6 +744,11 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await setupPlugins(stack)
 
     console.info("setting up config");
+
+    if (args.enableNitrous !== undefined && args.enableNitrous && (args.nitrousBinLogPartitions === undefined || args.nitrousBinLogPartitions <= 0 )) {
+        console.log('Nitrous is enabled, but nitrous binlog partitions is either not set or set to <= 0');
+        process.exit(1);
+    }
 
     await stack.setConfig(nameof<inputType>("protect"), { value: String(args.protect) })
 
@@ -806,6 +815,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.enableNitrous !== undefined) {
         await stack.setConfig(nameof<inputType>("enableNitrous"), { value: JSON.stringify(args.enableNitrous) })
+    }
+
+    if (args.nitrousBinLogPartitions !== undefined) {
+        await stack.setConfig(nameof<inputType>("nitrousBinLogPartitions"), {value: `${args.nitrousBinLogPartitions}`})
     }
 
     if (args.sagemakerConf !== undefined) {

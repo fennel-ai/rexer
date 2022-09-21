@@ -2,7 +2,10 @@ package store
 
 import (
 	"context"
+	"fennel/hangar/db"
+	"fennel/hangar/encoders"
 	"fmt"
+	"github.com/dgraph-io/badger/v3"
 	"testing"
 	"time"
 
@@ -20,6 +23,9 @@ import (
 
 func TestAggregateStore(t *testing.T) {
 	n := test.NewTestNitrous(t)
+	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	t.Cleanup(func() { _ = db.Teardown() })
+	assert.NoError(t, err)
 	opts := aggregate.Options{
 		AggType:   "sum",
 		Durations: []uint32{24 * 3600},
@@ -35,33 +41,36 @@ func TestAggregateStore(t *testing.T) {
 	kwargs := value.NewDict(nil)
 	kwargs.Set("duration", value.Int(24*3600))
 
-	val, err := cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	val, err := cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, val)
 
-	keys, vgs, err := cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(5)}, n.Store)
+	keys, vgs, err := cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(5)}, db)
 	assert.NoError(t, err)
-	err = n.Store.SetMany(ctx, keys, vgs)
+	err = db.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
-	val, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	val, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(5)}, val)
 
-	keys, vgs, err = cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(7)}, n.Store)
+	keys, vgs, err = cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(7)}, db)
 	assert.NoError(t, err)
-	err = n.Store.SetMany(ctx, keys, vgs)
+	err = db.SetMany(ctx, keys, vgs)
 	assert.NoError(t, err)
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
-	val, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	val, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(12)}, val)
 }
 
 func TestProcess(t *testing.T) {
 	n := test.NewTestNitrous(t)
+	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	t.Cleanup(func() { _ = db.Teardown() })
+	assert.NoError(t, err)
 	opts := aggregate.Options{
 		AggType:   "max",
 		Durations: []uint32{24 * 3600},
@@ -96,27 +105,27 @@ func TestProcess(t *testing.T) {
 					},
 				},
 			},
-		}, n.Store)
+		}, db)
 		assert.NoError(t, err)
-		err = n.Store.SetMany(ctx, keys, vgs)
+		err = db.SetMany(ctx, keys, vgs)
 		assert.NoError(t, err)
 	}
 
 	// max is 0.
-	vals, err := cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err := cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Double(0)}, vals)
 
 	// max is the inserted value.
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(42))
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
 	// max should remain as 42.
 	ck.Add(10 * time.Hour)
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(29))
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
@@ -132,10 +141,10 @@ func TestProcess(t *testing.T) {
 	cs2, err := NewCloset(tierId, aggId2, rpc.AggCodec_V2, mr2, b, 25)
 	assert.NoError(t, err)
 	pushEvent(cs2, tierId, aggId2, "mygk", value.Int(531))
-	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(531)}, vals)
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
@@ -143,26 +152,29 @@ func TestProcess(t *testing.T) {
 	// agg2 should remain unchanged.
 	ck.Add(16 * time.Hour)
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(-10))
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(29)}, vals)
-	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(531)}, vals)
 
 	// "29" will expire and max should now be -10.
 	// agg2 value should also expire and now return 0.
 	ck.Add(10 * time.Hour)
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(-10)}, vals)
-	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, n.Store)
+	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, vals)
 }
 
 func BenchmarkGet(b *testing.B) {
 	n := test.NewTestNitrous(b)
+	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(b.TempDir()), encoders.Default())
+	b.Cleanup(func() { _ = db.Teardown() })
+	assert.NoError(b, err)
 	opts := aggregate.Options{
 		AggType:   "max",
 		Durations: []uint32{24 * 3600},
@@ -191,14 +203,14 @@ func BenchmarkGet(b *testing.B) {
 		ts = append(ts, now)
 		kwargs = append(kwargs, duration)
 	}
-	keys, vgs, err := cs.update(ctx, ts, gks, vals, n.Store)
+	keys, vgs, err := cs.update(ctx, ts, gks, vals, db)
 	assert.NoError(b, err)
-	err = n.Store.SetMany(ctx, keys, vgs)
+	err = db.SetMany(ctx, keys, vgs)
 	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := cs.Get(ctx, gks, kwargs, n.Store)
+		_, err := cs.Get(ctx, gks, kwargs, db)
 		assert.NoError(b, err)
 	}
 }

@@ -62,6 +62,7 @@ type TierArgs struct {
 	RequestLimit     int64          `arg:"--request-limit,env:REQUEST_LIMIT" default:"-1" json:"request_limit,omitempty"`
 	RedisServer      string         `arg:"--redis-server,env:REDIS_SERVER_ADDRESS" json:"redis_server,omitempty"`
 	NitrousServer    string         `arg:"--nitrous-server,env:NITROUS_SERVER_ADDRESS" json:"nitrous_server,omitempty"`
+	BinlogPartitions uint32 		`arg:"--binlog-partitions,env:BINLOG_PARTITIONS" json:"binlog_partitions,omitempty"`
 	CachePrimary     string         `arg:"--cache-primary,env:CACHE_PRIMARY" json:"cache_primary,omitempty"`
 	CacheReplica     string         `arg:"--cache-replica,env:CACHE_REPLICA" json:"cache_replica,omitempty"`
 	Dev              bool           `arg:"--dev" default:"true" json:"dev,omitempty"`
@@ -286,11 +287,17 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		if !ok {
 			return tier, fmt.Errorf("failed to create nitrous client; Reqslog kafka topic not configured")
 		}
+		aggregateConfProducer, ok := producers[libnitrous.AGGR_CONF_KAFKA_TOPIC]
+		if !ok {
+			return tier, fmt.Errorf("failed to create nitrous client; aggregate_conf topic not configured")
+		}
 		nitrousConfig := nitrous.NitrousClientConfig{
 			TierID:          args.TierID,
 			ServerAddr:      args.NitrousServer,
 			BinlogProducer:  binlogProducer,
+			BinlogPartitions: args.BinlogPartitions,
 			ReqsLogProducer: reqslogProducer,
+			AggregateConfProducer: aggregateConfProducer,
 		}
 		client, err := nitrousConfig.Materialize()
 		if err != nil {

@@ -11,6 +11,15 @@ export const serviceEnvs = [
         }
     },
     {
+        name: "BINLOG_PARTITIONS",
+        valueFrom: {
+            configMapKeyRef: {
+                name: "nitrous-conf",
+                key: "binlogPartitions",
+            }
+        }
+    },
+    {
         name: "MSK_KAFKA_SERVER_ADDRESS",
         valueFrom: {
             secretKeyRef: {

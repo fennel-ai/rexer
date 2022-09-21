@@ -33,7 +33,7 @@ func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.
 	return tdb.next, nil
 }
 
-func (tdb *TestDB) GetLag(ctx context.Context) (int, error) {
+func (tdb *TestDB) GetLag() (int, error) {
 	return tdb.lag, nil
 }
 

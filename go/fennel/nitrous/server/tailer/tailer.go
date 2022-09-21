@@ -25,8 +25,8 @@ const (
 	// The tailer_batch value is tuned to be large enough to process the binlog
 	// quickly, but no so large that we get badger errors for transaction being
 	// too large.
-	tailer_batch         = 20_000
-	default_poll_timeout = 10 * time.Second
+	DefaultTailerBatch       = 20_000
+	DefaultPollTimeout = 10 * time.Second
 )
 
 var (
@@ -39,30 +39,43 @@ var (
 type EventsProcessor func(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
 
 type Tailer struct {
+	topic 		string
 	processor   EventsProcessor
 	nitrous     nitrous.Nitrous
 	binlog      fkafka.FConsumer
 	stopCh      chan chan struct{}
 	pollTimeout time.Duration
+	batchSize  	int
 	running     *atomic.Bool
+	store 		hangar.Hangar
 }
 
 // Returns a new Tailer that can be used to tail the binlog.
-func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, processor EventsProcessor) (*Tailer, error) {
+func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, store hangar.Hangar, processor EventsProcessor,
+	pollTimeout time.Duration, batchSize int) (*Tailer, error) {
 	// Given the topic partitions, decode what offsets to start reading from.
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(n.PlaneID),
 		Topic:        topic,
+		// Even though the nitrous instances which will come up, will be responsible for disjoint partition subset,
+		// it is possible that the consumer group name is different for both, as the disjointed behavior is an eventual
+		// property i.e. during the time when the new nitrous instance is catching up the binlog for the partitions
+		// assigned to it, the requests for the data stored in corresponding partitions needs to be served and will
+		// still be served from the previous nitrous instance. If they have the same consumer group name, one of them
+		// may not have up-to date information.
+		//
+		// Similarly, for aggregate configurations, we want both the nitrous instances to see all the aggregate
+		// configuration events
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
 		RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
 			zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
 			switch event := e.(type) {
 			case kafka.AssignedPartitions:
-				if len(toppars) > 0 && len(event.Partitions) > 0 {
+				if len(event.Partitions) > 0 {
 					// fetch the last committed offsets for the topic partitions assigned to the consumer
 					var err error
-					toppars, err = decodeOffsets(toppars, n.Store)
+					toppars, err := decodeOffsets([]kafka.TopicPartition{toppar}, store)
 					if err != nil {
 						zap.L().Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
 					}
@@ -91,12 +104,15 @@ func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, p
 		return nil, fmt.Errorf("failed to initialize kafka consumer: %w", err)
 	}
 	t := Tailer{
+		topic: 		 topic,
 		processor:   processor,
 		nitrous:     n,
 		binlog:      consumer,
 		stopCh:      make(chan chan struct{}),
-		pollTimeout: default_poll_timeout,
+		pollTimeout: pollTimeout,
+		batchSize:   batchSize,
 		running:     atomic.NewBool(false),
+		store: 		 store,
 	}
 	return &t, nil
 }
@@ -144,7 +160,7 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 		ops[i] = &op
 	}
 	ctx = hangar.NewWriteContext(ctx)
-	keys, vgs, err := t.processor(ctx, ops, t.nitrous.Store)
+	keys, vgs, err := t.processor(ctx, ops, t.store)
 	if err != nil {
 		return fmt.Errorf("failed to proces: %w", err)
 	}
@@ -160,7 +176,7 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 	keys = append(keys, offkeys...)
 	vgs = append(vgs, offvgs...)
 	// Finally, write the batch to the hangar.
-	err = t.nitrous.Store.SetMany(context.Background(), keys, vgs)
+	err = t.store.SetMany(context.Background(), keys, vgs)
 	if err != nil {
 		return fmt.Errorf("hangar write failed: %w", err)
 	}
@@ -187,8 +203,8 @@ func (t *Tailer) Tail() {
 			return
 		default:
 			ctx := context.Background()
-			zap.L().Debug("Waiting for new messages from binlog...")
-			rawops, err := t.binlog.ReadBatch(ctx, tailer_batch, t.pollTimeout)
+			zap.L().Debug("Waiting for new messages", zap.String("tailer", t.topic))
+			rawops, err := t.binlog.ReadBatch(ctx, t.batchSize, t.pollTimeout)
 			if kerr, ok := err.(kafka.Error); ok && (kerr.IsFatal() || kerr.Code() == kafka.ErrUnknownTopicOrPart) {
 				zap.L().Fatal("Permanent error when reading from kafka", zap.Error(err))
 			} else if err != nil {

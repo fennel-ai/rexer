@@ -55,6 +55,8 @@ func NitrousBatchValue(
 		}
 		output := arena.Values.Alloc(len(indices), len(indices))
 		defer arena.Values.Free(output)
+
+		// TODO(mohit): We should send the Get request based on the groupkey ('aggkeys') since the binlog is sharded
 		err := tier.NitrousClient.MustGet().GetMulti(ctx, aggId, aggkeys, aggkwargs, output)
 		if err != nil {
 			return nil, err

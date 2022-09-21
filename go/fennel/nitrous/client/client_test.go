@@ -25,7 +25,9 @@ func TestPush(t *testing.T) {
 		TierID:         0,
 		ServerAddr:     addr.String(),
 		BinlogProducer: n.NewBinlogProducer(t),
+		BinlogPartitions: 1,
 		ReqsLogProducer: n.NewReqLogProducer(t),
+		AggregateConfProducer: n.NewAggregateConfProducer(t),
 	}
 	res, err := cfg.Materialize()
 	assert.NoError(t, err)

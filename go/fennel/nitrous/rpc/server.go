@@ -57,7 +57,7 @@ const (
 
 type AggDB interface {
 	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error)
-	GetLag(ctx context.Context) (int, error)
+	GetLag() (int, error)
 	GetPollTimeout() time.Duration
 
 	Stop()
@@ -115,8 +115,8 @@ func NewServer(aggdb AggDB) *Server {
 	return s
 }
 
-func (s *Server) GetLag(ctx context.Context, _ *LagRequest) (*LagResponse, error) {
-	lag, err := s.aggdb.GetLag(ctx)
+func (s *Server) GetLag(_ context.Context, _ *LagRequest) (*LagResponse, error) {
+	lag, err := s.aggdb.GetLag()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting lag: %v", err)
 	}

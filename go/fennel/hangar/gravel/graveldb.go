@@ -7,31 +7,17 @@ import (
 	"fennel/lib/arena"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
-	"fennel/lib/utils/parallel"
 	"fmt"
 	"io"
-	"runtime"
 	"time"
 
 	"github.com/detailyang/fastrand-go"
-)
-
-const (
-	DB_BATCH_SIZE = 32
-)
-
-var (
-	READ_PARALLELISM  = 2 * runtime.NumCPU()
-	WRITE_PARALLELISM = runtime.NumCPU()
 )
 
 type gravelDb struct {
 	planeID ftypes.RealmID
 	db      *gravel.Gravel
 	enc     hangar.Encoder
-
-	readWorkers  *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
-	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
 func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc hangar.Encoder) (*gravelDb, error) {
@@ -45,8 +31,6 @@ func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc
 		planeID:      planeID,
 		db:           db,
 		enc:          enc,
-		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_gravel_read", 4*READ_PARALLELISM),
-		writeWorkers: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_gravel_write", WRITE_PARALLELISM),
 	}, nil
 }
 

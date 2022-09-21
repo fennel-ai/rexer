@@ -493,6 +493,8 @@ github.com/samber/lo v1.25.0/go.mod h1:2I7tgIv8Q1SG2xEIkRq0F2i2zgxVpnyPOP0d3Gj2r
 github.com/samber/mo v1.0.0 h1:rmVWbWXPq9fV5GvZXTC0gMO5gk9YzSOcLskDvuD7jqk=
 github.com/samber/mo v1.0.0/go.mod h1:pDuQgWscOVGGoEz+NAeth/Xq+MPAcXxCeph1XIAm/DU=
 github.com/sclevine/agouti v3.0.0+incompatible/go.mod h1:b4WX9W9L1sfQKXeJf1mUTLZKJ48R1S7H23Ji7oFO5Bw=
+github.com/segmentio/fasthash v1.0.3 h1:EI9+KE1EwvMLBWwjpRDc+fEM+prwxDYbslddQGtrmhM=
+github.com/segmentio/fasthash v1.0.3/go.mod h1:waKX8l2N8yckOgmSsXJi7x1ZfdKZ4x7KRMzBtS3oedY=
 github.com/sendgrid/rest v2.6.9+incompatible h1:1EyIcsNdn9KIisLW50MKwmSRSK+ekueiEMJ7NEoxJo0=
 github.com/sendgrid/rest v2.6.9+incompatible/go.mod h1:kXX7q3jZtJXK5c5qK83bSGMdV6tsOE70KbHoqJls4lE=
 github.com/sendgrid/sendgrid-go v3.11.1+incompatible h1:ai0+woZ3r/+tKLQExznak5XerOFoD6S7ePO0lMV8WXo=

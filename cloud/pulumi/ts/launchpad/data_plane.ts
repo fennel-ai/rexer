@@ -153,6 +153,7 @@ export type PlaneOutput = {
     customerId: number,
     mothershipId: number,
     region: number,
+    nitrous: nitrous.outputType,
 }
 
 const parseConfig = (): DataPlaneConf => {
@@ -346,8 +347,9 @@ const setupResources = async () => {
         nodeInstanceRole: eksOutput.instanceRole,
     })
 
+    let nitrousOutput: nitrous.outputType | undefined;
     if (input.nitrousConf !== undefined) {
-        const nitrousOutput = await nitrous.setup({
+        nitrousOutput = await nitrous.setup({
             planeId: input.planeId,
             region: input.region,
             roleArn: roleArn,
@@ -420,6 +422,7 @@ const setupResources = async () => {
         mothershipId: input.mothershipId,
         customerId: input.customer === undefined ? 0 : input.customer.id,
         region: input.region,
+        nitrous: nitrousOutput,
     }
 };
 
