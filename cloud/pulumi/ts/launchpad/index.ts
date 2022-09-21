@@ -133,12 +133,12 @@ const tierConfs: Record<number, TierConf> = {
                 resourceConf: {
                     // 8x large machine, set requests and limits accordingly
                     cpu: {
-                        request: "28000m",
-                        limit: "31000m",
+                        request: "3000m",
+                        limit: "7000m",
                     },
                     memory: {
-                        request: "54Gi",
-                        limit: "56Gi",
+                        request: "2Gi",
+                        limit: "12Gi",
                     }
                 }
             }
@@ -148,23 +148,18 @@ const tierConfs: Record<number, TierConf> = {
         // place the pods across the nodes based on utilization and `limit`
         queryServerConf: {
             podConf: {
-                minReplicas: 4,
+                minReplicas: 1,
                 maxReplicas: 10,
-                nodeLabels: {
-                    "node-group": "p-5-queryserver-ng"
-                },
                 resourceConf: {
                     cpu: {
-                        request: "28000m",
-                        limit: "31000m"
+                        request: "1000m",
+                        limit: "2000m"
                     },
                     memory: {
-                        request: "58G",
-                        limit: "63G",
+                        request: "2G",
+                        limit: "3G",
                     }
                 },
-                // set a threshold of 22G
-                pprofHeapAllocThresholdMegaBytes: 50 << 10,
             }
         },
         sagemakerConf: {
@@ -172,7 +167,7 @@ const tierConfs: Record<number, TierConf> = {
             // not autoscalable).
             instanceType: "ml.c5.large",
             // have multiple instances for fault tolerance
-            instanceCount: 3,
+            instanceCount: 1,
         },
         ingressConf: {
             useDedicatedMachines: true,
@@ -568,8 +563,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         otelConf: {
             resourceConf: {
                 memory: {
-                    request: "3G",
-                    limit: "6G",
+                    request: "1G",
+                    limit: "2G",
                 },
                 cpu: {
                     request: "128m",
@@ -602,7 +597,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-5-countaggr-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.8xlarge"],
+                    instanceTypes: ["c6g.2xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -610,83 +605,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                         "node-group": "p-5-countaggr-ng"
                     },
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                // Query server node groups
-                //
-                // each of them have the same expansion priority - cluster autoscaler will pick one randomly and
-                // try to scale them up. If any of them fails (due to lack of capacity), it will try another
-                // node group immediately. It is okay for on-demand nodegroup to be scaled up, since
-                // it will later be rescheduled to spot nodegroups using rescheduler.
-                // ideally, on-demand nodegroup should have lower priority, but `priority` expander currently
-                // does not take lower priority nodegroups into consideration for scaling.
-                //
-                // we set the maxSize of on-demand nodegroup as 10 - this is required because it is possible that
-                // spot instances are not available at all, requiring all the instances to be scheduled on on-demand
-                // instances - https://github.com/kubernetes/autoscaler/issues/4992
-                //
-                // TODO(mohit): Consider changing query server requests to <16cpu and <32G and provision 4xlarge node
-                // groups
-                {
-                    name: "p-5-queryserver-ng-arm64",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.8xlarge"],
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "on-demand",
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 10,
-                },
-                {
-                    name: "p-5-query-ng-32c-64G-arm-spot",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
-                    instanceTypes: ["c6g.8xlarge", "c6gn.8xlarge"],
-                    minSize: 2,
-                    maxSize: 10,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "spot",
-                    },
-                    capacityType: SPOT_INSTANCE_TYPE,
-                    expansionPriority: 10,
-                },
-                {
-                    name: "p-5-query-ng-32c-64G-amd-spot",
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
-                    instanceTypes: ["c6i.8xlarge", "c6a.8xlarge"],
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "spot",
-                    },
-                    capacityType: SPOT_INSTANCE_TYPE,
-                    expansionPriority: 10,
-                },
-                // Nitrous node group.
-                {
-                    name: "p-5-nitrous-ng-arm",
-                    instanceTypes: ["r6gd.16xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    labels: {
-                        "node-group": "p-5-nitrous-ng",
-                        "aws.amazon.com/eks-local-ssd": "true",
-                    },
                     expansionPriority: 1,
                 },
                 {
