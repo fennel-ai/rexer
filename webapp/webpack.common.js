@@ -1,3 +1,4 @@
+const { WebpackManifestPlugin } = require('webpack-manifest-plugin');
 const path = require("path");
 
 module.exports = {
@@ -8,7 +9,7 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: "[name].js",
+        filename: "[name].[contenthash].js",
         clean: true,
     },
     module: {
@@ -55,5 +56,10 @@ module.exports = {
     },
     resolve: {
         extensions: [".tsx", ".ts", ".js", ".jsx", ".scss", ".sass", ".less"]
-    }
+    },
+    plugins: [
+        new WebpackManifestPlugin({
+            publicPath: "",
+        }),
+    ]
 }
