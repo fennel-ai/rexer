@@ -31,7 +31,7 @@ require (
 	github.com/samber/lo v1.25.0
 	github.com/samber/mo v1.0.0
 	github.com/sendgrid/sendgrid-go v3.11.1+incompatible
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.0
 	github.com/zeebo/xxh3 v1.0.2
 	go.etcd.io/bbolt v1.3.6
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.33.0
@@ -67,6 +67,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/elastic/gosigar v0.12.0 // indirect
+	github.com/gin-contrib/gzip v0.0.6 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
