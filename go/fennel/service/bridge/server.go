@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fennel/lib/sql"
 	"fennel/mothership"
@@ -17,6 +18,7 @@ import (
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -34,11 +36,22 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	SignInURL         = "/signin"
+	TierManagementURL = "/tier_management"
+	WebAppRoot        = "../../webapp"
+	ClientAppJSBundle = "clientapp.js"
+	SignOnJSBundle    = "signon.js"
+	StaticJSMount     = "/assets"
+	StaticImagesMount = "/images"
+)
+
 type server struct {
 	*gin.Engine
 	mothership mothership.Mothership
 	args       serverArgs
 	db         *gorm.DB
+	wpManifest map[string]string // output of webpack manifest
 }
 
 type serverArgs struct {
@@ -70,11 +83,17 @@ func NewServer() (server, error) {
 		return server{}, err
 	}
 
+	wpManifest, err := readWebpackManifest()
+	if err != nil {
+		return server{}, err
+	}
+
 	s := server{
 		Engine:     gin.Default(),
 		mothership: m,
 		args:       args,
 		db:         db,
+		wpManifest: wpManifest,
 	}
 	s.setupMiddlewares(args)
 	s.setupRouter()
@@ -90,6 +109,25 @@ func NewServer() (server, error) {
 	return s, nil
 }
 
+func readWebpackManifest() (manifest map[string]string, err error) {
+	bytes, err := ioutil.ReadFile(WebAppRoot + "/dist/manifest.json")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(bytes, &manifest)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := manifest[ClientAppJSBundle]; !ok {
+		return nil, errors.New("no clientapp js bundle in manifest")
+	}
+	if _, ok := manifest[SignOnJSBundle]; !ok {
+		return nil, errors.New("no signon js bundle in manifest")
+	}
+
+	return manifest, nil
+}
+
 func (s *server) setupMiddlewares(args serverArgs) {
 	s.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -99,15 +137,10 @@ func (s *server) setupMiddlewares(args serverArgs) {
 	s.Use(WithFlashMessage)
 }
 
-const (
-	SignInURL         = "/signin"
-	TierManagementURL = "/tier_management"
-)
-
 func (s *server) setupRouter() {
 	s.LoadHTMLGlob("mothership/templates/**/*.tmpl")
-	s.Static("/images", "../../webapp/images")
-	s.Static("/assets", "../../webapp/dist")
+	s.Static(StaticImagesMount, WebAppRoot+"/images")
+	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
 	s.GET("/signup", s.SignUpGet)
 	s.POST("/signup", s.SignUp)
@@ -180,30 +213,34 @@ func title(name string) string {
 
 func (s *server) ResetPasswordGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title": title("Reset Password"),
-		"page":  ResetPasswordPage,
+		"title":            title("Reset Password"),
+		"page":             ResetPasswordPage,
+		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
 	})
 }
 
 func (s *server) SignUpGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title": title("Sign Up"),
-		"page":  SignUpPage,
+		"title":            title("Sign Up"),
+		"page":             SignUpPage,
+		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
 	})
 }
 
 func (s *server) SignInGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title":    title("Sign In"),
-		"page":     SignInPage,
-		"flashMsg": c.GetStringMapString(FlashMessageKey),
+		"title":            title("Sign In"),
+		"page":             SignInPage,
+		"flashMsg":         c.GetStringMapString(FlashMessageKey),
+		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
 	})
 }
 
 func (s *server) ForgotPasswordGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title": title("Forgot Password"),
-		"page":  ForgotPasswordPage,
+		"title":            title("Forgot Password"),
+		"page":             ForgotPasswordPage,
+		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
 	})
 }
 
@@ -385,33 +422,34 @@ func tierDashboardURL(tier tierL.Tier) string {
 }
 
 func (s *server) Onboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Onboard"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Onboard"))
 }
 
 func (s *server) Dashboard(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Dashboard"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Dashboard"))
 }
 
-func bootstrapData(c *gin.Context, db *gorm.DB, page string) gin.H {
+func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
 	user, _ := CurrentUser(c)
 
 	return gin.H{
-		"title": title(page),
-		"user":  userMap(user),
-		"tiers": customerTiers(db, user.CustomerID),
+		"title":               title(page),
+		"user":                userMap(user),
+		"tiers":               customerTiers(s.db, user.CustomerID),
+		"clientAppBundlePath": StaticJSMount + "/" + s.wpManifest[ClientAppJSBundle],
 	}
 }
 
 func (s *server) Data(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Data"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Data"))
 }
 
 func (s *server) Settings(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Settings"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Settings"))
 }
 
 func (s *server) TierManagement(c *gin.Context) {
-	c.HTML(http.StatusOK, "bridge/index.tmpl", bootstrapData(c, s.db, "Tier Management"))
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Tier Management"))
 }
 
 func (s *server) Tiers(c *gin.Context) {
