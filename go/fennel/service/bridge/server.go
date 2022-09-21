@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/alexflint/go-arg"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -61,10 +62,6 @@ func NewServer() (server, error) {
 	if err != nil {
 		return server{}, err
 	}
-	r := gin.Default()
-	store := cookie.NewStore([]byte(args.SessionKey))
-	r.Use(sessions.Sessions("mysession", store))
-	r.Use(WithFlashMessage)
 
 	db, err := gorm.Open(mysql.New(mysql.Config{
 		Conn: m.DB,
@@ -72,12 +69,14 @@ func NewServer() (server, error) {
 	if err != nil {
 		return server{}, err
 	}
+
 	s := server{
-		Engine:     r,
+		Engine:     gin.Default(),
 		mothership: m,
 		args:       args,
 		db:         db,
 	}
+	s.setupMiddlewares(args)
 	s.setupRouter()
 
 	seed := args.RandSeed
@@ -91,14 +90,21 @@ func NewServer() (server, error) {
 	return s, nil
 }
 
+func (s *server) setupMiddlewares(args serverArgs) {
+	s.Use(gzip.Gzip(gzip.DefaultCompression))
+
+	store := cookie.NewStore([]byte(args.SessionKey))
+	s.Use(sessions.Sessions("mysession", store))
+
+	s.Use(WithFlashMessage)
+}
+
 const (
 	SignInURL         = "/signin"
 	TierManagementURL = "/tier_management"
 )
 
 func (s *server) setupRouter() {
-	// Disable Console Color
-	// gin.DisableConsoleColor()
 	s.LoadHTMLGlob("mothership/templates/**/*.tmpl")
 	s.Static("/images", "../../webapp/images")
 	s.Static("/assets", "../../webapp/dist")
