@@ -36,6 +36,12 @@ with pkgs; mkShell {
     pkgs.protoc-gen-go-grpc
     unstable.capnproto
 
+    # Packages for Rust development.
+    pkgs.rustc
+    pkgs.cargo
+    pkgs.rustfmt
+    pkgs.libiconv
+
     # Packages to build kafka go client
     pkgs.rdkafka
     pkgs.openssl
@@ -86,5 +92,6 @@ with pkgs; mkShell {
     export PIP_PREFIX="$(pwd)/_build/pip_packages"
     export PYTHONPATH="$(pwd)/_build/pip_packages/lib/python3.9/site-packages:$PYTHONPATH"
     unset SOURCE_DATE_EPOCH
+    export RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
    '';
 }
