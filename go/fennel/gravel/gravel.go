@@ -81,7 +81,8 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid shard: %w", err)
 	}
-	for _, table := range tables {
+	for i := len(tables) - 1; i >= 0; i-- {
+		table := tables[i]
 		maybeInc(sample, &g.stats.TableIndexReads)
 		val, err := table.Get(key, hash)
 		switch err {

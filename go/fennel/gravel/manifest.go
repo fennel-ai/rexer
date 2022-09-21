@@ -180,6 +180,7 @@ func (m *Manifest) writeAndLoadNewManifest(toAdd map[uint64][]string, toDelete m
 		return fmt.Errorf("could not load new manifest after writing: %w", err)
 	}
 	m.tableFiles = newManifest.tableFiles
+	m.maxTableIDs = newManifest.maxTableIDs
 	return nil
 }
 
@@ -221,13 +222,30 @@ func (m *Manifest) Append(filenames []string) error {
 }
 
 // Replace replaces given filenames of the shard with a new single file
-func (m *Manifest) Replace(shardId uint64, filenames []string, newfile string) error {
+func (m *Manifest) Replace(shardId uint64, filenames []string, newTmpFile string) error {
+	id, _, err := validTableFileName(shardId, filenames[0], false) // compacted table use the ID of the first one of existing IDs
+	if err != nil {
+		return err
+	}
+
+	_, tableSuffix, err := validTableFileName(shardId, newTmpFile, true)
+	if err != nil {
+		return err
+	}
+
+	oldpath := path.Join(m.dirname, newTmpFile)
+	newName := fmt.Sprintf("%d_%d_%s%s", shardId, id, tableSuffix, FileExtension)
+	newPath := path.Join(m.dirname, newName)
+	if err = os.Rename(oldpath, newPath); err != nil {
+		return fmt.Errorf("could not rename file to appropriate name: %w", err)
+	}
+
 	toAdd := make(map[uint64][]string)
 	toDelete := make(map[uint64][]string)
-	toAdd[shardId] = []string{newfile}
+	toAdd[shardId] = []string{newName}
 	toDelete[shardId] = filenames
 
-	err := m.writeAndLoadNewManifest(toAdd, toDelete)
+	err = m.writeAndLoadNewManifest(toAdd, toDelete)
 	if err != nil {
 		return fmt.Errorf("failed to write new and reload manifest file %w", err)
 	}
@@ -298,23 +316,29 @@ func validTableFileName(shard uint64, filename string, temp bool) (uint64, strin
 	if !strings.HasPrefix(filename, fmt.Sprintf("%d_", shard)) {
 		return 0, "", fmt.Errorf("table file %s for shard: %d doesn't start with '%d_'", filename, shard, shard)
 	}
+	parts := strings.Split(filename, "_")
 	if temp {
-		// we don't need IDs for temp files
-		return 0, "", nil
-	} else {
-		parts := strings.Split(filename, "_")
+		// 15_1663730490016346.grvl
 		if len(parts) != 2 {
 			return 0, "", fmt.Errorf("filename %s has more than one '_' character", filename)
 		}
 		parts = strings.Split(parts[1], ".")
-		if len(parts) != 2 {
-			return 0, "", fmt.Errorf("filename %s has more than one '.' character", filename)
+		// we don't have ID, but have suffix name, for temp files
+		return 0, parts[0], nil
+	} else {
+		// 15_1_1663730490016346.grvl
+		if len(parts) != 3 {
+			return 0, "", fmt.Errorf("filename %s has more than one '_' character", filename)
 		}
-		id, err := strconv.ParseUint(parts[0], 10, 64)
+		id, err := strconv.ParseUint(parts[1], 10, 64)
 		if err != nil {
 			return 0, "", fmt.Errorf("filename doesn't have a valid 64 bit table ID: %w", err)
 		}
-		return id, parts[1], nil
+		parts = strings.Split(parts[2], ".")
+		if len(parts) != 2 {
+			return 0, "", fmt.Errorf("filename %s has more than one '.' character", filename)
+		}
+		return id, parts[0], nil
 	}
 }
 

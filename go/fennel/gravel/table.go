@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fennel/lib/timer"
-	"fennel/lib/utils"
 	"fennel/lib/utils/binary"
 	"fmt"
 	"os"
@@ -113,13 +112,11 @@ func PickTablesToCompact(tables []Table) []Table {
 	return tables[entries[0].startIdx : entries[0].startIdx+entries[0].fileCnt]
 }
 
-// TODO goroutine(s) check for priorities, pick tables, compact tables, replace file
-
 // CompactTables compact several opened tables into a new temp file,
 // tables slice should strictly follow the rule that newer table comes later
 // if compacting to the final(oldest) file in the shard, deletion markers will be removed
 func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableType, compactToFinal bool) (string, error) {
-	filename := fmt.Sprintf("%d_%s%s", shardId, utils.RandString(8), tempFileExtension)
+	filename := fmt.Sprintf("%d_%d%s", shardId, time.Now().UnixMicro(), tempFileExtension)
 	filepath := path.Join(dirname, filename)
 
 	var err error = nil
@@ -154,7 +151,7 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 	if err != nil {
 		return "", err
 	}
-	return filepath, nil
+	return filename, nil
 }
 
 func OpenTable(type_ TableType, filepath string) (Table, error) {
