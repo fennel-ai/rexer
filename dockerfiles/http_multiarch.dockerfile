@@ -58,5 +58,13 @@ COPY --from=builder_amd64 /app/go/fennel/server ./
 #   This will trigger the build and setup the execution environment accordingly.
 # - runs the binary as the last command
 FROM executor_$TARGETARCH
+# TODO(mohit.aditya): This should be removed
+RUN apt-get update \
+    && apt-get install -y python3-pip python3-dev \
+    && cd /usr/local/bin \
+    && ln -s /usr/bin/python3 python \
+    && pip3 --no-cache-dir install --upgrade pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 --no-cache-dir install pandas requests cloudpickle
 # the server binary is already copied over to the root directory in both executor build stages
 CMD ["./server"]
