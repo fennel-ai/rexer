@@ -556,7 +556,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 46,
+            numShards: 30,
             nodeType: "db.r6g.large",
             numReplicasPerShard: 1,
         },
@@ -619,6 +619,20 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     labels: {
                         "node-group": "p-5-common-ng-x86",
                     },
+                },
+                // Nitrous node group.
+                {
+                    name: "p-5-nitrous-ng-arm",
+                    instanceTypes: ["r6gd.16xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-5-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
                 },
                 {
                     name: "p-5-common-ng-arm-xlarge",
