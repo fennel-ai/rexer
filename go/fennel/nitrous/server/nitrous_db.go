@@ -70,11 +70,11 @@ type NitrousDB struct {
 	binlogPartitions uint32
 }
 
-func getPartitions(n nitrous.Nitrous) (kafka.TopicPartitions, error) {
+func getPartitions(n nitrous.Nitrous, topic string) (kafka.TopicPartitions, error) {
 	// Create a temporary consumer to read topic metadata.
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(n.PlaneID),
-		Topic:        libnitrous.BINLOG_KAFKA_TOPIC,
+		Topic:        topic,
 		GroupID:      "metadata_consumer",
 		OffsetPolicy: fkafka.LatestOffsetPolicy,
 		// here it does not matter which broker this consumer connects to, since the information read is quite
@@ -107,7 +107,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	}
 	// Initialize a binlog tailer per topic partition.
 	tailers := make([]*tailer.Tailer, 0, len(n.Partitions))
-	toppars, err := getPartitions(n)
+	toppars, err := getPartitions(n, libnitrous.BINLOG_KAFKA_TOPIC)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get topic partitions: %w", err)
 	}
@@ -173,7 +173,14 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	//
 	// Also we don't expect to receive a lot of aggregate configuration updates (except potentially on clean startup)
 	// so keep the batch size low
-	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, toppars[0], aggregatesDb, ndb.ProcessAggregates, 1 * time.Second /*pollTimeout*/, 100 /*batchSize*/)
+	aggrConfToppars, err := getPartitions(n, libnitrous.AGGR_CONF_KAFKA_TOPIC)
+	if err != nil {
+		return nil, err
+	}
+	if len(aggrConfToppars) > 1 {
+		return nil, fmt.Errorf("expected aggregate conf topic partitions to be 1, found: %d", len(aggrConfToppars))
+	}
+	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars[0], aggregatesDb, ndb.ProcessAggregates, 1 * time.Second /*pollTimeout*/, 100 /*batchSize*/)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aggregate conf tailer: %v", err)
 	}
