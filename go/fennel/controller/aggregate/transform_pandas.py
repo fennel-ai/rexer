@@ -20,8 +20,7 @@ def run_transform(transform_obj, data):
 if __name__ == "__main__":
     try:
         output_df = run_transform(sys.argv[2], sys.argv[1])
-        var = sys.stdout
-        var.write(output_df.to_json(orient="records", date_unit='s'))
+        sys.stdout.write(output_df.to_json(orient="records", date_unit='s'))
     except Exception as e:
         print(e)
         sys.exit(3)

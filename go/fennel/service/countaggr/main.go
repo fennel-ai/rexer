@@ -664,6 +664,8 @@ func main() {
 	stopped := make(chan os.Signal, 1)
 	signal.Notify(stopped, syscall.SIGTERM, syscall.SIGINT)
 
+	// We now have a server running on countaggr to compute aggregate values and profiles for the python script. This
+	// is for python to call into GO via localhost.
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: router,
