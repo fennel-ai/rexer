@@ -65,6 +65,6 @@ RUN apt-get update \
     && ln -s /usr/bin/python3 python \
     && pip3 --no-cache-dir install --upgrade pip \
     && rm -rf /var/lib/apt/lists/* \
-    && pip3 --no-cache-dir install pandas requests cloudpickle
+    && pip3 --no-cache-dir install numpy pandas requests cloudpickle
 # the server binary is already copied over to the root directory in both executor build stages
 CMD ["./server"]
