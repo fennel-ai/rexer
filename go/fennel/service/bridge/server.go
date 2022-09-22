@@ -211,12 +211,30 @@ func title(name string) string {
 	return fmt.Sprintf("Fennel | %s", name)
 }
 
+func (s *server) signOnBundlePath() string {
+	wpManifest := s.wpManifest
+	if s.isDev() {
+		wpManifest, _ = readWebpackManifest()
+	}
+
+	return StaticJSMount + "/" + wpManifest[SignOnJSBundle]
+}
+
+func (s *server) clientAppBundlePath() string {
+	wpManifest := s.wpManifest
+	if s.isDev() {
+		wpManifest, _ = readWebpackManifest()
+	}
+
+	return StaticJSMount + "/" + wpManifest[ClientAppJSBundle]
+}
+
 func (s *server) ResetPasswordGet(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title":            title("Reset Password"),
 		"page":             ResetPasswordPage,
-		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
+		"signOnBundlePath": s.signOnBundlePath(),
 	})
 }
 
@@ -225,7 +243,7 @@ func (s *server) SignUpGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title":            title("Sign Up"),
 		"page":             SignUpPage,
-		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
+		"signOnBundlePath": s.signOnBundlePath(),
 	})
 }
 
@@ -235,7 +253,7 @@ func (s *server) SignInGet(c *gin.Context) {
 		"title":            title("Sign In"),
 		"page":             SignInPage,
 		"flashMsg":         c.GetStringMapString(FlashMessageKey),
-		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
+		"signOnBundlePath": s.signOnBundlePath(),
 	})
 }
 
@@ -244,7 +262,7 @@ func (s *server) ForgotPasswordGet(c *gin.Context) {
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
 		"title":            title("Forgot Password"),
 		"page":             ForgotPasswordPage,
-		"signOnBundlePath": StaticJSMount + "/" + s.wpManifest[SignOnJSBundle],
+		"signOnBundlePath": s.signOnBundlePath(),
 	})
 }
 
@@ -442,7 +460,7 @@ func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
 		"title":               title(page),
 		"user":                userMap(user),
 		"tiers":               customerTiers(s.db, user.CustomerID),
-		"clientAppBundlePath": StaticJSMount + "/" + s.wpManifest[ClientAppJSBundle],
+		"clientAppBundlePath": s.clientAppBundlePath(),
 	}
 }
 
