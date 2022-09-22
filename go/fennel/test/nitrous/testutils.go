@@ -22,7 +22,8 @@ func StartNitrousServer(t *testing.T, n nitrous.Nitrous) (*rpc.Server, net.Addr)
 	db, err := server.InitDB(n)
 	assert.NoError(t, err)
 	// Set a short poll timeout for tests and then start db.
-	db.SetPollTimeout(1 * time.Second)
+	db.SetBinlogPollTimeout(1 * time.Second)
+	db.SetAggrConfPollTimeout(1 * time.Second)
 	db.Start()
 	remote := rpc.NewServer(db)
 	go func() {

@@ -62,14 +62,12 @@ type aggKey struct {
 
 type NitrousDB struct {
 	nos     nitrous.Nitrous
-	tailers []*tailer.Tailer
+	aggregateTailer *tailer.Tailer
+	binlogTailers []*tailer.Tailer
 	// sync map to avoid concurrent access in errgroup - this is usually flagged by go test -race
 	shards  *sync.Map
 	tables  *sync.Map
 	binlogPartitions uint32
-
-	// this is used only for testing
-	aggregatesDb hangar.Hangar
 }
 
 func getPartitions(n nitrous.Nitrous) (kafka.TopicPartitions, error) {
@@ -146,8 +144,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 		tailers = append(tailers, t)
 		ndb.shards.Store(toppar.Partition, gravelDb)
 	}
-	ndb.tailers = tailers
-	ndb.startReportingKafkaLag()
+	ndb.binlogTailers = tailers
 
 	// create gravel for aggregate definitions as well
 	aggOpts := gravel.DefaultOptions()
@@ -155,17 +152,22 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	ndb.aggregatesDb = aggregatesDb
+
 	// Be aggressive on the poll timeout for aggregate configurations as we want to apply any of the aggregate
-	// configuration changes ASAP
+	// configuration changes before potentially any of the messages in binlog correspond to the aggregate
+	//
+	// NOTE: There is still a possibility that few of the earlier messages consumed in the binlog may not find
+	// the corresponding aggregate. Given the nature of the traffic (only on defined aggregates, binlog can be created
+	// with the stream of actions fetched from kafka and later produced to binlog kafka topic) and the below
+	// configuration, this should almost never happen
 	//
 	// Also we don't expect to receive a lot of aggregate configuration updates (except potentially on clean startup)
 	// so keep the batch size low
-	aggregateTailer, err := tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, toppars[0], aggregatesDb, ndb.ProcessAggregates, 1 * time.Second /*pollTimeout*/, 10 /*batchSize*/)
+	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, toppars[0], aggregatesDb, ndb.ProcessAggregates, 1 * time.Second /*pollTimeout*/, 100 /*batchSize*/)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aggregate conf tailer: %v", err)
 	}
-	ndb.tailers = append(ndb.tailers, aggregateTailer)
+	ndb.startReportingKafkaLag()
 
 	// Restore aggregate definitions.
 	err = ndb.restoreAggregates(aggregatesDb)
@@ -176,31 +178,71 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 }
 
 func (ndb *NitrousDB) Start() {
-	for _, tailer := range ndb.tailers {
-		go tailer.Tail()
+	// Start tailing aggregate configuration tailer before tailing the binlog. As noted above, it is highly likely
+	// that during regular traffic pattern, we will run into a situation where binlog tailers consume messages
+	// corresponding to an aggregate which was not consumed by the tailer by then.
+	//
+	// However, on nitrous startup, where it might restore a snapshot at certain aggregate conf and binlog offsets,
+	// if all the tailers start tailing at the same time, binlog messages corresponding to an aggregate not defined then
+	// could be consumed and discarded. To avoid this scenario, we start tailing the aggregate configuration
+	// first, wait for it to finish before tailing binlog.
+	//
+	// In the scenario where aggregate configurations might have a "CREATE" and "DELETE" event for an aggregate,
+	// say they were in reality separated by few hours/day, we ingest them together and resulting in no-op in the
+	// aggregate table, however there could be binlog messages for this aggregate. They will simply be discarded.
+	// This is fine, as we provide "live-ness" guarantees only for the "ACTIVE" aggregates.
+	go ndb.aggregateTailer.Tail()
+	count := 0
+	for count < 3 {
+		lag, err := ndb.aggregateTailer.GetLag()
+		if err != nil {
+			zap.L().Error("failed to get lag for aggregate configuration", zap.Error(err))
+		}
+		// consumed all the messages
+		if lag == 0 {
+			// just to be sure, wait for the tailer to report zero lag for few attempts
+			count++
+		}
+		// sleep for the PollTimeout since at least after this time, a new batch of data will be read by the tailer
+		time.Sleep(ndb.aggregateTailer.GetPollTimeout())
+	}
+	for _, t := range ndb.binlogTailers {
+		go t.Tail()
 	}
 }
 
 func (ndb *NitrousDB) Stop() {
 	// Stop tailing for new updates.
-	for _, tailer := range ndb.tailers {
-		tailer.Stop()
+	for _, t := range ndb.binlogTailers {
+		t.Stop()
 	}
+
+	// Stop the aggregate tailer later - if this was stopped earlier, it is possible that we did not consume
+	// an aggregate configuration but kept consuming binlog with messages corresponding to this aggregate
+	ndb.aggregateTailer.Stop()
 	// TODO: Should we close the store as well?
 	// _ = ndb.nos.Store.Close()
 }
 
-func (ndb *NitrousDB) SetPollTimeout(d time.Duration) {
-	for _, tailer := range ndb.tailers {
-		tailer.SetPollTimeout(d)
+func (ndb *NitrousDB) SetAggrConfPollTimeout(d time.Duration) {
+	ndb.aggregateTailer.SetPollTimeout(d)
+}
+
+func (ndb *NitrousDB) GetAggrConfPollTimeout() time.Duration {
+	return ndb.aggregateTailer.GetPollTimeout()
+}
+
+func (ndb *NitrousDB) SetBinlogPollTimeout(d time.Duration) {
+	for _, t := range ndb.binlogTailers {
+		t.SetPollTimeout(d)
 	}
 }
 
-func (ndb *NitrousDB) GetPollTimeout() time.Duration {
-	if len(ndb.tailers) == 0 {
+func (ndb *NitrousDB) GetBinlogPollTimeout() time.Duration {
+	if len(ndb.binlogTailers) == 0 {
 		return 0
 	}
-	return ndb.tailers[0].GetPollTimeout()
+	return ndb.binlogTailers[0].GetPollTimeout()
 }
 
 func (ndb *NitrousDB) ProcessAggregates(_ context.Context, ops []*rpc.NitrousOp, _ hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
@@ -277,9 +319,9 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader 
 	return keys, vgs, nil
 }
 
-func (ndb *NitrousDB) restoreAggregates(aggDb hangar.Hangar) error {
+func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 	// Get current set of aggregates for this plane.
-	vgs, err := aggDb.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
+	vgs, err := h.GetMany(context.Background(), []hangar.KeyGroup{{Prefix: hangar.Key{Data: agg_table_key}}})
 	if err != nil {
 		return fmt.Errorf("failed to get aggregate definitions: %w", err)
 	}
@@ -454,9 +496,15 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 }
 
 func (ndb *NitrousDB) GetLag() (int, error) {
+	// TODO(mohit): Consider reporting aggregate conf lag separately
 	lag := 0
-	for _, tailer := range ndb.tailers {
-		l, err := tailer.GetLag()
+	l, err := ndb.aggregateTailer.GetLag()
+	if err != nil {
+		return lag, fmt.Errorf("failed to get lag for the aggregate configuration tailer: %v", err)
+	}
+	lag += l
+	for _, t := range ndb.binlogTailers {
+		l, err := t.GetLag()
 		if err != nil && !errors.Is(err, fkafka.ErrNoPartition) {
 			return 0, fmt.Errorf("error getting lag: %w", err)
 		}

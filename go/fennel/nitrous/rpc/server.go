@@ -58,10 +58,10 @@ const (
 type AggDB interface {
 	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error)
 	GetLag() (int, error)
-	GetPollTimeout() time.Duration
+	GetBinlogPollTimeout() time.Duration
 
 	Stop()
-	SetPollTimeout(time.Duration)
+	SetBinlogPollTimeout(time.Duration)
 }
 
 type Server struct {
@@ -211,10 +211,10 @@ func (s *Server) Stop() {
 	s.aggdb.Stop()
 }
 
-func (s *Server) GetPollTimeout() time.Duration {
-	return s.aggdb.GetPollTimeout()
+func (s *Server) GetBinlogPollTimeout() time.Duration {
+	return s.aggdb.GetBinlogPollTimeout()
 }
 
-func (s *Server) SetPollTimeout(timeout time.Duration) {
-	s.aggdb.SetPollTimeout(timeout)
+func (s *Server) SetBinlogPollTimeout(timeout time.Duration) {
+	s.aggdb.SetBinlogPollTimeout(timeout)
 }
