@@ -20,6 +20,8 @@ import (
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
 	connector2 "fennel/controller/data_integration"
+	feature2 "fennel/controller/feature"
+
 	"fennel/controller/mock"
 	"fennel/controller/modelstore"
 	profile2 "fennel/controller/profile"
@@ -30,6 +32,7 @@ import (
 	actionlib "fennel/lib/action"
 	"fennel/lib/aggregate"
 	"fennel/lib/data_integration"
+	flib "fennel/lib/feature"
 	"fennel/lib/ftypes"
 	profilelib "fennel/lib/profile"
 	"fennel/lib/query"
@@ -179,6 +182,10 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc(INT_REST_VERSION+"/aggregate", s.DeactivateAggregate).Methods("DELETE")
 	router.HandleFunc(INT_REST_VERSION+"/aggregate/compute", s.BatchAggregateValue)
 	router.HandleFunc(INT_REST_VERSION+"/aggregate/run", s.RunAggregate)
+
+	// Endpoints used by feature
+	router.HandleFunc(INT_REST_VERSION+"/feature", s.StoreFeature).Methods("POST")
+	router.HandleFunc(INT_REST_VERSION+"/feature", s.RetrieveFeature).Methods("GET")
 
 	// Endpoints used by the model
 	router.HandleFunc(INT_REST_VERSION+"/model", s.UploadModel).Methods("POST")
@@ -584,8 +591,9 @@ func runPandasQuery(queryStr, args, types string) (string, error) {
 	cmd := exec.Command("python3", "service/http/transform_pandas.py", queryStr, args, types)
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to execute python script: %w", err)
+		return string(out), fmt.Errorf("failed to execute query: %w", err)
 	}
+	fmt.Println(string(out))
 	return string(out), nil
 }
 
@@ -801,6 +809,55 @@ func (m server) StoreSource(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// if storing succeeds, just return empty response
+}
+
+func (m server) StoreFeature(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+
+	var f flib.Feature
+	if err := json.Unmarshal(data, &f); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+
+	// call controller
+	if err = feature2.Store(req.Context(), m.tier, f); err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	handleSuccessfulRequest(w)
+}
+
+func (m server) RetrieveFeature(w http.ResponseWriter, req *http.Request) {
+	data, err := readRequest(req)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	var featureReq struct {
+		Name string `json:"FeatureName"`
+	}
+	if err := json.Unmarshal(data, &featureReq); err != nil {
+		handleBadRequest(w, "invalid request: ", err)
+		return
+	}
+	// call controller
+	ret, err := feature2.RetrieveLatest(req.Context(), m.tier, featureReq.Name)
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
+	// to send ret back, marshal to json and then write it back
+	ser, err := json.Marshal(&ret)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	_, _ = w.Write(ser)
 }
 
 func (m server) StoreAggregate(w http.ResponseWriter, req *http.Request) {

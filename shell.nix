@@ -10,6 +10,7 @@ let
     pandas
     requests
     cloudpickle
+    numpy
     pip
     # other python packages you want
   ]);

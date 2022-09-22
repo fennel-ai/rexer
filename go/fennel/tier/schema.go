@@ -157,7 +157,7 @@ var Schema = db.Schema{
 			source_id VARCHAR(255) NOT NULL,
 			json_schema VARCHAR(1024) NOT NULL,
 			last_updated timestamp default now() on update now(), 
-			PRIMARY KEY (name),
+			//PRIMARY KEY (name),
 			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
 			);`,
 	20: `CREATE TABLE IF NOT EXISTS bigquery_source (
@@ -201,4 +201,14 @@ var Schema = db.Schema{
 	);`,
 	// ==================== END Schema for usage counters ===================
 	24: `ALTER TABLE aggregate_config ADD COLUMN mode VARCHAR(64) DEFAULT 'rql';`,
+	// ==================== BEGIN Schema for feature registry ======================
+	25: `CREATE TABLE IF NOT EXISTS feature_registry (
+			feature_name VARCHAR(255) NOT NULL,
+			query BLOB NOT NULL,
+			last_updated timestamp default now() on update now(),
+			creation_timestamp timestamp default now(),
+			version INT NOT NULL,
+			PRIMARY KEY(feature_name, version)
+		);`,
+	// ==================== END Schema for feature registry ======================
 }

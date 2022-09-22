@@ -13,6 +13,26 @@ const (
 	KAFKA_TOPIC_NAME = "featurelog"
 )
 
+type Feature struct {
+	FeatureName       string  `json:"FeatureName" db:"feature_name"`
+	Query             []byte  `json:"Query" db:"query"`
+	Version           int     `json:"Version" db:"version"`
+	CreationTimestamp []uint8 `json:"CreationTime" db:"creation_timestamp"`
+	LastUpdated       []uint8 `json:"LastUpdated" db:"last_updated"`
+}
+
+func (f Feature) Validate() error {
+	if f.FeatureName == "" {
+		return fmt.Errorf("feature name cannot be empty")
+	}
+	if f.Query == nil {
+		return fmt.Errorf("query cannot be empty")
+	}
+	return nil
+}
+
+// TODO: Rename and move the below code to another directory such as logging
+
 type Row struct {
 	ContextOType    ftypes.OType        `json:"context_otype"`
 	ContextOid      ftypes.OidType      `json:"context_oid"`

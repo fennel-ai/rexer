@@ -22,9 +22,7 @@ def run_transform(transform_obj: Any, args: str, types: str):
             input[k] = pd.DataFrame.from_dict(input[k], orient='tight')
 
     os.environ["LOCAL_URL"] = LOCAL_URL
-    transformed_df = object_file(**input)
-    transformed_df = transformed_df.rename(columns={"Timestamp": "timestamp"})
-    return transformed_df[['groupkey', 'value', 'timestamp']]
+    return object_file(**input)
 
 
 if __name__ == "__main__":
