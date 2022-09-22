@@ -129,10 +129,19 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	}
 
 	for _, toppar := range requiredToppar {
-		// instantiate gravel instance per tailer
-
-		// TODO(mohit): Instantiate with directory name
-		gravelOpts := gravel.DefaultOptions()
+		// Instantiate gravel instance per tailer
+		//
+		// We set the `MaxTableSize` for each gravel instance taking total system memory into consideration.
+		// We expect the following entities to be in-memory:
+		// i) Memtable of each tailer
+		// ii) Index of the files in the disk (using mmap) for fast lookups
+		// iii) >= 2 files loaded into memory for compaction
+		//
+		// + leaving some room for any unexpected entities around
+		//
+		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
+		// memory to be cost efficient
+		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20)  // 128 MB
 		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default())
 		if err != nil {
 			return nil, err
@@ -146,8 +155,9 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	}
 	ndb.binlogTailers = tailers
 
-	// create gravel for aggregate definitions as well
-	aggOpts := gravel.DefaultOptions()
+	// Create gravel for aggregate definitions, we don't expect a lot of data to be here, so we use a small ~10MB
+	// memtable
+	aggOpts := gravel.DefaultOptions().WithMaxTableSize(10 << 20)  // 10 MB
 	aggregatesDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, "aggdef"), &aggOpts, encoders.Default())
 	if err != nil {
 		return nil, err
