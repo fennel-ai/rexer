@@ -234,17 +234,15 @@ export const setup = async (input: inputType) => {
                 "enabled": false,
             },
 
-            // annotate emissary ingress admin such that the otel collector or self-hosted prometheus instance running
+            // annotate emissary ingress pods such that the otel collector or self-hosted prometheus instance running
             // in the cluster is able to scrape the metrics reported by emissary ingress
             //
             // https://www.getambassador.io/docs/emissary/latest/howtos/prometheus/#productname
-            "adminService": {
-                "annotations": {
-                    "prometheus.io/scrape": "true",
-                    // the port is the default value for the port of the admin service
-                    "prometheus.io/port": "8877",
-                }
-            },
+            "podAnnotations": {
+                "prometheus.io/scrape": "true",
+                // the port is the default value for the port of the admin service
+                "prometheus.io/port": "8877",
+            }
         },
     }, {
         provider: k8sProvider,
