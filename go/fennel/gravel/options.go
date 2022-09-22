@@ -38,3 +38,8 @@ func (o Options) WithMaxTableSize(sz uint64) Options {
 	o.MaxTableSize = sz
 	return o
 }
+
+func (o Options) WithName(name string) Options {
+	o.Name = name
+	return o
+}
