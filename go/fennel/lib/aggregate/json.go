@@ -54,6 +54,9 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("error decoding ast from base64: %v", err)
 	}
+	if agg.Mode == "" {
+		agg.Mode = RQL
+	}
 	if agg.Mode == RQL {
 		// Extract query now
 		querySer, err := base64.StdEncoding.DecodeString(fields.Query)
@@ -68,7 +71,6 @@ func (agg *Aggregate) UnmarshalJSON(data []byte) error {
 		agg.PythonQuery = []byte(fields.Query)
 	} else {
 		return fmt.Errorf("unknown mode: %v", agg.Mode)
-
 	}
 	return nil
 }
