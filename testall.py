@@ -3,6 +3,7 @@ import argparse
 import os
 import subprocess
 import platform
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--integration", action='store_true', help="run tests in integration mode whenever possible")
@@ -32,6 +33,9 @@ if not py_only:
         p1 = subprocess.Popen(['go test -p 5 ./...'], shell=True, cwd=godir)
     p1.wait()
 
+sys.path.append(os.path.join(root, '_build/pip_packages/lib/python3.9/site-packages'))
+sys.path.append(os.path.join(root, '_build/pip_packages/lib/python3.10/site-packages'))
+
 pydir = os.path.join(root, 'pyconsole')
 print('Running python tests in pyconsole...')
 print('-' * 50)
@@ -40,6 +44,7 @@ p2.wait()
 
 rexerclient = os.path.join(root, '../rexer-pyclient-alpha/')
 print('Running python tests in rexerclient...')
+
 print('-' * 50)
 p3 = subprocess.Popen(['poetry install && poetry run python -m unittest discover rexerclient'], shell=True, cwd=rexerclient)
 p3.wait()

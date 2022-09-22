@@ -86,6 +86,7 @@ with pkgs; mkShell {
     source bash.rc
     export PIP_PREFIX="$(pwd)/_build/pip_packages"
     export PYTHONPATH="$(pwd)/_build/pip_packages/lib/python3.9/site-packages:$PYTHONPATH"
+    export PYTHONPATH="$(pwd)/_build/pip_packages/lib/python3.10/site-packages:$PYTHONPATH"
     unset SOURCE_DATE_EPOCH
    '';
 }
