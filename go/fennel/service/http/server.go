@@ -593,7 +593,6 @@ func runPandasQuery(queryStr, args, types string) (string, error) {
 	if err != nil {
 		return string(out), fmt.Errorf("failed to execute query: %w", err)
 	}
-	fmt.Println(string(out))
 	return string(out), nil
 }
 
