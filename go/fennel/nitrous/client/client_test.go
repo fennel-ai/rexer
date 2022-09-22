@@ -50,7 +50,7 @@ func TestPush(t *testing.T) {
 		count := 0
 		for count < 3 {
 			// Assuming that nitrous tails the log every 100 ms in tests.
-			time.Sleep(server.GetPollTimeout())
+			time.Sleep(server.GetBinlogPollTimeout())
 			lag, err := nc.GetLag(ctx)
 			if err != nil {
 				time.Sleep(1 * time.Second)

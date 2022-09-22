@@ -456,7 +456,7 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 		shardToGkIdx[shard] = append(shardToGkIdx[shard], i)
 	}
 	// TODO(mohit): Consider using Arena
-	ret := make([]value.Value, len(groupkeys), len(groupkeys))
+	ret := make([]value.Value, len(groupkeys))
 	egrp, _ := errgroup.WithContext(ctx)
 	for s, is := range shardToGkIdx {
 		shard := s
@@ -470,8 +470,8 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 				return fmt.Errorf("instance loaded from the shards is not a hangar instance: %v", s)
 			}
 			// TODO(mohit): Consider using Arena
-			keys := make([]string, len(indices), len(indices))
-			args := make([]value.Dict, len(indices), len(indices))
+			keys := make([]string, len(indices))
+			args := make([]value.Dict, len(indices))
 			for i, id := range indices {
 				keys[i] = groupkeys[id]
 				args[i] = kwargs[id]
