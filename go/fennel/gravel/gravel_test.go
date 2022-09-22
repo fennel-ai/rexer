@@ -79,7 +79,7 @@ func TestGravelTooLargeBatch(t *testing.T) {
 }
 
 func TestFull(t *testing.T) {
-	//t.Skip("Test takes too long so skipping it. We do have some coverage in more generate test_table")
+	t.Skip("Test takes too long so skipping it. We do have some coverage in more generate test_table")
 	dirname := t.TempDir()
 
 	opt := DefaultOptions()
