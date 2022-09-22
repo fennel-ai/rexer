@@ -55,7 +55,7 @@ func (g *Gravel) reportStats() {
 			stats.WithLabelValues("table_data_reads", name).Set(float64(tableManagerStats[StatsTotalReads]))
 			stats.WithLabelValues("num_tables", name).Set(float64(tableManagerStats[StatsNumTables]))
 			stats.WithLabelValues("total_file_size", name).Set(float64(tableManagerStats[StatsTotalSize]))
-			stats.WithLabelValues("total_num_records", name).Set(float64(tableManagerStats[StatsTotalReads]))
+			stats.WithLabelValues("total_num_records", name).Set(float64(tableManagerStats[StatsTotalRecords]))
 		}()
 	}
 }

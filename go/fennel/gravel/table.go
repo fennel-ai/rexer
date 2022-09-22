@@ -119,8 +119,13 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 	filename := fmt.Sprintf("%d_%d%s", shardId, time.Now().UnixMicro(), tempFileExtension)
 	filepath := path.Join(dirname, filename)
 
+	totalRecords := uint64(0) // for map space reservation only
+	for _, table := range tables {
+		totalRecords += table.NumRecords()
+	}
+
 	var err error = nil
-	m := make(map[string]Value)
+	m := make(map[string]Value, totalRecords)
 	for _, table := range tables {
 		err = table.GetAll(m)
 		if err != nil {

@@ -96,8 +96,13 @@ func (mt *Memtable) Clear() error {
 	mt.writelock.Lock()
 	defer mt.writelock.Unlock()
 
-	for i := range mt.maps {
-		mt.maps[i] = make(map[string]Value)
+	for _, m := range mt.maps {
+		// erase by deletion instead of creating a new map, only to reduce GC burden
+		// downside is blocking the read due to locking.
+		// TODO: shadow memtable to avoid long lock holding
+		for k, _ := range m {
+			delete(m, k)
+		}
 	}
 
 	mt.size = 0
