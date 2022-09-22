@@ -3,6 +3,7 @@ package main
 import (
 	tierL "fennel/mothership/lib/tier"
 	userL "fennel/mothership/lib/user"
+	"log"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -99,6 +100,7 @@ func Onboarded(db *gorm.DB) gin.HandlerFunc {
 /**
  * Flash message is an one-time message stored in the user session.
  * The middleware will read the message, remove it from the session and save it in the context.
+ * TODO(xiao): use the gin session AddFlash/Flashes methods
  */
 func WithFlashMessage(c *gin.Context) {
 	session := sessions.Default(c)
@@ -112,6 +114,10 @@ func WithFlashMessage(c *gin.Context) {
 	}
 	session.Delete(FlashMessageTypeKey)
 	session.Delete(FlashMessageContentKey)
+	if err := session.Save(); err != nil {
+		log.Printf("[Middleware] error saving session: %s", err.Error())
+	}
+
 	c.Set(FlashMessageKey, map[string]string{
 		"flashMsgType":    msgType,
 		"flashMsgContent": msgContent,
