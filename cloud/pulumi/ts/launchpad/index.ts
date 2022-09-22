@@ -13,6 +13,7 @@ import * as offlineAggregateSource from "../offline-aggregate-script-source";
 import * as glueSource from "../glue-script-source";
 import * as kafkatopics from "../kafkatopics";
 import * as telemetry from "../telemetry";
+import * as nitrous from "../nitrous";
 import * as milvus from "../milvus";
 import { nameof, Plan } from "../lib/util";
 import * as msk from "../msk";
@@ -1073,6 +1074,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
     const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType
+    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType | undefined
 
     // Create/update/delete the tier.
     if (tierId !== 0) {
@@ -1181,6 +1183,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             httpServerConf: tierConf.httpServerConf,
             queryServerConf: tierConf.queryServerConf,
             enableNitrous: tierConf.enableNitrous,
+            nitrousBinLogPartitions: nitrousOutput ? nitrousOutput.binlogPartitions : undefined,
 
             countAggrConf: tierConf.countAggrConf,
 

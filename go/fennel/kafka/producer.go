@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"fennel/lib/timer"
 	"fennel/resource"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -23,13 +22,29 @@ type RemoteProducer struct {
 	resource.Scope
 }
 
-func (k RemoteProducer) Log(_ context.Context, message []byte, partitionKey []byte) error {
+func (k RemoteProducer) LogProtoToPartition(ctx context.Context, message proto.Message, partition int32, partitionKey []byte) error {
+	raw, err := proto.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)
+	}
+	return k.LogToPartition(ctx, raw, partition, partitionKey)
+}
+
+func (k RemoteProducer) LogToPartition(ctx context.Context, message []byte, partition int32, partitionKey []byte) error {
 	kafkaMsg := kafka.Message{
-		Key:            partitionKey,
-		TopicPartition: kafka.TopicPartition{Topic: &k.topic, Partition: kafka.PartitionAny},
-		Value:          message,
+		Key: partitionKey,
+		TopicPartition: kafka.TopicPartition{Topic: &k.topic, Partition: partition},
+		Value: message,
 	}
 	return k.Produce(&kafkaMsg, nil)
+}
+
+func (k RemoteProducer) Log(ctx context.Context, message []byte, partitionKey []byte) error {
+	return k.LogToPartition(ctx, message, kafka.PartitionAny, partitionKey)
+}
+
+func (k RemoteProducer) LogProto(ctx context.Context, protoMsg proto.Message, partitionKey []byte) error {
+	return k.LogProtoToPartition(ctx, protoMsg, kafka.PartitionAny, partitionKey)
 }
 
 func (k RemoteProducer) Flush(timeout time.Duration) error {
@@ -49,16 +64,6 @@ func (k RemoteProducer) Close() error {
 
 func (k RemoteProducer) Type() resource.Type {
 	return resource.KafkaProducer
-}
-
-func (k RemoteProducer) LogProto(ctx context.Context, protoMsg proto.Message, partitionKey []byte) error {
-	ctx, t := timer.Start(ctx, k.ID(), "kafka.log_proto")
-	defer t.Stop()
-	raw, err := proto.Marshal(protoMsg)
-	if err != nil {
-		return fmt.Errorf("failed to serialize protoMsg to proto: %v", err)
-	}
-	return k.Log(ctx, raw, partitionKey)
 }
 
 var _ FProducer = RemoteProducer{}

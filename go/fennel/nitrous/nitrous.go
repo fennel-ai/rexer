@@ -1,16 +1,12 @@
 package nitrous
 
 import (
-	"fennel/gravel"
 	"fennel/lib/instancemetadata"
 	"fmt"
 	"log"
 
 	"github.com/samber/mo"
 
-	"fennel/hangar"
-	"fennel/hangar/encoders"
-	gravelDB "fennel/hangar/gravel"
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
 	"fennel/resource"
@@ -31,6 +27,8 @@ type NitrousArgs struct {
 	BadgerDir          string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
 	PebbleDir          string         `arg:"--pebble_dir,env:PEBBLE_DIR" json:"pebble_dir,omitempty"`
 	GravelDir          string         `arg:"--gravel_dir,env:GRAVEL_DIR" json:"gravel_dir,omitempty"`
+	Partitions 		   []int32 	  	  `arg:"--partitions,env:PARTITIONS" json:"partitions,omitempty"`
+	BinPartitions 	   uint32 		  `arg:"--binlog_partitions,env:BINLOG_PARTITIONS" json:"bin_partitions,omitempty"`
 	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
 	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
 	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"1000"`
@@ -56,7 +54,9 @@ type Nitrous struct {
 	PlaneID              ftypes.RealmID
 	Identity             string
 	Clock                clock.Clock
-	Store                hangar.Hangar
+	Partitions 			 []int32
+	BinlogPartitions 	 uint32
+	DbDir				 string
 	KafkaConsumerFactory KafkaConsumerFactory
 }
 
@@ -75,6 +75,12 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 			zap.AddCaller(),
 			zap.AddStacktrace(zap.ErrorLevel),
 		)
+	}
+
+	if len(args.Partitions) == 0 {
+		zap.L().Info("no binlog partitions assigned, defaults to ALL")
+	} else {
+		zap.L().Info("binlog partitions assigned", zap.Int32s("partitions", args.Partitions))
 	}
 
 	azId := mo.None[string]()
@@ -112,17 +118,13 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
-	gravalOps := gravel.DefaultOptions().WithDirname(args.GravelDir)
-	gravelDb, err := gravelDB.NewHangar(scope.ID(), args.GravelDir, &gravalOps, encoders.Default())
-	if err != nil {
-		return Nitrous{}, fmt.Errorf("failed to create gravel db: %w", err)
-	}
-
 	return Nitrous{
 		PlaneID:              scope.ID(),
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Store:                gravelDb,
+		Partitions: 		  args.Partitions,
+		BinlogPartitions: 	  args.BinPartitions,
+		DbDir: 				  args.GravelDir,
 	}, nil
 }

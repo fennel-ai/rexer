@@ -2,6 +2,9 @@ package tailer
 
 import (
 	"context"
+	"fennel/hangar/db"
+	"fennel/hangar/encoders"
+	"github.com/dgraph-io/badger/v3"
 	"testing"
 	"time"
 
@@ -32,10 +35,13 @@ func TestTailer(t *testing.T) {
 	n := test.NewTestNitrous(t)
 	// Create the producer first so the topic is initialized.
 	producer := n.NewBinlogProducer(t)
+	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	t.Cleanup(func() { _ = db.Teardown() })
+	assert.NoError(t, err)
 
 	notifs := atomic.NewInt32(0)
 	p1 := countingProcessor{t, notifs}
-	tlr, err := NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, nil, p1.Process)
+	tlr, err := NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, kafka.TopicPartition{}, db, p1.Process, DefaultPollTimeout, DefaultTailerBatch)
 	assert.NoError(t, err)
 
 	err = producer.LogProto(context.Background(), &rpc.NitrousOp{}, nil)
@@ -62,7 +68,7 @@ func TestTailer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 	// Offsets should be empty in db.
-	toppars, err := decodeOffsets(offs, n.Store)
+	toppars, err := decodeOffsets(offs, tlr.store)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, offs, toppars)
 
@@ -83,7 +89,7 @@ func TestTailer(t *testing.T) {
 
 	// Offsets should be stored in db.
 	scope := resource.NewPlaneScope(n.PlaneID)
-	toppars, err = decodeOffsets(offs, n.Store)
+	toppars, err = decodeOffsets(offs, tlr.store)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, kafka.TopicPartitions{
 		{Topic: ptr.To(scope.PrefixedName(nitrous.BINLOG_KAFKA_TOPIC)), Partition: 0, Offset: 1},

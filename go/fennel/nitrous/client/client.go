@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fennel/nitrous"
 	"fmt"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/keepalive"
@@ -37,6 +38,8 @@ type NitrousClient struct {
 	resource.Scope
 
 	binlog kafka.FProducer
+	aggregateConf kafka.FProducer
+	binlogPartitions uint32
 	reader rpc.NitrousClient
 
 	reqCh chan<- getRequest
@@ -64,13 +67,13 @@ func (nc NitrousClient) CreateAggregate(ctx context.Context, aggId ftypes.AggId,
 			},
 		},
 	}
-	err := nc.binlog.LogProto(ctx, op, nil)
+	err := nc.aggregateConf.LogProto(ctx, op, nil)
 	if err != nil {
-		return fmt.Errorf("write to nitrous binlog failed: %w", err)
+		return fmt.Errorf("write to aggregate configuration failed: %w", err)
 	}
-	err = nc.binlog.Flush(5 * time.Second)
+	err = nc.aggregateConf.Flush(5 * time.Second)
 	if err != nil {
-		return fmt.Errorf("failed to flush writes to nitrous binlog: %w", err)
+		return fmt.Errorf("failed to flush writes to aggregate configuration: %w", err)
 	}
 	return nil
 }
@@ -85,13 +88,13 @@ func (nc NitrousClient) DeleteAggregate(ctx context.Context, aggId ftypes.AggId)
 			},
 		},
 	}
-	err := nc.binlog.LogProto(ctx, op, nil)
+	err := nc.aggregateConf.LogProto(ctx, op, nil)
 	if err != nil {
-		return fmt.Errorf("failed to forward create aggregate event to nitrous binlog: %w", err)
+		return fmt.Errorf("failed to forward create aggregate event: %w", err)
 	}
-	err = nc.binlog.Flush(5 * time.Second)
+	err = nc.aggregateConf.Flush(5 * time.Second)
 	if err != nil {
-		return fmt.Errorf("failed to flush writes to nitrous binlog: %w", err)
+		return fmt.Errorf("failed to flush writes to aggregate configurations: %w", err)
 	}
 	return nil
 }
@@ -135,7 +138,12 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 				},
 			},
 		}
-		err = nc.binlog.LogProto(ctx, op, []byte(groupkey))
+		// compute the hash and push to that specific partition
+		//
+		// we could have relied on Kafka key partitioner, but we need to perform a similar operation on the read path
+		// (i.e. nitrous need to know which partition/shard would contain information of a certain groupkey)
+		partition := nitrous.HashedPartition(groupkey, nc.binlogPartitions)
+		err = nc.binlog.LogProtoToPartition(ctx, op, int32(partition), nil)
 		if err != nil {
 			return fmt.Errorf("failed to log update to nitrous binlog: %w", err)
 		}
@@ -217,8 +225,10 @@ func (nc NitrousClient) GetLag(ctx context.Context) (uint64, error) {
 type NitrousClientConfig struct {
 	TierID         ftypes.RealmID
 	ServerAddr     string
+	BinlogPartitions uint32
 	BinlogProducer kafka.FProducer
 	ReqsLogProducer kafka.FProducer
+	AggregateConfProducer kafka.FProducer
 }
 
 var _ resource.Config = NitrousClientConfig{}
@@ -377,5 +387,7 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 		reader: rpcclient,
 		reqCh:  reqCh,
 		binlog: cfg.BinlogProducer,
+		binlogPartitions: cfg.BinlogPartitions,
+		aggregateConf: cfg.AggregateConfProducer,
 	}, nil
 }

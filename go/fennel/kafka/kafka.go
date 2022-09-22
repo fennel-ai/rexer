@@ -42,7 +42,9 @@ type FConsumer interface {
 
 type FProducer interface {
 	resource.Resource
+	LogProtoToPartition(ctx context.Context, message proto.Message, partition int32, partitionKey []byte) error
 	LogProto(ctx context.Context, message proto.Message, partitionKey []byte) error
+	LogToPartition(ctx context.Context, message []byte, partition int32, partitionKey []byte) error
 	Log(ctx context.Context, message []byte, partitionKey []byte) error
 	Flush(timeout time.Duration) error
 }
@@ -141,6 +143,7 @@ var ALL_TOPICS = []TopicConf{
 			"fetch.max.bytes=67109248",
 		},
 	},
+	{Scope: resource.PlaneScope{}, Topic: nitrous.AGGR_CONF_KAFKA_TOPIC},
 }
 
 func ConfigMap(server, username, password, saslMechanism string) *kafka.ConfigMap {

@@ -33,15 +33,15 @@ func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.
 	return tdb.next, nil
 }
 
-func (tdb *TestDB) GetLag(ctx context.Context) (int, error) {
+func (tdb *TestDB) GetLag() (int, error) {
 	return tdb.lag, nil
 }
 
 func (tdb *TestDB) Stop() {}
 
-func (tdb *TestDB) SetPollTimeout(time.Duration) {}
+func (tdb *TestDB) SetBinlogPollTimeout(time.Duration) {}
 
-func (tdb *TestDB) GetPollTimeout() time.Duration {
+func (tdb *TestDB) GetBinlogPollTimeout() time.Duration {
 	return 0
 }
 

@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"sync"
 	"time"
 
+	"fennel/gravel"
 	"fennel/hangar"
+	"fennel/hangar/encoders"
+	gravelDB "fennel/hangar/gravel"
 	fkafka "fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -28,10 +32,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	MAX_TAILERS = 8
-)
-
 var (
 	agg_table_key = []byte("agg_table")
 
@@ -45,7 +45,7 @@ var (
 func (ndb *NitrousDB) startReportingKafkaLag() {
 	go func() {
 		for range time.Tick(10 * time.Second) {
-			lag, err := ndb.GetLag(context.Background())
+			lag, err := ndb.GetLag()
 			if err != nil {
 				zap.L().Error("Failed to get kafka backlog", zap.Error(err))
 			}
@@ -62,8 +62,12 @@ type aggKey struct {
 
 type NitrousDB struct {
 	nos     nitrous.Nitrous
-	tailers []*tailer.Tailer
+	aggregateTailer *tailer.Tailer
+	binlogTailers []*tailer.Tailer
+	// sync map to avoid concurrent access in errgroup - this is usually flagged by go test -race
+	shards  *sync.Map
 	tables  *sync.Map
+	binlogPartitions uint32
 }
 
 func getPartitions(n nitrous.Nitrous) (kafka.TopicPartitions, error) {
@@ -98,34 +102,85 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	ndb := &NitrousDB{
 		nos:    n,
 		tables: new(sync.Map),
+		shards: new(sync.Map),
+		binlogPartitions: n.BinlogPartitions,
 	}
 	// Initialize a binlog tailer per topic partition.
+	tailers := make([]*tailer.Tailer, 0, len(n.Partitions))
 	toppars, err := getPartitions(n)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get topic partitions: %w", err)
 	}
-	numTailers := MAX_TAILERS
-	if len(toppars) < numTailers {
-		numTailers = len(toppars)
-	}
-	numPartitionsPerTailer := (len(toppars) + numTailers - 1) / numTailers
-	tailers := make([]*tailer.Tailer, 0, numTailers)
-	for start := 0; start < len(toppars); start += numPartitionsPerTailer {
-		end := start + numPartitionsPerTailer
-		if end > len(toppars) {
-			end = len(toppars)
+
+	// if the assigned partitions are empty, assume all binlog partitions
+	//
+	// else, filter out the topic partitions which are assigned to this nitrous instance
+	requiredToppar := make(kafka.TopicPartitions, 0, len(n.Partitions))
+	if len(n.Partitions) == 0 {
+		requiredToppar = toppars
+	} else {
+		for _, par := range n.Partitions {
+			for _, toppar := range toppars {
+				if toppar.Partition == par {
+					requiredToppar = append(requiredToppar, toppar)
+				}
+			}
 		}
-		partitions := toppars[start:end]
-		tailer, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, partitions, ndb.Process)
+	}
+
+	for _, toppar := range requiredToppar {
+		// Instantiate gravel instance per tailer
+		//
+		// We set the `MaxTableSize` for each gravel instance taking total system memory into consideration.
+		// We expect the following entities to be in-memory:
+		// i) Memtable of each tailer
+		// ii) Index of the files in the disk (using mmap) for fast lookups
+		// iii) >= 2 files loaded into memory for compaction
+		//
+		// + leaving some room for any unexpected entities around
+		//
+		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
+		// memory to be cost efficient
+		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20)  // 128 MB
+		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default())
 		if err != nil {
-			return nil, fmt.Errorf("failed to setup tailer for partition(s) %v: %w", partitions, err)
+			return nil, err
 		}
-		tailers = append(tailers, tailer)
+		t, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppar, gravelDb, ndb.Process, tailer.DefaultPollTimeout, tailer.DefaultTailerBatch)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup tailer for partition %v: %w", toppar.Partition, err)
+		}
+		tailers = append(tailers, t)
+		ndb.shards.Store(toppar.Partition, gravelDb)
 	}
-	ndb.tailers = tailers
+	ndb.binlogTailers = tailers
+
+	// Create gravel for aggregate definitions, we don't expect a lot of data to be here, so we use a small ~10MB
+	// memtable
+	aggOpts := gravel.DefaultOptions().WithMaxTableSize(10 << 20)  // 10 MB
+	aggregatesDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, "aggdef"), &aggOpts, encoders.Default())
+	if err != nil {
+		return nil, err
+	}
+
+	// Be aggressive on the poll timeout for aggregate configurations as we want to apply any of the aggregate
+	// configuration changes before potentially any of the messages in binlog correspond to the aggregate
+	//
+	// NOTE: There is still a possibility that few of the earlier messages consumed in the binlog may not find
+	// the corresponding aggregate. Given the nature of the traffic (only on defined aggregates, binlog can be created
+	// with the stream of actions fetched from kafka and later produced to binlog kafka topic) and the below
+	// configuration, this should almost never happen
+	//
+	// Also we don't expect to receive a lot of aggregate configuration updates (except potentially on clean startup)
+	// so keep the batch size low
+	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, toppars[0], aggregatesDb, ndb.ProcessAggregates, 1 * time.Second /*pollTimeout*/, 100 /*batchSize*/)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create aggregate conf tailer: %v", err)
+	}
 	ndb.startReportingKafkaLag()
+
 	// Restore aggregate definitions.
-	err = ndb.restoreAggregates(n.Store)
+	err = ndb.restoreAggregates(aggregatesDb)
 	if err != nil {
 		return nil, fmt.Errorf("failed to restore aggregate definitions: %w", err)
 	}
@@ -133,38 +188,75 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 }
 
 func (ndb *NitrousDB) Start() {
-	for _, tailer := range ndb.tailers {
-		go tailer.Tail()
+	// Start tailing aggregate configuration tailer before tailing the binlog. As noted above, it is highly likely
+	// that during regular traffic pattern, we will run into a situation where binlog tailers consume messages
+	// corresponding to an aggregate which was not consumed by the tailer by then.
+	//
+	// However, on nitrous startup, where it might restore a snapshot at certain aggregate conf and binlog offsets,
+	// if all the tailers start tailing at the same time, binlog messages corresponding to an aggregate not defined then
+	// could be consumed and discarded. To avoid this scenario, we start tailing the aggregate configuration
+	// first, wait for it to finish before tailing binlog.
+	//
+	// In the scenario where aggregate configurations might have a "CREATE" and "DELETE" event for an aggregate,
+	// say they were in reality separated by few hours/day, we ingest them together and resulting in no-op in the
+	// aggregate table, however there could be binlog messages for this aggregate. They will simply be discarded.
+	// This is fine, as we provide "live-ness" guarantees only for the "ACTIVE" aggregates.
+	go ndb.aggregateTailer.Tail()
+	count := 0
+	for count < 3 {
+		lag, err := ndb.aggregateTailer.GetLag()
+		if err != nil {
+			zap.L().Error("failed to get lag for aggregate configuration", zap.Error(err))
+		}
+		// consumed all the messages
+		if lag == 0 {
+			// just to be sure, wait for the tailer to report zero lag for few attempts
+			count++
+		}
+		// sleep for the PollTimeout since at least after this time, a new batch of data will be read by the tailer
+		time.Sleep(ndb.aggregateTailer.GetPollTimeout())
+	}
+	for _, t := range ndb.binlogTailers {
+		go t.Tail()
 	}
 }
 
 func (ndb *NitrousDB) Stop() {
 	// Stop tailing for new updates.
-	for _, tailer := range ndb.tailers {
-		tailer.Stop()
+	for _, t := range ndb.binlogTailers {
+		t.Stop()
 	}
+
+	// Stop the aggregate tailer later - if this was stopped earlier, it is possible that we did not consume
+	// an aggregate configuration but kept consuming binlog with messages corresponding to this aggregate
+	ndb.aggregateTailer.Stop()
 	// TODO: Should we close the store as well?
 	// _ = ndb.nos.Store.Close()
 }
 
-func (ndb *NitrousDB) SetPollTimeout(d time.Duration) {
-	for _, tailer := range ndb.tailers {
-		tailer.SetPollTimeout(d)
+func (ndb *NitrousDB) SetAggrConfPollTimeout(d time.Duration) {
+	ndb.aggregateTailer.SetPollTimeout(d)
+}
+
+func (ndb *NitrousDB) GetAggrConfPollTimeout() time.Duration {
+	return ndb.aggregateTailer.GetPollTimeout()
+}
+
+func (ndb *NitrousDB) SetBinlogPollTimeout(d time.Duration) {
+	for _, t := range ndb.binlogTailers {
+		t.SetPollTimeout(d)
 	}
 }
 
-func (ndb *NitrousDB) GetPollTimeout() time.Duration {
-	if len(ndb.tailers) == 0 {
+func (ndb *NitrousDB) GetBinlogPollTimeout() time.Duration {
+	if len(ndb.binlogTailers) == 0 {
 		return 0
 	}
-	return ndb.tailers[0].GetPollTimeout()
+	return ndb.binlogTailers[0].GetPollTimeout()
 }
 
-func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
-	var keys []hangar.Key
-	var vgs []hangar.ValGroup
-	// First, process any changes to aggregate definitions.
-	var tablesDelta hangar.ValGroup
+func (ndb *NitrousDB) ProcessAggregates(_ context.Context, ops []*rpc.NitrousOp, _ hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
+	var delta hangar.ValGroup
 	for _, op := range ops {
 		switch op.Type {
 		case rpc.OpType_CREATE_AGGREGATE:
@@ -173,9 +265,9 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader 
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to initialize aggregate: %w", err)
 			}
-			err = tablesDelta.Update(d)
+			err = delta.Update(d)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to update valgroup: %w", err)
+				return nil, nil, err
 			}
 		case rpc.OpType_DELETE_AGGREGATE:
 			event := op.GetDeleteAggregate()
@@ -184,28 +276,16 @@ func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader 
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to deactivate aggregate: %w", err)
 			}
-			err = tablesDelta.Update(d)
+			err = delta.Update(d)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to update valgroup: %w", err)
+				return nil, nil, err
 			}
 		}
 	}
-	if len(tablesDelta.Fields) > 0 {
-		zap.L().Info("Received aggregate definition updates", zap.Int("count", len(tablesDelta.Fields)))
-		keys = append(keys, hangar.Key{Data: agg_table_key})
-		vgs = append(vgs, tablesDelta)
-	}
-	// Only then process any updates to the aggregate tables.
-	tks, tvgs, err := ndb.getRowUpdates(ctx, ops, reader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get row updates: %w", err)
-	}
-	keys = append(keys, tks...)
-	vgs = append(vgs, tvgs...)
-	return keys, vgs, nil
+	return []hangar.Key{{Data: agg_table_key}}, []hangar.ValGroup{delta}, nil
 }
 
-func (ndb *NitrousDB) getRowUpdates(ctx context.Context, ops []*rpc.NitrousOp, reader hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
+func (ndb *NitrousDB) Process(ctx context.Context, ops []*rpc.NitrousOp, reader hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
 	var keys []hangar.Key
 	var vgs []hangar.ValGroup
 	type update struct {
@@ -277,7 +357,7 @@ func (ndb *NitrousDB) restoreAggregates(h hangar.Hangar) error {
 		var popts aggregate.AggOptions
 		err = proto.Unmarshal(vg.Values[i], &popts)
 		if err != nil {
-			return fmt.Errorf("faield to unmarshal store proto options for aggId %d in tier %d: %w", aggId, tierId, err)
+			return fmt.Errorf("faild to unmarshal store proto options for aggId %d in tier %d: %w", aggId, tierId, err)
 		}
 		options := aggregate.FromProtoOptions(&popts)
 		err = ndb.setupAggregateTable(tierId, aggId, codec, options)
@@ -375,13 +455,66 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 	if !ok {
 		return nil, fmt.Errorf("no table for aggregate %d in tier %d with codec %d", aggId, tierId, codec)
 	}
-	return v.(store.Table).Get(ctx, groupkeys, kwargs, ndb.nos.Store)
+	// figure out the shards where the groups keys will be situated
+	shardToGkIdx := make(map[int32][]int, 0)
+	for i, gk := range groupkeys {
+		// get shard
+		shard := int32(nitrous.HashedPartition(gk, ndb.binlogPartitions))
+		if _, ok := shardToGkIdx[shard]; !ok {
+			shardToGkIdx[shard] = make([]int, len(groupkeys))
+		}
+		shardToGkIdx[shard] = append(shardToGkIdx[shard], i)
+	}
+	// TODO(mohit): Consider using Arena
+	ret := make([]value.Value, len(groupkeys))
+	egrp, _ := errgroup.WithContext(ctx)
+	for s, is := range shardToGkIdx {
+		shard := s
+		indices := is
+		egrp.Go(func() error {
+			s, ok := ndb.shards.Load(shard)
+			if !ok {
+				return fmt.Errorf("failed to load gravel instance for shard: %d", shard)
+			}
+			if s, ok = s.(hangar.Hangar); !ok {
+				return fmt.Errorf("instance loaded from the shards is not a hangar instance: %v", s)
+			}
+			// TODO(mohit): Consider using Arena
+			keys := make([]string, len(indices))
+			args := make([]value.Dict, len(indices))
+			for i, id := range indices {
+				keys[i] = groupkeys[id]
+				args[i] = kwargs[id]
+			}
+			vals, err := v.(store.Table).Get(ctx, keys, args, s.(hangar.Hangar))
+			if err != nil {
+				return err
+			}
+			if len(vals) != len(keys) {
+				return fmt.Errorf("did not get expected vals: %v v/s %v, part: %v", len(vals), len(keys), shard)
+			}
+			for i, id := range indices {
+				ret[id] = vals[i]
+			}
+			return nil
+		})
+	}
+	if err := egrp.Wait(); err != nil {
+		return ret, fmt.Errorf("failed to get values from sharded gravel: %v", err)
+	}
+	return ret, nil
 }
 
-func (ndb *NitrousDB) GetLag(ctx context.Context) (int, error) {
+func (ndb *NitrousDB) GetLag() (int, error) {
+	// TODO(mohit): Consider reporting aggregate conf lag separately
 	lag := 0
-	for _, tailer := range ndb.tailers {
-		l, err := tailer.GetLag()
+	l, err := ndb.aggregateTailer.GetLag()
+	if err != nil {
+		return lag, fmt.Errorf("failed to get lag for the aggregate configuration tailer: %v", err)
+	}
+	lag += l
+	for _, t := range ndb.binlogTailers {
+		l, err := t.GetLag()
 		if err != nil && !errors.Is(err, fkafka.ErrNoPartition) {
 			return 0, fmt.Errorf("error getting lag: %w", err)
 		}

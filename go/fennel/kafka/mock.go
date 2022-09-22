@@ -229,6 +229,14 @@ type mockProducer struct {
 	broker *MockBroker
 }
 
+func (l mockProducer) LogProtoToPartition(ctx context.Context, message proto.Message, partition int32, partitionKey []byte) error {
+	return l.LogProto(ctx, message, partitionKey)
+}
+
+func (l mockProducer) LogToPartition(ctx context.Context, message []byte, partition int32, partitionKey []byte) error {
+	return l.Log(ctx, message, partitionKey)
+}
+
 func (l mockProducer) LogProto(_ context.Context, message proto.Message, partitionKey []byte) error {
 	ser, err := proto.Marshal(message)
 	if err != nil {

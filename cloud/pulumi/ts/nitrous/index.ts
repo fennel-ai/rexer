@@ -91,9 +91,10 @@ export type inputType = {
 export type outputType = {
     appLabels: { [key: string]: string },
     svc: pulumi.Output<k8s.core.v1.Service>,
+    binlogPartitions: number,
 }
 
-function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
+function setupBinLogInMsk(input: inputType, binlogPartitions: number, awsProvider: aws.Provider) {
     // currently TLS is disabled
     const bootstrapServers = input.kafka.bootstrapServers.apply(bootstrapServers => { return bootstrapServers.split(","); })
     const kafkaProvider = new kafka.Provider("nitrous-kafka-provider-msk", {
@@ -110,7 +111,7 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
     };
     const topic = new kafka.Topic(`topic-p-${input.planeId}-${BINLOG_TOPIC_NAME}-msk`, {
         name: `p_${input.planeId}_${BINLOG_TOPIC_NAME}`,
-        partitions: input.binlog.partitions || DEFAULT_BINLOG_PARTITIONS,
+        partitions: binlogPartitions,
         // We set a default replication factor of 2 (has to be > 1 since this could block producers during a
         // rolling update a broker could be brought down). For production workloads we expect this value to be >= 3
         //
@@ -123,7 +124,7 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
     }, { provider: kafkaProvider, protect: input.protect })
     const reqTopic = new kafka.Topic(`topic-p-${input.planeId}-${NITROUS_REQS_TOPIC_NAME}-msk`, {
         name: `p_${input.planeId}_${NITROUS_REQS_TOPIC_NAME}`,
-        partitions: input.binlog.partitions || DEFAULT_BINLOG_PARTITIONS,
+        partitions: binlogPartitions,
         // We set a default replication factor of 2 (has to be > 1 since this could block producers during a
         // rolling update a broker could be brought down). For production workloads we expect this value to be >= 3
         //
@@ -133,6 +134,19 @@ function setupBinLogInMsk(input: inputType, awsProvider: aws.Provider) {
         // which causes the new messages to be dropped
         replicationFactor: input.binlog.replicationFactor || 2,
         config: config,
+    }, { provider: kafkaProvider });
+
+    // create a partition for aggregate configuration events
+    const aggrConfTopic = new kafka.Topic(`topic-p-${input.planeId}-aggrConf`, {
+        name: `p_${input.planeId}_aggregates_conf`,
+        // create a single partition, since the ordering guarantees are a must for aggregate configurations
+        // (e.g. seeing an aggregate deletion before creation might leave the system in a bad state).
+        partitions: 1,
+        replicationFactor: 2,
+        config: {
+            // set unlimited retention since aggregate configurations are required forever
+            "retention.ms": -1,
+        },
     }, { provider: kafkaProvider });
 
     const k8sProvider = new k8s.Provider("configs-k8s-provider-msk", {
@@ -160,9 +174,10 @@ export const setup = async (input: inputType) => {
             // attacks: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
         }
     })
+    const binlogPartitions = input.binlog.partitions || DEFAULT_BINLOG_PARTITIONS;
 
     // Setup binlog kafka topic.
-    const mskCreds = setupBinLogInMsk(input, awsProvider);
+    const mskCreds = setupBinLogInMsk(input, binlogPartitions, awsProvider);
 
     const bucketName = `nitrous-p-${input.planeId}-backup`
     const bucket = new aws.s3.Bucket(bucketName, {
@@ -367,6 +382,10 @@ export const setup = async (input: inputType) => {
                                         value: "nitrous",
                                     },
                                     {
+                                        name: "BINLOG_PARTITIONS",
+                                        value: `${binlogPartitions}`
+                                    },
+                                    {
                                         name: "IDENTITY",
                                         valueFrom: {
                                             fieldRef: {
@@ -443,6 +462,7 @@ export const setup = async (input: inputType) => {
     const output: outputType = {
         appLabels: appLabels,
         svc: appSvc,
+        binlogPartitions: binlogPartitions
     }
     return output
 }

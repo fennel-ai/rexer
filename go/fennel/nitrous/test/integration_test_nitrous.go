@@ -33,10 +33,11 @@ func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	arg.Parse(&flags)
 	flags.Dev = true
 	flags.PlaneID = planeId
-	flags.BadgerDir = t.TempDir()
+	flags.GravelDir = t.TempDir()
 	flags.BadgerBlockCacheMB = 1000
 	flags.RistrettoMaxCost = 1000
 	flags.RistrettoAvgCost = 1
+	flags.BinPartitions = 1  // by-default we create topics with partition = 1
 	flags.Identity = "localhost"
 	p, err := nitrous.CreateFromArgs(flags)
 	require.NoError(t, err)
@@ -72,6 +73,21 @@ func (tn TestNitrous) NewReqLogProducer(t *testing.T) fkafka.FProducer {
 	config := fkafka.RemoteProducerConfig{
 		Scope:           scope,
 		Topic:           libnitrous.REQS_KAFKA_TOPIC,
+		BootstrapServer: tn.args.MskKafkaServer,
+		Username:        tn.args.MskKafkaUsername,
+		Password:        tn.args.MskKafkaPassword,
+		SaslMechanism:   fkafka.SaslScramSha512Mechanism,
+	}
+	p, err := config.Materialize()
+	require.NoError(t, err)
+	return p.(fkafka.FProducer)
+}
+
+func (tn TestNitrous) NewAggregateConfProducer(t *testing.T) fkafka.FProducer {
+	scope := resource.NewPlaneScope(tn.Nitrous.PlaneID)
+	config := fkafka.RemoteProducerConfig{
+		Scope:           scope,
+		Topic:           libnitrous.AGGR_CONF_KAFKA_TOPIC,
 		BootstrapServer: tn.args.MskKafkaServer,
 		Username:        tn.args.MskKafkaUsername,
 		Password:        tn.args.MskKafkaPassword,

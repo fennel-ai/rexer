@@ -25,7 +25,9 @@ func TestPush(t *testing.T) {
 		TierID:         0,
 		ServerAddr:     addr.String(),
 		BinlogProducer: n.NewBinlogProducer(t),
+		BinlogPartitions: 1,
 		ReqsLogProducer: n.NewReqLogProducer(t),
+		AggregateConfProducer: n.NewAggregateConfProducer(t),
 	}
 	res, err := cfg.Materialize()
 	assert.NoError(t, err)
@@ -48,7 +50,7 @@ func TestPush(t *testing.T) {
 		count := 0
 		for count < 3 {
 			// Assuming that nitrous tails the log every 100 ms in tests.
-			time.Sleep(server.GetPollTimeout())
+			time.Sleep(server.GetBinlogPollTimeout())
 			lag, err := nc.GetLag(ctx)
 			if err != nil {
 				time.Sleep(1 * time.Second)

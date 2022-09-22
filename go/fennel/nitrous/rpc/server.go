@@ -57,11 +57,11 @@ const (
 
 type AggDB interface {
 	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error)
-	GetLag(ctx context.Context) (int, error)
-	GetPollTimeout() time.Duration
+	GetLag() (int, error)
+	GetBinlogPollTimeout() time.Duration
 
 	Stop()
-	SetPollTimeout(time.Duration)
+	SetBinlogPollTimeout(time.Duration)
 }
 
 type Server struct {
@@ -115,8 +115,8 @@ func NewServer(aggdb AggDB) *Server {
 	return s
 }
 
-func (s *Server) GetLag(ctx context.Context, _ *LagRequest) (*LagResponse, error) {
-	lag, err := s.aggdb.GetLag(ctx)
+func (s *Server) GetLag(_ context.Context, _ *LagRequest) (*LagResponse, error) {
+	lag, err := s.aggdb.GetLag()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting lag: %v", err)
 	}
@@ -211,10 +211,10 @@ func (s *Server) Stop() {
 	s.aggdb.Stop()
 }
 
-func (s *Server) GetPollTimeout() time.Duration {
-	return s.aggdb.GetPollTimeout()
+func (s *Server) GetBinlogPollTimeout() time.Duration {
+	return s.aggdb.GetBinlogPollTimeout()
 }
 
-func (s *Server) SetPollTimeout(timeout time.Duration) {
-	s.aggdb.SetPollTimeout(timeout)
+func (s *Server) SetBinlogPollTimeout(timeout time.Duration) {
+	s.aggdb.SetBinlogPollTimeout(timeout)
 }
