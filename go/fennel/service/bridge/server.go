@@ -20,11 +20,11 @@ import (
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -98,6 +98,9 @@ func NewServer() (server, error) {
 		db:         db,
 		wpManifest: wpManifest,
 	}
+	if err := s.SetTrustedProxies(nil); err != nil {
+		return server{}, err
+	}
 	s.setupMiddlewares(args)
 	s.setupRouter()
 
@@ -113,7 +116,7 @@ func NewServer() (server, error) {
 }
 
 func readWebpackManifest() (manifest map[string]string, err error) {
-	bytes, err := ioutil.ReadFile(WebAppRoot + "/dist/manifest.json")
+	bytes, err := os.ReadFile(WebAppRoot + "/dist/manifest.json")
 	if err != nil {
 		return nil, err
 	}
