@@ -42,7 +42,6 @@ const invalidUint32 uint32 = 0xFFFFFFFF
 var incompleteFile = fmt.Errorf("expected end of file")
 
 type bDiskHashTable struct {
-	fileName    string
 	data        []byte
 	itemCount   uint64
 	bucketCount uint64
@@ -177,7 +176,7 @@ func (b *bDiskHashTable) Close() error {
 	return syscall.Munmap(data)
 }
 
-func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
+func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) { // nolint
 	if numShards&(numShards-1) > 0 {
 		return nil, fmt.Errorf("shard is not a power of 2")
 	}
@@ -196,7 +195,7 @@ func buildBDiskHashTable(dirname string, numShards uint64, mt *Memtable) ([]stri
 		if err != nil {
 			return nil, err
 		}
-		type indexObj struct {
+		type indexObj struct { // nolint
 			HashFP   uint32
 			BucketID uint32
 			k        string

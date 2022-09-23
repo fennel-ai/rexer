@@ -100,7 +100,7 @@ func (mt *Memtable) Clear() error {
 		// erase by deletion instead of creating a new map, only to reduce GC burden
 		// downside is blocking the read due to locking.
 		// TODO: shadow memtable to avoid long lock holding
-		for k, _ := range m {
+		for k := range m {
 			delete(m, k)
 		}
 	}

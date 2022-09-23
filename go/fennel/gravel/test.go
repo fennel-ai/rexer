@@ -44,7 +44,7 @@ func openEmptyTable() (Table, error) {
 	return emptyTable{}, nil
 }
 
-func buildEmptyTable(dirname string, numShards uint64, _ *Memtable) ([]string, error) {
+func buildEmptyTable(dirname string, numShards uint64, _ *Memtable) ([]string, error) { // nolint
 	filenames := make([]string, 0)
 	for i := 0; i < int(numShards); i++ {
 		fname := fmt.Sprintf("%d_%s%s", i, utils.RandString(5), tempFileExtension)

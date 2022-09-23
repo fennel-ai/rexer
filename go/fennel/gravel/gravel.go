@@ -24,7 +24,6 @@ import (
 
 type Gravel struct {
 	memtable   Memtable
-	manifest   *Manifest
 	tm         *TableManager
 	commitlock sync.Mutex
 	opts       Options

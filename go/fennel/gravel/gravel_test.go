@@ -172,7 +172,6 @@ func TestFull(t *testing.T) {
 	}
 	fmt.Println("time_ms read from file:", time.Since(t1).Milliseconds())
 
-	key = make([]byte, 9)
 	// query nonexist records
 	var keys [][]byte
 	for i := 0; i < itemCnt; i++ {

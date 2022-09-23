@@ -45,7 +45,7 @@ func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable)
 		} else {
 			filename = fmt.Sprintf("%d_%d%s", shard, time.Now().UnixMicro(), tempFileExtension)
 			filepath := path.Join(dirname, filename)
-			var err error = nil
+			var err error
 			switch type_ {
 			/*
 				case BTreeTable:
@@ -127,7 +127,7 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 		totalRecords += table.NumRecords()
 	}
 
-	var err error = nil
+	var err error
 	m := make(map[string]Value, totalRecords)
 	for _, table := range tables {
 		err = table.GetAll(m)
@@ -192,7 +192,7 @@ func OpenTable(type_ TableType, filepath string) (Table, error) {
 	entries aren't even included.
 */
 
-func encodeVal(v Value) ([]byte, error) {
+func encodeVal(v Value) ([]byte, error) { // nolint
 	if v.deleted {
 		return []byte{1}, nil
 	}

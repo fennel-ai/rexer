@@ -79,7 +79,7 @@ func (t *bTreeTable) Close() error {
 }
 
 // TODO: if table creation fails, delete the files before returning
-func buildBTreeTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) {
+func buildBTreeTable(dirname string, numShards uint64, mt *Memtable) ([]string, error) { // nolint
 	filenames := make([]string, numShards)
 	for i := 0; i < int(numShards); i++ {
 		iter := mt.Iter(uint64(i))
