@@ -79,7 +79,7 @@ func TestGravelTooLargeBatch(t *testing.T) {
 
 }
 
-var heavyTest = flag.Bool("heavy_gravel_test", false, "add 10x load to gravel, takes longer")
+var heavyTest = flag.Bool("heavy_gravel_test", true, "add 10x load to gravel, takes longer")
 
 func TestFull(t *testing.T) {
 	dirname := t.TempDir()

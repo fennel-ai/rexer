@@ -730,19 +730,23 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 	dataStart := uint64(fileHeaderSize)
 	dataEnd := dataStart + header.datasize
 	data := buf[dataStart:dataEnd]
+	madviseData := buf[0:dataEnd] // madvise must use page-aligned ptr
 
 	indexEnd := dataEnd + uint64(header.indexsize)
 	index := buf[dataEnd:indexEnd]
+	madviseIndex := buf[dataEnd & ^(uint64(os.Getpagesize())-1) : indexEnd] // madvise must use page-aligned ptr
 
 	overflow := index[int(header.numBuckets)*bucketSizeBytes:]
-	err = unix.Madvise(index, syscall.MADV_WILLNEED)
+	err = unix.Madvise(madviseIndex, syscall.MADV_WILLNEED)
 	if err != nil {
 		zap.L().Error("failed to Madvise on index mapping", zap.String("filename", fullFileName), zap.Error(err))
 	}
-	err = unix.Madvise(data, syscall.MADV_RANDOM)
+	err = unix.Madvise(madviseData, syscall.MADV_RANDOM)
 	if err != nil {
 		zap.L().Error("failed to Madvise on data mapping", zap.String("filename", fullFileName), zap.Error(err))
 	}
+	madviseIndex = nil // nolint
+	madviseData = nil  // nolint  avoid pointer leak in mmap
 
 	// Prefetch both the index and data by "touching" it
 	if warmIndex {

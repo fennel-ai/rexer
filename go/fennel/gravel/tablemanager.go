@@ -5,7 +5,6 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"path"
-	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -37,7 +36,7 @@ type TableManager struct {
 	compactionRunning   bool
 }
 
-func InitTableManager(dirname string, tableType TableType, numShards uint64) (*TableManager, error) {
+func InitTableManager(dirname string, tableType TableType, numShards uint64, compactionWorkerNum int) (*TableManager, error) {
 	if err := numShardsValid(numShards); err != nil {
 		return nil, err
 	}
@@ -67,13 +66,7 @@ func InitTableManager(dirname string, tableType TableType, numShards uint64) (*T
 		}
 	}
 
-	tm.compactionWorkerNum = runtime.NumCPU() / 5
-	if tm.compactionWorkerNum > 8 {
-		tm.compactionWorkerNum = 8
-	}
-	if tm.compactionWorkerNum < 1 {
-		tm.compactionWorkerNum = 1
-	}
+	tm.compactionWorkerNum = compactionWorkerNum
 
 	tm.StartCompactionWorkers()
 	return tm, nil
