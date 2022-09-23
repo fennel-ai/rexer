@@ -7,13 +7,12 @@ import { useParams } from "react-router-dom";
 import styles from "./styles/Tab.module.scss";
 import profileStyles from "./styles/ProfilesTab.module.scss";
 
-
 const columns = [
     { title: 'otype', dataIndex: 'otype', key: 'otype' },
     { title: 'oid', dataIndex: 'oid', key: 'oid' },
     { title: 'key', dataIndex: 'keyCol', key: 'keyCol' },
-    { title: "updatedTime", dataIndex: 'updatedTime', key: 'updatedTime' },
     { title: "value", dataIndex: 'value', key: 'value' },
+    { title: "updated time", dataIndex: 'updatedTime', key: 'updatedTime' },
 ];
 
 interface ProfileResponse {
@@ -55,7 +54,7 @@ function ProfilesTab() {
                     otype: profile.OType,
                     oid: profile.Oid,
                     keyCol: profile.Key,
-                    updatedTime: profile.UpdateTime,
+                    updatedTime: new Date(profile.UpdateTime / 1000).toISOString(),
                     value: profile.Value,
                 }));
                 setDataSource(newData);

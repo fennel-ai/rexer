@@ -6,11 +6,16 @@ import { useParams } from "react-router-dom";
 
 import styles from "./styles/Tab.module.scss";
 
-const columns = ["actionType", "actionId", "actorType", "actorId", "targetType", "targetId", "timestamp", "requestId", "metadata"].map(name => ({
-    title: name,
-    dataIndex: name,
-    key: name,
-}))
+const columns = [
+    { title: "Action Type", dataIndex: "ActionType", key: "actionType" },
+    { title: "Action ID", dataIndex: "ActionID", key: "actionId" },
+    { title: "Actor Type", dataIndex: "ActorType", key: "actorType" },
+    { title: "Actor ID", dataIndex: "ActorID", key: "actorId" },
+    { title: "Target ID", dataIndex: "TargetID", key: "targetId" },
+    { title: "Request ID", dataIndex: "RequestID", key: "requestId" },
+    { title: "Metadata", dataIndex: "Metadata", key: "metadata" },
+    { title: "Timestamp", dataIndex: "Timestamp", key: "timestamp" },
+];
 
 interface Action {
 	ActionID: string,
@@ -19,9 +24,9 @@ interface Action {
 	TargetID: string,
 	TargetType: string,
 	ActionType: string,
-	Timestamp: string,
 	RequestID: string,
 	Metadata: string,
+	Timestamp: number,
 }
 
 interface ActionResponse {
@@ -52,16 +57,9 @@ function ActionsTab() {
             params,
         }).then((response: AxiosResponse<ActionResponse>) => {
             const newData = response.data.actions.map((action: Action, idx: number) => ({
+                ...action,
                 key: idx,
-                actionType: action.ActionType,
-                actionId: action.ActionID,
-                actorType: action.ActorType,
-                actorId: action.ActorID,
-                targetType: action.TargetType,
-                targetId: action.TargetID,
-                timestamp: action.Timestamp,
-                requestId: action.RequestID,
-                metadata: action.Metadata,
+                Timestamp: new Date(action.Timestamp * 1000).toISOString(),
             }));
             setDataSource(newData);
             setLoading(false);
@@ -89,30 +87,6 @@ function ActionsTab() {
                     name="Action Type"
                     value={actionType}
                     onChange={(newValue) => setActionType(newValue)}
-                    onPressEnter={queryActions}
-                />
-                <Filter
-                    name="Actor Type"
-                    value={actorType}
-                    onChange={(newValue) => setActorType(newValue)}
-                    onPressEnter={queryActions}
-                />
-                <Filter
-                    name="Actor ID"
-                    value={actorId}
-                    onChange={(newValue) => setActorId(newValue)}
-                    onPressEnter={queryActions}
-                />
-                <Filter
-                    name="Target Type"
-                    value={targetType}
-                    onChange={(newValue) => setTargetType(newValue)}
-                    onPressEnter={queryActions}
-                />
-                <Filter
-                    name="Target ID"
-                    value={targetId}
-                    onChange={(newValue) => setTargetId(newValue)}
                     onPressEnter={queryActions}
                 />
                 <Space size="small" align="start">
