@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	profileL "fennel/lib/profile"
 	"fennel/lib/sql"
 	"fennel/mothership"
 	actionC "fennel/mothership/controller/action"
@@ -516,7 +517,15 @@ func (s *server) Profiles(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"profiles": profiles,
+		"profiles": lo.Map(profiles, func(profile profileL.ProfileItem, _ int) gin.H {
+			return gin.H{
+				"OType":      profile.OType,
+				"Oid":        profile.Oid,
+				"Key":        profile.Key,
+				"Value":      profile.Value.String(),
+				"UpdateTime": profile.UpdateTime,
+			}
+		}),
 	})
 }
 
