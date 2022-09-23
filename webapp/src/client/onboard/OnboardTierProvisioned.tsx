@@ -104,6 +104,10 @@ function OnboardTierProvisioned(props: Props) {
                                 </div>
                                 <div>
                                     <table className={styles.tierTable}>
+                                        <colgroup>
+                                            <col className={styles.tierTableLabel} />
+                                            <col className={styles.tierTableValue} />
+                                        </colgroup>
                                         <tbody>
                                             <tr>
                                                 <td>Location</td>
