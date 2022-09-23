@@ -18,14 +18,14 @@ const columns = [
 ];
 
 interface Action {
-	ActionID: string | number,
-	ActorID: string | number,
+	ActionID: string,
+	ActorID: string,
 	ActorType: string,
-	TargetID: string | number,
+	TargetID: string,
 	TargetType: string,
 	ActionType: string,
 	RequestID: string,
-	Metadata: unknown, // TODO(xiao): json deserialize result
+	Metadata: string,
 	Timestamp: number,
 }
 

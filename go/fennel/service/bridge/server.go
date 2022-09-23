@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	actionL "fennel/lib/action"
 	profileL "fennel/lib/profile"
 	"fennel/lib/sql"
 	"fennel/mothership"
@@ -24,6 +25,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/alexflint/go-arg"
@@ -552,7 +554,19 @@ func (s *server) Actions(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"actions": actions,
+		"actions": lo.Map(actions, func(action actionL.Action, _ int) gin.H {
+			return gin.H{
+				"ActionID":   strconv.FormatUint(uint64(action.ActionID), 10),
+				"ActorID":    action.ActorID,
+				"ActorType":  action.ActorType,
+				"TargetID":   action.TargetID,
+				"TargetType": action.TargetType,
+				"ActionType": action.ActionType,
+				"Timestamp":  action.Timestamp,
+				"RequestID":  action.RequestID,
+				"Metadata":   action.Metadata.String(),
+			}
+		}),
 	})
 }
 
