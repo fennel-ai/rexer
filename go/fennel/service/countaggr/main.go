@@ -276,12 +276,28 @@ func processAggregate(tr tier.Tier, agg libaggregate.Aggregate, stopCh <-chan st
 	return nil
 }
 
+var incomingStreamlogs = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "incoming_streamlog_total",
+		Help: "Total number of entities consumed from the streamlog",
+	},
+	[]string{"name"},
+)
+
+var ingestedStreamlogs = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "ingested_streamlog_total",
+		Help: "Total number of entities effectively ingested from the consumed streamlog",
+	},
+	[]string{"name", "type"},
+)
+
 var totalDedupedStreamLogs = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "deduped_stream_total",
 		Help: "Total number of deduped stream logs.",
 	},
-	[]string{"path", "action_type"},
+	[]string{"name"},
 )
 
 func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-chan struct{}) error {
@@ -321,6 +337,10 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				}
 				tr.Logger.Debug("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
 
+				// increment by batch size of the streams consumed
+				metricLabelName := fmt.Sprintf("%s:%s", conn.Name, conn.Destination)
+				incomingStreamlogs.WithLabelValues(metricLabelName).Add(float64(len(values)))
+
 				var keys []string
 				var vals []interface{}
 				var ttls []time.Duration
@@ -337,14 +357,13 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 					tr.Logger.Error("Error while checking for dedup from stream", zap.Error(err))
 					return
 				}
-
 				var batch []value.Value
 				for i := range ok {
 					if ok[i] {
 						// If dedup key of an action was not set, add to batch
 						batch = append(batch, values[ids[i]])
 					} else {
-						totalDedupedStreamLogs.WithLabelValues("airbyte_log", conn.Name).Inc()
+						totalDedupedStreamLogs.WithLabelValues(metricLabelName).Inc()
 					}
 				}
 
@@ -373,6 +392,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 							tr.Logger.Error("Error while converting to action:", zap.Error(err))
 							continue
 						}
+						ingestedStreamlogs.WithLabelValues(metricLabelName, string(actionBatch[i].ActionType)).Inc()
 					}
 					if err = action2.BatchInsert(ctx, tr, actionBatch); err != nil {
 						tr.Logger.Error("Error while inserting actions:", zap.Error(err))
@@ -388,6 +408,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 							tr.Logger.Error("Error while converting to profile:", zap.Error(err))
 							continue
 						}
+						ingestedStreamlogs.WithLabelValues(metricLabelName, string(profileBatch[i].OType)).Inc()
 					}
 					if err = profile2.SetMulti(ctx, tr, profileBatch); err != nil {
 						tr.Logger.Error("Error while inserting profile", zap.Error(err))
