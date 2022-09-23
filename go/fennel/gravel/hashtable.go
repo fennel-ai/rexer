@@ -90,6 +90,8 @@ const (
 	fileHeaderSize      int    = 64
 	bucketSizeBytes     int    = 64 // a common cache line size
 	maxBucketFpCount    int    = 19
+
+	stackMatchedIdxArraySize int = 64
 )
 
 type fingerprint uint32 // actually value is always 3 bytes, which means highest 8 bits are always 0
@@ -173,29 +175,38 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	head := ht.head // deref in local variables to reduce address translations
 	bucketID := getBucketID(hash, head.numBuckets)
 	fp := getFingerprint(hash)
-	matchedIndices, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
+
+	// for performance consideration, limit the number of matchedIndices to be const so the values can be stored on stack
+	// this causes the bug that if there are more than 'stackMatchedIdxArraySize' matched hashes, we may miss the record
+	// however, in reality, this will (almost ,like 1 every 3e188) never trigger if stackMatchedIdxArraySize == 32
+	var matchedIndices [stackMatchedIdxArraySize]int
+	numCandidates, dataPos, err := ht.readIndex(bucketID, fp, &matchedIndices)
 	if err != nil {
 		return Value{}, err
 	}
-	if matchedIndices == nil {
+	if matchedIndices[0] == -1 {
 		return Value{}, ErrNotFound
 	}
-	ret, err := ht.readData(dataPos, matchedIndices, numCandidates, key, head.minExpiry)
+	ret, err := ht.readData(dataPos, &matchedIndices, numCandidates, key, head.minExpiry)
 	return ret, err
 }
 
 // readIndex reads the index for bucketID and searches for the given fingerprint.
 // returns the slice of indices (in current bucket) whose fingerprints matches the given, the total number of records that
 // fall into this bucket, as well as the data section offset, with error if there is any
-func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) ([]int, int, uint64, error) {
-	var matchIndices []int = nil
+func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *[stackMatchedIdxArraySize]int) (int, uint64, error) {
+	matchedIdxIdx := 0
+	defer func() {
+		// seal the result array by appending a "-1"
+		if matchedIdxIdx < stackMatchedIdxArraySize {
+			matchedIndices[matchedIdxIdx] = -1
+		}
+	}()
 
 	indexStart := int(bucketID) * bucketSizeBytes
 	indexEnd := indexStart + bucketSizeBytes
 	index := ht.index[indexStart:indexEnd]
-	if len(index) != bucketSizeBytes {
-		return nil, 0, 0, fmt.Errorf("index entry is not of size 64 bytes")
-	}
+
 	numKeys := int(index[0])
 	datapos := uint64(index[1])<<32 + uint64(index[2])<<24 + uint64(index[3])<<16 + uint64(index[4])<<8 + uint64(index[5])
 	var overflow uint32
@@ -214,17 +225,20 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) ([]int, int, uin
 
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			return matchIndices, numKeys, datapos, nil
+			return numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
-				matchIndices = append(matchIndices, curFpPos)
+				if matchedIdxIdx < stackMatchedIdxArraySize {
+					matchedIndices[matchedIdxIdx] = curFpPos
+					matchedIdxIdx++
+				}
 			}
 		}
 		sofar += 3
 	}
 	if curFpPos >= numKeys {
 		// no overflow record needs to be compared
-		return matchIndices, numKeys, datapos, nil
+		return numKeys, datapos, nil
 	}
 
 	// there are extra fingerprints that are in overflow section and need to check
@@ -232,16 +246,18 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) ([]int, int, uin
 	sofar = 0
 	for ; curFpPos < numKeys; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			return matchIndices, numKeys, datapos, nil
+			return numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
-				matchIndices = append(matchIndices, curFpPos)
+				if matchedIdxIdx < stackMatchedIdxArraySize {
+					matchedIndices[matchedIdxIdx] = curFpPos
+					matchedIdxIdx++
+				}
 			}
 		}
 		sofar += 3
 	}
-
-	return matchIndices, numKeys, datapos, nil
+	return numKeys, datapos, nil
 }
 
 // writeIndex writes all the index data via writer and returns the number of bytes
@@ -312,7 +328,7 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
-func (ht *hashTable) readData(start uint64, matchedIndices []int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
+func (ht *hashTable) readData(start uint64, matchedIndices *[stackMatchedIdxArraySize]int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
 	data := ht.data[start:]
 	sofar := 0
 	curMatchIdx := 0
@@ -331,7 +347,7 @@ func (ht *hashTable) readData(start uint64, matchedIndices []int, numRecords int
 				return ret, err
 			}
 			curMatchIdx += 1
-			if curMatchIdx == len(matchedIndices) {
+			if curMatchIdx >= stackMatchedIdxArraySize || matchedIndices[curMatchIdx] == -1 {
 				return Value{}, ErrNotFound
 			}
 		} else {
@@ -439,7 +455,7 @@ func buildHashTable(filepath string, data map[string]Value) error {
 	// within the same bucket, we sort records by fingerprint. This will allow us to
 	// early termination when fingerprints don't match
 	sort.Slice(records, func(i, j int) bool {
-		ri, rj := records[i], records[j]
+		ri, rj := &records[i], &records[j]
 		return ri.bucketID < rj.bucketID || (ri.bucketID == rj.bucketID && ri.fp < rj.fp)
 	})
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)

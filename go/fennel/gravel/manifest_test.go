@@ -41,10 +41,10 @@ func TestManifest(t *testing.T) {
 }
 
 func TestEmptyInit(t *testing.T) {
-	for i := 0; i < 1024; i++ {
-		dirname := fmt.Sprintf("%s/%s", os.TempDir(), utils.RandString(5))
+	for i := 0; i < 70000; i += 64 {
+		dirname := t.TempDir()
 		m, err := InitManifest(dirname, BDiskHashTable, uint64(i))
-		if i == 0 || i > 512 || (i&(i-1)) > 0 {
+		if i == 0 || i > 65536 || (i&(i-1)) > 0 {
 			assert.Error(t, err)
 		} else {
 			assert.NoError(t, err)

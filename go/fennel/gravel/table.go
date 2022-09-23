@@ -80,7 +80,7 @@ func PickTablesToCompact(tables []Table) []Table {
 		fileCnt   int
 	}
 
-	var entries []entry = nil
+	entries := make([]entry, 0, len(tables)*(maxCompactBatch-1))
 	for idx, table := range tables {
 		entry := entry{
 			startIdx:  idx,
@@ -105,7 +105,7 @@ func PickTablesToCompact(tables []Table) []Table {
 	}
 
 	sort.Slice(entries, func(i, j int) bool {
-		ei, ej := entries[i], entries[j]
+		ei, ej := &entries[i], &entries[j]
 		return ei.fileCnt > ej.fileCnt || (ei.fileCnt == ej.fileCnt && ei.totalSize < ej.totalSize)
 	})
 
@@ -116,6 +116,9 @@ func PickTablesToCompact(tables []Table) []Table {
 // tables slice should strictly follow the rule that newer table comes later
 // if compacting to the final(oldest) file in the shard, deletion markers will be removed
 func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableType, compactToFinal bool) (string, error) {
+	_, t := timer.Start(context.TODO(), 1, "gravel.table.compaction")
+	defer t.Stop()
+
 	filename := fmt.Sprintf("%d_%d%s", shardId, time.Now().UnixMicro(), tempFileExtension)
 	filepath := path.Join(dirname, filename)
 
@@ -136,7 +139,7 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 		// remove expired items and deletion marker in the furthest file
 		now := Timestamp(time.Now().Unix())
 		for k, v := range m {
-			if v.deleted || (v.expires > 0 && v.expires < now) {
+			if _, err := handle(v, now); err == ErrNotFound {
 				delete(m, k)
 			}
 		}

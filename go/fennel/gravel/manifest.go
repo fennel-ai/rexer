@@ -14,8 +14,9 @@ import (
 type manifestCodec uint64
 
 const (
-	mfile               = "gravel.manifest"
-	v1    manifestCodec = 1
+	mfile                     = "gravel.manifest"
+	v1          manifestCodec = 1
+	maxShardNum               = 65536 // 65536 is an arbitrary limit, since we unlikely will need more than this
 )
 
 // Manifest object has no concurrency guarantee. Its owner is supposed to handle race condition.
@@ -269,6 +270,9 @@ func (m *Manifest) Clean() error {
 }
 
 func createEmpty(filename string, numShards uint64, tableType TableType) error {
+	if err := numShardsValid(numShards); err != nil {
+		return err
+	}
 	f, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("manifest did not exist and could not create a new one: %w", err)
@@ -297,8 +301,7 @@ func numShardsValid(n uint64) error {
 	if n&(n-1) > 0 {
 		return fmt.Errorf("num shards not a power of 2")
 	}
-	if n == 0 || n > 65536 {
-		// 65536 is an arbitrary limit
+	if n == 0 || n > maxShardNum {
 		return fmt.Errorf("num shards can only be between 1 and 65536")
 	}
 	return nil

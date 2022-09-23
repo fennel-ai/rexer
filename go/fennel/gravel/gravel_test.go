@@ -3,6 +3,7 @@ package gravel
 import (
 	"encoding/binary"
 	"fennel/lib/utils"
+	"flag"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -78,23 +79,28 @@ func TestGravelTooLargeBatch(t *testing.T) {
 
 }
 
+var heavyTest = flag.Bool("heavy_gravel_test", false, "add 10x load to gravel, takes longer")
+
 func TestFull(t *testing.T) {
-	t.Skip("Test takes too long so skipping it. We do have some coverage in more generate test_table")
 	dirname := t.TempDir()
 
+	var itemCnt int
 	opt := DefaultOptions()
 	opt.Dirname = dirname
-	opt.NumShards = 16
-	opt.MaxMemtableSize = 1024 * 1024 * 10
+	if *heavyTest {
+		opt.MaxMemtableSize = 1024 * 1024 * 10
+		itemCnt = 10_000_000
+		opt.NumShards = 16
+	} else {
+		opt.MaxMemtableSize = 1024 * 1024
+		itemCnt = 1_000_000
+		opt.NumShards = 2
+	}
 
 	g, err := Open(opt)
 	assert.NoError(t, err)
 
-	//shards := uint64(4)
-	//manifest, err := InitManifest(dirname, HashTable, shards)
-
-	itemCnt := 10_000_000
-	//mt := NewMemTable(shards)
+	batchSize := 1000
 	key := make([]byte, 8)
 
 	t1 := time.Now()
@@ -106,7 +112,7 @@ func TestFull(t *testing.T) {
 		binary.BigEndian.PutUint64(value[8:], uint64(i))
 		err := b.Set(key, value, 0)
 		assert.NoError(t, err)
-		if len(b.Entries()) > 1000 {
+		if len(b.Entries()) > batchSize {
 			err = b.Commit()
 			assert.NoError(t, err)
 		}
@@ -117,8 +123,10 @@ func TestFull(t *testing.T) {
 	}
 	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
 
-	fmt.Println("sleeping 10 secs, wait for compaction work to start")
-	time.Sleep(10 * time.Second) // wait for compaction
+	if *heavyTest {
+		fmt.Println("sleeping 10 secs, wait for compaction work to start")
+		time.Sleep(10 * time.Second) // wait for compaction
+	}
 
 	fmt.Println("overwrite all records with different values and expires")
 	t1 = time.Now()
@@ -134,7 +142,7 @@ func TestFull(t *testing.T) {
 		binary.BigEndian.PutUint64(value[8:], uint64(i*2))
 		err := b.Set(key, value, expires)
 		assert.NoError(t, err)
-		if len(b.Entries()) > 1000 {
+		if len(b.Entries()) > batchSize {
 			err = b.Commit()
 			assert.NoError(t, err)
 		}

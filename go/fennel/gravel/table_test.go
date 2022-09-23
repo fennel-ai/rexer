@@ -13,23 +13,16 @@ import (
 )
 
 func TestBtreeTable(t *testing.T) {
+	t.Skipf("BtreeTable is not fully implemented")
 	testTableType(t, BTreeTable, 100_000)
 }
 
 func TestDiskHashTable(t *testing.T) {
+	t.Skipf("Disk hashtable is not fully implemented")
 	testTableType(t, BDiskHashTable, 1000_000)
 }
 func TestHashTable(t *testing.T) {
 	testTableType(t, HashTable, 1000_000)
-}
-
-func BenchmarkDiskHashTable(b *testing.B) {
-	b.Run("keys_present", func(b *testing.B) {
-		benchmarkTableGet(b, 100_1000, BDiskHashTable)
-	})
-	b.Run("keys_absent", func(b *testing.B) {
-		benchmarkTableAbsent(b, 100_1000, BDiskHashTable)
-	})
 }
 
 func BenchmarkHashTable(b *testing.B) {
