@@ -10,6 +10,10 @@ import (
 type emptyTable struct {
 }
 
+func (d emptyTable) IndexSize() uint64 {
+	return 0
+}
+
 func (d emptyTable) Name() string {
 	return "whatever"
 }

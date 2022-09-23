@@ -4,12 +4,9 @@ type TableType uint8
 
 const (
 	//  WARNING: existing table type value should never be changed
-
-	testTable      TableType = 0 // a table type used only for tests
-	BTreeTable     TableType = 1
-	BDiskHashTable TableType = 2
-	HashTable      TableType = 3
-	InvalidTable   TableType = 4 // marker for the last table type, increment if new type is inserted above
+	testTable    TableType = 0 // a table type used only for tests
+	HashTable    TableType = 3
+	InvalidTable TableType = 4 // marker for the last table type, increment if new type is inserted above
 )
 
 type Options struct {

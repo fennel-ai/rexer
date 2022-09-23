@@ -85,16 +85,19 @@ func TestFull(t *testing.T) {
 	dirname := t.TempDir()
 
 	var itemCnt int
+	var compactionWaitSecs int
 	opt := DefaultOptions()
 	opt.Dirname = dirname
 	if *heavyTest {
 		opt.MaxMemtableSize = 1024 * 1024 * 10
 		itemCnt = 10_000_000
 		opt.NumShards = 16
+		compactionWaitSecs = 25
 	} else {
 		opt.MaxMemtableSize = 1024 * 1024
 		itemCnt = 1_000_000
 		opt.NumShards = 2
+		compactionWaitSecs = 10
 	}
 
 	g, err := Open(opt)
@@ -153,8 +156,10 @@ func TestFull(t *testing.T) {
 	}
 	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
 
-	fmt.Println("sleeping another 10 secs, wait for more compaction work to be done")
-	time.Sleep(10 * time.Second) // wait for compaction
+	fmt.Printf("sleeping another %d secs, wait for more compaction work to be done\n", compactionWaitSecs)
+	time.Sleep(time.Duration(compactionWaitSecs) * time.Second) // wait for compaction
+
+	assert.Less(t, g.tm.GetStats()[StatsNumTables], opt.NumShards*minimumFilesToTriggerCompaction+1, "too many tables, seems the compaction doesn't work")
 
 	t1 = time.Now()
 	for i := 0; i < itemCnt; i++ {

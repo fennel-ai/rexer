@@ -73,6 +73,7 @@ import (
 	"fennel/lib/utils/slice"
 	"fmt"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 	math2 "math"
 	"os"
@@ -93,6 +94,8 @@ const (
 
 	stackMatchedIdxArraySize int = 64
 )
+
+var incompleteFile = fmt.Errorf("expected end of file")
 
 type fingerprint uint32 // actually value is always 3 bytes, which means highest 8 bits are always 0
 
@@ -136,6 +139,10 @@ type hashTable struct {
 	data       []byte // derived from mmappedData
 	size       uint64
 	reads      atomic.Uint64
+}
+
+func (ht *hashTable) IndexSize() uint64 {
+	return uint64(ht.head.indexsize)
 }
 
 func (ht *hashTable) Name() string {
@@ -702,13 +709,11 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 		return nil, fmt.Errorf("file size too small to be a valid gravel file")
 	}
 
-	// TODO: looks like mmap call takes a size parameter that is of type 'int'
-	// does it mean that if the file is bigger than 2GB, are we unable to mmap it all?
 	buf, err := syscall.Mmap(int(f.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("header is: %v\n", buf)
+
 	header, err := readHeader(buf[:64])
 	if err != nil {
 		return nil, fmt.Errorf("error reading header: %w", err)
@@ -728,7 +733,16 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 
 	indexEnd := dataEnd + uint64(header.indexsize)
 	index := buf[dataEnd:indexEnd]
+
 	overflow := index[int(header.numBuckets)*bucketSizeBytes:]
+	err = unix.Madvise(index, syscall.MADV_WILLNEED)
+	if err != nil {
+		zap.L().Error("failed to Madvise on index mapping", zap.String("filename", fullFileName), zap.Error(err))
+	}
+	err = unix.Madvise(data, syscall.MADV_RANDOM)
+	if err != nil {
+		zap.L().Error("failed to Madvise on data mapping", zap.String("filename", fullFileName), zap.Error(err))
+	}
 
 	// Prefetch both the index and data by "touching" it
 	if warmIndex {

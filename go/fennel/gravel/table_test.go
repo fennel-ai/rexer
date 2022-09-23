@@ -12,15 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBtreeTable(t *testing.T) {
-	t.Skipf("BtreeTable is not fully implemented")
-	testTableType(t, BTreeTable, 100_000)
-}
-
-func TestDiskHashTable(t *testing.T) {
-	t.Skipf("Disk hashtable is not fully implemented")
-	testTableType(t, BDiskHashTable, 1000_000)
-}
 func TestHashTable(t *testing.T) {
 	testTableType(t, HashTable, 1000_000)
 }

@@ -6,17 +6,19 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 )
 
 const (
-	StatsTotalSize    = 0
-	StatsNumTables    = 1
-	StatsTotalReads   = 2
-	StatsTotalRecords = 3
+	StatsTotalSize      = 0
+	StatsNumTables      = 1
+	StatsTotalReads     = 2
+	StatsTotalRecords   = 3
+	StatsTotalIndexSize = 4
 	// StatsMax should be increased if any new stats inserted here
-	StatsMax = 4
+	StatsMax = 5
 )
 
 const (
@@ -130,21 +132,29 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	}
 
 	// find the shard that has most files
-	shardToCompact := uint64(0)
-	maxFilesInShard := 0
+	type shardInfoEntry struct {
+		shardId  uint64
+		numFiles int
+	}
+	shardInfo := make([]shardInfoEntry, t.manifest.numShards)
+
 	t.lock.RLock()
 	for i := uint64(0); i < t.manifest.numShards; i++ {
+		// to avoid race condition, each worker only checks the deterministic subset of shards
 		if int(i)%t.compactionWorkerNum == workerIdx {
-			// to avoid race condition, each worker only checks the deterministic subset of shards
-			if len(t.tables[i]) >= minimumFilesToTriggerCompaction && len(t.tables[i]) > maxFilesInShard {
-				shardToCompact = i
-				maxFilesInShard = len(t.tables[i])
-			}
+			shardInfo[i].shardId = i
+			shardInfo[i].numFiles = len(t.tables[i])
 		}
 	}
 	t.lock.RUnlock()
 
-	if maxFilesInShard == 0 {
+	sort.Slice(shardInfo, func(i int, j int) bool {
+		return shardInfo[i].numFiles < shardInfo[j].numFiles
+	})
+
+	pickedShard := shardInfo[len(shardInfo)-1] // the shard with most tables
+
+	if pickedShard.numFiles < minimumFilesToTriggerCompaction {
 		zap.L().Info("no compaction work to do for worker", zap.Int("worker_id", workerIdx))
 		return false
 	}
@@ -152,15 +162,19 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	// decide which tables in this shard to compact
 	compactToFinal := false
 	t.lock.RLock()
-	tablesToCompact := PickTablesToCompact(t.tables[shardToCompact])
-	if tablesToCompact[0] == t.tables[shardToCompact][0] {
+	tablesToCompact := PickTablesToCompact(t.tables[pickedShard.shardId])
+	if tablesToCompact != nil && tablesToCompact[0] == t.tables[pickedShard.shardId][0] {
 		compactToFinal = true
 	}
 	t.lock.RUnlock()
+	if tablesToCompact == nil {
+		zap.L().Info("no compaction work to do for worker", zap.Int("worker_id", workerIdx))
+		return false
+	}
 
 	// actual compact work
-	zap.L().Info("Going to compact for shard", zap.Int("worker_id", workerIdx), zap.Uint64("shardId", shardToCompact))
-	newTableFile, err := CompactTables(t.manifest.dirname, tablesToCompact, shardToCompact, t.manifest.tableType, compactToFinal)
+	zap.L().Info("Going to compact for shard", zap.Int("worker_id", workerIdx), zap.Uint64("shardId", pickedShard.shardId), zap.Bool("compact_to_final", compactToFinal))
+	newTableFile, err := CompactTables(t.manifest.dirname, tablesToCompact, pickedShard.shardId, t.manifest.tableType, compactToFinal)
 	if err != nil {
 		zap.L().Error("failed to compact", zap.Int("worker_id", workerIdx), zap.Error(err))
 	}
@@ -172,13 +186,13 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	for _, table := range tablesToCompact {
 		tableFilesToCompact = append(tableFilesToCompact, table.Name())
 	}
-	err = t.manifest.Replace(shardToCompact, tableFilesToCompact, newTableFile)
+	err = t.manifest.Replace(pickedShard.shardId, tableFilesToCompact, newTableFile)
 	if err != nil {
 		zap.L().Error("failed refresh manifest after compaction", zap.Int("worker_id", workerIdx), zap.Error(err))
 	}
 
 	// now sync the manifest with the current open tables by opening new ones and closing removed ones
-	err = t.reloadShardTablesFromManifest(shardToCompact)
+	err = t.reloadShardTablesFromManifest(pickedShard.shardId)
 	if err != nil {
 		zap.L().Error("failed to reload tables after compaction", zap.Int("worker_id", workerIdx), zap.Error(err))
 	}
@@ -259,6 +273,7 @@ func (t *TableManager) GetStats() []uint64 {
 			ret[StatsTotalReads] += table.DataReads()
 			ret[StatsTotalSize] += table.Size()
 			ret[StatsTotalRecords] += table.NumRecords()
+			ret[StatsTotalIndexSize] += table.IndexSize()
 		}
 	}
 	return ret
