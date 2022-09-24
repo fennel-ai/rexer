@@ -4,6 +4,8 @@ interface CssExports {
   'footnote': string;
   'tierContainer': string;
   'tierTable': string;
+  'tierTableLabel': string;
+  'tierTableValue': string;
   'tierTitle': string;
   'tierURL': string;
   'tierURLContainer': string;

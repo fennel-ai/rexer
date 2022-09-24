@@ -36,6 +36,15 @@
 
 .tierTable {
     width: 100%;
+    table-layout: fixed;
+}
+
+.tierTableLabel {
+    width: 76px;
+}
+
+.tierTableValue {
+    width: 210px;
 }
 
 .footnote {
