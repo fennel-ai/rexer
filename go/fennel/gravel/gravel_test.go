@@ -85,19 +85,17 @@ func TestFull(t *testing.T) {
 	dirname := t.TempDir()
 
 	var itemCnt int
-	var compactionWaitSecs int
+	compactionWaitSecs := 25
 	opt := DefaultOptions()
 	opt.Dirname = dirname
 	if *heavyTest {
 		opt.MaxMemtableSize = 1024 * 1024 * 10
 		itemCnt = 10_000_000
 		opt.NumShards = 16
-		compactionWaitSecs = 25
 	} else {
 		opt.MaxMemtableSize = 1024 * 1024
 		itemCnt = 1_000_000
 		opt.NumShards = 2
-		compactionWaitSecs = 10
 	}
 
 	g, err := Open(opt)
