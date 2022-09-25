@@ -7,7 +7,6 @@ import (
 	"fennel/lib/arena"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
-	"fennel/lib/utils/parallel"
 	"fmt"
 	"io"
 	"time"
@@ -23,10 +22,9 @@ const (
 )
 
 type gravelDb struct {
-	planeID    ftypes.RealmID
-	db         *gravel.Gravel
-	enc        hangar.Encoder
-	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
+	planeID ftypes.RealmID
+	db      *gravel.Gravel
+	enc     hangar.Encoder
 }
 
 func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc hangar.Encoder) (*gravelDb, error) {
@@ -37,10 +35,9 @@ func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc
 	}
 	startReportingMetrics(db)
 	return &gravelDb{
-		planeID:    planeID,
-		db:         db,
-		enc:        enc,
-		workerPool: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_graveldb", PARALLELISM),
+		planeID: planeID,
+		db:      db,
+		enc:     enc,
 	}, nil
 }
 
@@ -66,43 +63,34 @@ func (g *gravelDb) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 	ctx, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.getmany.%s", hangar.GetMode(ctx)))
 	defer t.Stop()
 
-	// We try to spread across available workers while giving each worker
-	// a minimum of GET_BATCH_SIZE keyGroups to work on.
-	batch := len(kgs) / PARALLELISM
-	if batch < GET_BATCH_SIZE {
-		batch = GET_BATCH_SIZE
+	eks, err := hangar.EncodeKeyManyKG(kgs, g.enc)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding key: %w", err)
 	}
-	return g.workerPool.Process(ctx, kgs, func(kgs []hangar.KeyGroup, vgs []hangar.ValGroup) error {
-		_, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.getmany.batch.%s", hangar.GetMode(ctx)))
-		defer t.Stop()
-		eks, err := hangar.EncodeKeyManyKG(kgs, g.enc)
-		if err != nil {
-			return fmt.Errorf("error encoding key: %w", err)
+	vgs := make([]hangar.ValGroup, len(kgs))
+	for i, ek := range eks {
+		var item []byte
+		if sample {
+			_, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.get.latency.%s", hangar.GetMode(ctx)))
+			item, err = g.db.Get(ek)
+			t.Stop()
+		} else {
+			item, err = g.db.Get(ek)
 		}
-		for i, ek := range eks {
-			var item []byte
-			if sample {
-				_, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.get.latency.%s", hangar.GetMode(ctx)))
-				item, err = g.db.Get(ek)
-				t.Stop()
-			} else {
-				item, err = g.db.Get(ek)
+		switch err {
+		case gravel.ErrNotFound:
+		case nil:
+			if _, err := g.enc.DecodeVal(item, &vgs[i], false); err != nil {
+				return nil, err
 			}
-			switch err {
-			case gravel.ErrNotFound:
-			case nil:
-				if _, err := g.enc.DecodeVal(item, &vgs[i], false); err != nil {
-					return err
-				}
-				if kgs[i].Fields.IsPresent() {
-					vgs[i].Select(kgs[i].Fields.MustGet())
-				}
-			default:
-				return err
+			if kgs[i].Fields.IsPresent() {
+				vgs[i].Select(kgs[i].Fields.MustGet())
 			}
+		default:
+			return nil, err
 		}
-		return nil
-	}, batch)
+	}
+	return vgs, nil
 }
 
 func (g *gravelDb) SetMany(ctx context.Context, keys []hangar.Key, deltas []hangar.ValGroup) error {
