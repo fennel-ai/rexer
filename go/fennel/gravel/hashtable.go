@@ -68,7 +68,9 @@ package gravel
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
+	"fennel/lib/timer"
 	fbinary "fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
@@ -336,6 +338,13 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
 func (ht *hashTable) readData(start uint64, matchedIndices *[stackMatchedIdxArraySize]int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
+	sample := shouldSample()
+	maybeInc(sample, &ht.reads)
+	if sample {
+		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
+		defer t.Stop()
+	}
+
 	data := ht.data[start:]
 	sofar := 0
 	curMatchIdx := 0

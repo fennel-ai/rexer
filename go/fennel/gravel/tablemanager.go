@@ -232,9 +232,6 @@ func (t *TableManager) StartCompactionWorkers() {
 }
 
 func (t *TableManager) StopCompactionWorkers() {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-
 	if !t.compactionRunning {
 		return
 	}
