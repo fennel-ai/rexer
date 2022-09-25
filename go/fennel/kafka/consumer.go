@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/samber/mo"
 	"log"
 	"time"
+
+	"github.com/samber/mo"
 
 	"fennel/lib/timer"
 	"fennel/lib/utils/ptr"
@@ -138,7 +139,7 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 	//
 	// TODO: Fix the possibility that a partition which was partially read by a consumer gets assigned to another
 	// consumer. This might lead to multiple consumers reading the same subset of data from a particular partition.
-	seen := make(map[string]struct{})
+	seen := make(map[uint64]struct{})
 	for len(ret) < upto {
 		select {
 		case <-timer:
@@ -153,9 +154,9 @@ func (k RemoteConsumer) ReadBatch(ctx context.Context, upto int, timeout time.Du
 			}
 			msg, err := k.ReadMessage(t)
 			if err == nil {
-				toppar := msg.TopicPartition.String()
-				if _, ok := seen[toppar]; !ok {
-					seen[toppar] = struct{}{}
+				msgID := uint64(msg.TopicPartition.Partition<<32) + uint64(msg.TopicPartition.Offset&((1<<32)-1))
+				if _, ok := seen[msgID]; !ok {
+					seen[msgID] = struct{}{}
 					ret = append(ret, msg.Value)
 				}
 			} else if kerr, ok := err.(kafka.Error); ok && kerr.Code() != kafka.ErrTimedOut {
@@ -238,7 +239,7 @@ type ConsumerConfig struct {
 	OffsetPolicy string
 	Topic        string
 	RebalanceCb  mo.Option[func(c *kafka.Consumer, e kafka.Event) error]
-	Configs 	 ConsumerConfigs
+	Configs      ConsumerConfigs
 }
 
 type RemoteConsumerConfig struct {
@@ -246,10 +247,10 @@ type RemoteConsumerConfig struct {
 	BootstrapServer string
 	Username        string
 	Password        string
-	SaslMechanism 	string
+	SaslMechanism   string
 	// TODO(mohit): Consider making this a required option, with every consumer setting this to the AZ ID
 	// once topics are migrated to MSK cluster
-	AzId	     	mo.Option[string]
+	AzId mo.Option[string]
 }
 
 func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
