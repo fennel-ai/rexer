@@ -74,7 +74,6 @@ import (
 	fbinary "fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 	math2 "math"
@@ -140,7 +139,7 @@ type hashTable struct {
 	overflow   []byte // derived from mmappedData
 	data       []byte // derived from mmappedData
 	size       uint64
-	reads      atomic.Uint64
+	reads      uint64
 }
 
 func (ht *hashTable) IndexSize() uint64 {
@@ -339,11 +338,11 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
 func (ht *hashTable) readData(start uint64, matchedIndices *[stackMatchedIdxArraySize]int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
 	sample := shouldSample()
-	maybeInc(sample, &ht.reads)
 	if sample {
 		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 		defer t.Stop()
 	}
+	ht.reads++
 
 	data := ht.data[start:]
 	sofar := 0
@@ -431,7 +430,7 @@ func (ht *hashTable) Close() error {
 }
 
 func (ht *hashTable) DataReads() uint64 {
-	return ht.reads.Load() * sampleRate
+	return ht.reads
 }
 
 var _ Table = (*hashTable)(nil)
@@ -778,7 +777,7 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 		index:      index,
 		data:       data,
 		size:       uint64(size),
-		reads:      atomic.Uint64{},
+		reads:      0,
 	}
 	runtime.SetFinalizer(tableObj, (*hashTable).Close)
 	return tableObj, nil
