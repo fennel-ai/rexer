@@ -151,15 +151,15 @@ func purgeOldBackups(bm *backup.BackupManager) {
 }
 
 func (n *Nitrous) Backup(args NitrousArgs) error {
-	currentDirFlag := args.BadgerDir + "/current_data_folder.txt"
+	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
 	currentDBDir := readFlag(currentDirFlag)
 	return n.backupManager.BackupPath(currentDBDir, time.Now().Format(time.RFC3339))
 }
 
 func dbDir(bm *backup.BackupManager, args NitrousArgs, scope resource.Scope) (string, error) {
-	currentDirFlag := args.BadgerDir + "/current_data_folder.txt"
+	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
 
-	newRestoreDir := fmt.Sprintf("%s/%s%d", args.BadgerDir, dataDirPrefix, time.Now().Unix())
+	newRestoreDir := fmt.Sprintf("%s/%s%d", args.GravelDir, dataDirPrefix, time.Now().Unix())
 	err := os.Mkdir(newRestoreDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new directory for restoring DB: %s, err: %v", newRestoreDir, err)
@@ -198,7 +198,7 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs, scope resource.Scope) (st
 		currentDBDir = dbDir
 		break
 	}
-	purgeOldData(args.BadgerDir, currentDBDir)
+	purgeOldData(args.GravelDir, currentDBDir)
 	if args.BackupNode {
 		purgeOldBackups(bm)
 	}
