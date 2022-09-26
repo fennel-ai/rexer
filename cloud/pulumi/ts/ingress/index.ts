@@ -27,6 +27,11 @@ export type inputType = {
     ingressConf?: IngressConf,
     scopeId: number,
     scope: Scope,
+    // TODO(Amit): This way of setting source IP ranges has a limitation that
+    // we would need to update the stack everytime Cloudflare proxies IP ranges
+    // are changed. This is not something very frequent though and we can live
+    // with this for now.
+    loadBalancerSourceIpRanges?: string[],
 }
 
 export type outputType = {
@@ -205,7 +210,7 @@ export const setup = async (input: inputType) => {
                     // metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds
                     metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = subnetIds.toString()
                     obj.metadata = metadata
-                    obj.spec["loadBalancerSourceRanges"] = ["0.0.0.0/0"]
+                    obj.spec["loadBalancerSourceRanges"] = input.loadBalancerSourceIpRanges != undefined ? input.loadBalancerSourceIpRanges : ["0.0.0.0/0"]
                 }
             },
         ],
