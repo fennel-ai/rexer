@@ -1,7 +1,9 @@
 package nitrous
 
 import (
+	"context"
 	"fennel/lib/instancemetadata"
+	"fennel/lib/timer"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -134,9 +136,9 @@ func getDirChangeTime(dir string) int64 {
 	return fileInfo.ModTime().Unix()
 }
 
-func purgeOldBackups(bm *backup.BackupManager) {
+func purgeOldBackups(ctx context.Context, bm *backup.BackupManager) {
 	const backupToKeep = 5
-	backupList, err := bm.ListBackups()
+	backupList, err := bm.ListBackups(ctx)
 	if err != nil {
 		zap.L().Error("Failed to list backup while purging old backups", zap.Error(err))
 		return
@@ -146,19 +148,23 @@ func purgeOldBackups(bm *backup.BackupManager) {
 	if len(backupList) < backupToKeep {
 		return
 	}
-	err = bm.BackupCleanup(backupList[len(backupList)-backupToKeep:])
+	err = bm.BackupCleanup(ctx, backupList[len(backupList)-backupToKeep:])
 	if err != nil {
 		zap.L().Info("Failed to purge old backups", zap.Error(err))
 	}
 }
 
 func (n *Nitrous) Backup(args NitrousArgs) error {
+	ctx := context.Background()
+	ctx, t := timer.Start(ctx, n.PlaneID, "nitrous.Backup")
+	defer t.Stop()
 	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
 	currentDBDir := readFlag(currentDirFlag)
-	return n.backupManager.BackupPath(currentDBDir, time.Now().Format(time.RFC3339))
+	return n.backupManager.BackupPath(ctx, currentDBDir, time.Now().Format(time.RFC3339))
 }
 
-func dbDir(bm *backup.BackupManager, args NitrousArgs, scope resource.Scope) (string, error) {
+func dbDir(bm *backup.BackupManager, args NitrousArgs) (string, error) {
+	ctx := context.Background()
 	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
 
 	newRestoreDir := fmt.Sprintf("%s/%s%d", args.GravelDir, dataDirPrefix, time.Now().Unix())
@@ -185,7 +191,7 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs, scope resource.Scope) (st
 		dirEmpty, _ := backup.DirIsEmpty(dbDir)
 		if idx != 2 && dirEmpty {
 			// we don't try to restore in the 3rd try, which means we are supposed create an empty database
-			err = bm.RestoreLatest(dbDir)
+			err = bm.RestoreLatest(ctx, dbDir)
 			if err != nil {
 				zap.L().Error("Failed to restore from backup", zap.Error(err))
 				continue
@@ -202,7 +208,7 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs, scope resource.Scope) (st
 	}
 	purgeOldData(args.GravelDir, currentDBDir)
 	if args.BackupNode {
-		purgeOldBackups(bm)
+		purgeOldBackups(ctx, bm)
 	}
 	return currentDirFlag, nil
 }
@@ -265,7 +271,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
-	s3Store, err := backup.NewS3Store(args.Region, args.BackupBucket, args.ShardName)
+	s3Store, err := backup.NewS3Store(args.Region, args.BackupBucket, args.ShardName, scope.ID())
 	if err != nil {
 		zap.L().Error("failed to create the s3store for backup manager", zap.Error(err))
 		return Nitrous{}, err
@@ -277,7 +283,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return Nitrous{}, err
 	}
 
-	dir, err := dbDir(bm, args, scope)
+	dir, err := dbDir(bm, args)
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create db after all the tries: %v", err)
 	}

@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"crypto/sha256"
 	"fennel/lib/ftypes"
 	"fmt"
@@ -33,7 +34,8 @@ func NewBackupManager(plainID ftypes.RealmID, store BackupStore) (*BackupManager
 	return &BackupManager{planeID: plainID, store: store}, nil
 }
 
-func (bm *BackupManager) BackupCleanup(versionsToKeep []string) error {
+// TODO(mohit): Rename this -> we have `versionsToKeep` as the argument, the func name should match
+func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []string) error {
 	// The function clean up all the files that are not belong to the backups we want to keep
 	if len(versionsToKeep) == 0 {
 		return fmt.Errorf("can not keep 0 versions for safety purpose")
@@ -46,7 +48,7 @@ func (bm *BackupManager) BackupCleanup(versionsToKeep []string) error {
 	sha256DigestsToKeep := map[string]struct{}{}
 	// parse the manifest files for the versions we want to keep, and find out all files to keep
 	for _, version := range versionsToKeep {
-		err := bm.store.Fetch(manifestPrefix+version, tempManifestFile.Name())
+		err := bm.store.Fetch(ctx, manifestPrefix+version, tempManifestFile.Name())
 		if err != nil {
 			return fmt.Errorf("failed to download manifest %s", version)
 		}
@@ -67,7 +69,7 @@ func (bm *BackupManager) BackupCleanup(versionsToKeep []string) error {
 		}
 	}
 
-	allRemoteFiles, err := bm.store.ListFile("rawfile_")
+	allRemoteFiles, err := bm.store.ListFile(ctx, "rawfile_")
 	if err != nil {
 		return fmt.Errorf("failed to list files in the backup store: %w", err)
 	}
@@ -81,13 +83,13 @@ func (bm *BackupManager) BackupCleanup(versionsToKeep []string) error {
 		}
 
 		zap.L().Info("Deleting from backup store", zap.String("file_name", fileName))
-		err := bm.store.Delete(fileName)
+		err := bm.store.Delete(ctx, fileName)
 		if err != nil {
 			zap.L().Error("Deletion failed from backup store", zap.String("file_name", fileName), zap.Error(err))
 		}
 	}
 
-	allRemoteFiles, err = bm.store.ListFile(manifestPrefix)
+	allRemoteFiles, err = bm.store.ListFile(ctx, manifestPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to list files in the backup store: %w", err)
 	}
@@ -104,7 +106,7 @@ func (bm *BackupManager) BackupCleanup(versionsToKeep []string) error {
 			continue
 		}
 		zap.L().Info("Deleting from backup store", zap.String("file_name", fileName))
-		err := bm.store.Delete(fileName)
+		err := bm.store.Delete(ctx, fileName)
 		if err != nil {
 			zap.L().Error("Deletion failed from backup store", zap.String("file_name", fileName), zap.Error(err))
 		}
@@ -113,8 +115,8 @@ func (bm *BackupManager) BackupCleanup(versionsToKeep []string) error {
 	return nil
 }
 
-func (bm *BackupManager) ListBackups() ([]string, error) {
-	manifestList, err := bm.store.ListFile(manifestPrefix)
+func (bm *BackupManager) ListBackups(ctx context.Context) ([]string, error) {
+	manifestList, err := bm.store.ListFile(ctx, manifestPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list backups: %w", err)
 	}
@@ -126,7 +128,7 @@ func (bm *BackupManager) ListBackups() ([]string, error) {
 	return backupList, nil
 }
 
-func (bm *BackupManager) BackupPath(dir string, versionName string) error {
+func (bm *BackupManager) BackupPath(ctx context.Context, dir string, versionName string) error {
 	var uploadedManifest []*uploadedManifestItem
 	var newManifest []*uploadedManifestItem
 
@@ -195,7 +197,7 @@ func (bm *BackupManager) BackupPath(dir string, versionName string) error {
 		item.Sha256 = sha256Digest
 		// upload current item
 		remoteName := "rawfile_" + sha256Digest
-		err = bm.store.Store(itemFullName, remoteName)
+		err = bm.store.Store(ctx, itemFullName, remoteName)
 		if err != nil {
 			return fmt.Errorf("failed to upload the local file %s to remote %s: %w", itemFullName, remoteName, err)
 		}
@@ -216,7 +218,7 @@ func (bm *BackupManager) BackupPath(dir string, versionName string) error {
 		return fmt.Errorf("failed to close the new manifest file %s: %w", uploadedManifestTmpFilename, err)
 	}
 
-	err = bm.store.Store(uploadedManifestTmpFilename, manifestPrefix+versionName)
+	err = bm.store.Store(ctx, uploadedManifestTmpFilename, manifestPrefix+versionName)
 	if err != nil {
 		return fmt.Errorf("failed to upload the new manifest file %s: %w", uploadedManifestTmpFilename, err)
 	}
@@ -243,7 +245,7 @@ func DirIsEmpty(dir string) (bool, error) {
 	return false, err
 }
 
-func (bm *BackupManager) RestoreToPath(dir string, versionName string) error {
+func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionName string) error {
 	zap.L().Info("Starting to restore remote version to local path", zap.String("version", versionName), zap.String("local_dir", dir), zap.Uint32("plane", bm.planeID.Value()))
 
 	folderEmpty, _ := DirIsEmpty(dir)
@@ -253,7 +255,7 @@ func (bm *BackupManager) RestoreToPath(dir string, versionName string) error {
 
 	// now it's clear that the directory is empty
 	manifestFileName := dir + "/RexUploadedManifest.csv"
-	err := bm.store.Fetch(manifestPrefix+versionName, manifestFileName)
+	err := bm.store.Fetch(ctx, manifestPrefix+versionName, manifestFileName)
 	if err != nil {
 		return err
 	}
@@ -272,7 +274,7 @@ func (bm *BackupManager) RestoreToPath(dir string, versionName string) error {
 
 	for _, item := range manifest {
 		localDownloadedName := filepath.Join(dir, item.LocalName)
-		err := bm.store.Fetch("rawfile_"+item.Sha256, localDownloadedName)
+		err := bm.store.Fetch(ctx, "rawfile_"+item.Sha256, localDownloadedName)
 		if err != nil {
 			return fmt.Errorf("failed to download one of the file %s: %w", "rawfile_"+item.Sha256, err)
 		}
@@ -304,8 +306,8 @@ func (bm *BackupManager) RestoreToPath(dir string, versionName string) error {
 	return nil
 }
 
-func (bm *BackupManager) RestoreLatest(dbDir string) error {
-	backups, err := bm.ListBackups()
+func (bm *BackupManager) RestoreLatest(ctx context.Context, dbDir string) error {
+	backups, err := bm.ListBackups(ctx)
 	if err != nil {
 		return err
 	}
@@ -316,7 +318,7 @@ func (bm *BackupManager) RestoreLatest(dbDir string) error {
 	sort.Strings(backups)
 	backupToRecover := backups[len(backups)-1]
 	zap.L().Info("Going to restore the latest backup", zap.String("version", backupToRecover))
-	err = bm.RestoreToPath(dbDir, backupToRecover)
+	err = bm.RestoreToPath(ctx, dbDir, backupToRecover)
 	if err != nil {
 		return err
 	}

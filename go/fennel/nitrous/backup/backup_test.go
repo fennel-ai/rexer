@@ -1,20 +1,48 @@
 package backup_test
 
 import (
+	"context"
+	"fennel/gravel"
+	"fennel/hangar"
+	"fennel/hangar/encoders"
+	gravelDB "fennel/hangar/gravel"
 	"fennel/lib/ftypes"
+	"fennel/lib/utils"
 	"fennel/nitrous/backup"
 	"fmt"
-	"github.com/dgraph-io/badger/v3"
-	"github.com/stretchr/testify/assert"
+	"github.com/samber/mo"
 	"math/rand"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func generateKey(keySpace uint64) string {
-	s := rand.Uint64() % keySpace
-	return fmt.Sprintf("%d%d", s, s)
+func getData(numKey, numIndex int) ([]hangar.Key, []hangar.KeyGroup, []hangar.ValGroup) {
+	keys := make([]hangar.Key, numKey)
+	kgs := make([]hangar.KeyGroup, numKey)
+	vgs := make([]hangar.ValGroup, numKey)
+	fields := make(hangar.Fields, numIndex)
+	for i := range fields {
+		fields[i] = []byte(fmt.Sprintf("field%d", i))
+	}
+	for i := range keys {
+		keys[i] = hangar.Key{Data: []byte(utils.RandString(10))}
+		kgs[i] = hangar.KeyGroup{
+			Prefix: keys[i],
+			Fields: mo.Some(fields),
+		}
+		vgs[i] = hangar.ValGroup{
+			Fields: fields,
+		}
+		for j := range kgs[i].Fields.OrEmpty() {
+			vgs[i].Values = append(vgs[i].Values, []byte(fmt.Sprintf("value%d", i*numIndex+j)))
+		}
+	}
+	return keys, kgs, vgs
 }
+
+// TODO(mohit): Create an integration test version with S3 storage instead of local storage
 
 func TestBackupRestore(t *testing.T) {
 	// below numbers are kind of arbitrary
@@ -25,92 +53,117 @@ func TestBackupRestore(t *testing.T) {
 		value = append(value, byte(i))
 	}
 	planeId := ftypes.RealmID(rand.Uint32())
+	ctx := context.Background()
 
 	dbDir := t.TempDir()
 	fsDir := t.TempDir()
-	var trxId []uint64
+	numBackups := 6
 
-	for it := 0; it < 6; it++ {
-		fmt.Printf("Creating DB in iteration %d/6\n", it+1)
-		fs, _ := backup.NewLocalStore(fsDir)
+	// this is to validate later that the data was successfully backed up
+	keyGroupByIt := make(map[int][][]hangar.KeyGroup, 6)
+	valGroupByIt := make(map[int][][]hangar.ValGroup, 6)
+
+	// Create 6 DBs => this is simulating creating backups at different timestamps
+	for it := 0; it < numBackups; it++ {
+		fmt.Printf("Creating DB in iteration %d/%d\n", it+1, numBackups)
+		fs, _ := backup.NewLocalStore(fsDir, planeId)
 		dm, _ := backup.NewBackupManager(planeId, fs)
 
-		db, err := badger.Open(badger.DefaultOptions(dbDir).WithBaseLevelSize(1024 * 512).WithMemTableSize(1024 * 1024).WithValueThreshold(1024))
+		dbOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("testdb")
+		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default())
 		assert.NoError(t, err)
 
 		for j := 0; j < (6-it)*20000; j++ {
 			// insert different number of rows in each time
-			batch := db.NewWriteBatch()
-			key := generateKey(kMaxKeySpace)
-			err := batch.Set([]byte(key), value)
+			k, kg, vg := getData(1, 1)
+			err := db.SetMany(ctx, k, vg)
 			assert.NoError(t, err)
-			err = batch.Flush()
-			assert.NoError(t, err)
+			keyGroupByIt[it] = append(keyGroupByIt[it], kg)
+			valGroupByIt[it] = append(valGroupByIt[it], vg)
 		}
-		trxId = append(trxId, db.MaxVersion())
+		// flush with whatever we have - this is required for testing purposes. In real world, unflushed
+		// entries will be read from the binlog and written again
+		err = db.Flush()
+		assert.NoError(t, err)
+
+		// close to close the manifest file
 		err = db.Close()
 		assert.NoError(t, err)
-		err = dm.BackupPath(dbDir, fmt.Sprintf("backup_name_%d", it))
+		err = dm.BackupPath(ctx, dbDir, fmt.Sprintf("backup_name_%d", it))
 		assert.NoError(t, err)
 	}
 
+	// create a new backup manager and check number of backups created (should same as above)
 	{
-		fs, _ := backup.NewLocalStore(fsDir)
+		fs, _ := backup.NewLocalStore(fsDir, planeId)
 		dm, _ := backup.NewBackupManager(planeId, fs)
-		l, err := dm.ListBackups()
+		l, err := dm.ListBackups(ctx)
 		assert.NoError(t, err)
-		assert.Equal(t, len(l), 6)
+		assert.Equal(t, len(l), numBackups)
 	}
 
-	for it := 0; it < 6; it++ {
-		fmt.Printf("Verifying DB in iteration %d/6\n", it+1)
-		fs, _ := backup.NewLocalStore(fsDir)
+	for it := 0; it < numBackups; it++ {
+		fmt.Printf("Verifying DB in iteration %d/%d\n", it+1, numBackups)
+		fs, _ := backup.NewLocalStore(fsDir, planeId)
 		dm, _ := backup.NewBackupManager(planeId, fs)
 
 		err := os.RemoveAll(dbDir)
 		assert.NoError(t, err)
 		_ = os.Mkdir(dbDir, 0777)
 
-		err = dm.RestoreToPath(dbDir, fmt.Sprintf("backup_name_%d", it))
+		err = dm.RestoreToPath(ctx, dbDir, fmt.Sprintf("backup_name_%d", it))
 		assert.NoError(t, err)
 
-		db, err := badger.Open(badger.DefaultOptions(dbDir))
+		dbOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("testdb")
+		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default())
 		assert.NoError(t, err)
 
-		err = db.VerifyChecksum()
-		assert.NoError(t, err)
+		// validate from the key groups and value groups loaded in the DB
+		kgs := keyGroupByIt[it]
+		vgs := valGroupByIt[it]
+		for i, kg := range kgs {
+			vg := vgs[i]
+			actualVg, err := db.GetMany(ctx, kg)
+			assert.NoError(t, err)
+			assert.Equal(t, vg, actualVg)
+		}
 
-		assert.Equal(t, db.MaxVersion(), trxId[it])
 		_ = db.Close()
 	}
 
 	{
-		fmt.Printf("Deleting some backups\n")
-		fs, _ := backup.NewLocalStore(fsDir)
+		fmt.Printf("Deleting backups: 1, 3, 5\n")
+		fs, _ := backup.NewLocalStore(fsDir, planeId)
 		dm, _ := backup.NewBackupManager(planeId, fs)
-		err := dm.BackupCleanup([]string{"backup_name_1", "backup_name_3", "backup_name_5"})
+		err := dm.BackupCleanup(ctx, []string{"backup_name_1", "backup_name_3", "backup_name_5"})
 		assert.NoError(t, err)
 	}
 
-	for idx, it := range []int{1, 3, 5} {
-		fmt.Printf("Verifying again %d/3\n", idx+1)
-		fs, _ := backup.NewLocalStore(fsDir)
+	for _, it := range []int{1, 3, 5} {
+		fmt.Printf("Verifying again %d/%d\n", it, numBackups)
+		fs, _ := backup.NewLocalStore(fsDir, planeId)
 		dm, _ := backup.NewBackupManager(planeId, fs)
 
 		err := os.RemoveAll(dbDir)
 		assert.NoError(t, err)
 		_ = os.Mkdir(dbDir, 0777)
 
-		err = dm.RestoreToPath(dbDir, fmt.Sprintf("backup_name_%d", it))
+		err = dm.RestoreToPath(ctx, dbDir, fmt.Sprintf("backup_name_%d", it))
 		assert.NoError(t, err)
 
-		db, err := badger.Open(badger.DefaultOptions(dbDir))
+		dbOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("testdb")
+		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default())
 		assert.NoError(t, err)
 
-		err = db.VerifyChecksum()
-		assert.NoError(t, err)
+		kgs := keyGroupByIt[it]
+		vgs := valGroupByIt[it]
+		for i, kg := range kgs {
+			vg := vgs[i]
+			actualVg, err := db.GetMany(ctx, kg)
+			assert.NoError(t, err)
+			assert.Equal(t, vg, actualVg)
+		}
 
-		assert.Equal(t, db.MaxVersion(), trxId[it])
 		_ = db.Close()
 	}
 }

@@ -43,6 +43,11 @@ type MemDB struct {
 	closeWg sync.WaitGroup
 }
 
+func (m *MemDB) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *MemDB) Restore(_ io.Reader) error {
 	//TODO implement me
 	panic("implement me")

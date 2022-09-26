@@ -20,6 +20,10 @@ type gravelDb struct {
 	enc     hangar.Encoder
 }
 
+func (g *gravelDb) Flush() error {
+	return g.db.Flush()
+}
+
 func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc hangar.Encoder) (*gravelDb, error) {
 	popts := (*opts).WithDirname(dirname)
 	db, err := gravel.Open(popts)

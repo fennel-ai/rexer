@@ -18,6 +18,11 @@ type InMemoryHangar struct {
 	mu sync.RWMutex
 }
 
+func (h *InMemoryHangar) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewInMemoryHangar(planeId ftypes.RealmID) *InMemoryHangar {
 	return &InMemoryHangar{
 		planeId: planeId,

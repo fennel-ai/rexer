@@ -181,6 +181,12 @@ func (g *Gravel) Backup() error {
 	return g.tm.Close()
 }
 
+func (g *Gravel) Flush() error {
+	return g.flush()
+}
+
+// TODO(mohit): Expose Flush as a public method for testing!
+
 // NOTE: the caller of flush is expected to hold commitlock
 func (g *Gravel) flush() error {
 	if g.memtable.Size() == 0 {

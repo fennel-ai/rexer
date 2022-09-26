@@ -56,6 +56,11 @@ type layered struct {
 	filler  *backfiller
 }
 
+func (l *layered) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 var (
 	cacheHits = promauto.NewCounter(
 		prometheus.CounterOpts{

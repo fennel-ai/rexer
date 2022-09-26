@@ -53,6 +53,11 @@ type rcache struct {
 	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
+func (c *rcache) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ hangar.Hangar = &rcache{}
 
 func (c *rcache) Teardown() error {

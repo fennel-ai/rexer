@@ -38,6 +38,11 @@ type badgerDB struct {
 	closeCh    chan int
 }
 
+func (b *badgerDB) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (b *badgerDB) Teardown() error {
 	if err := b.Close(); err != nil {
 		return err
