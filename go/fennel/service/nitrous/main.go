@@ -102,7 +102,6 @@ func main() {
 					zap.L().Error("Failed to create backup", zap.Error(err))
 				}
 				log.Printf("Backup is done")
-				svr.Close()
 				svr = nil
 				n = nil
 				lastBackupTime = now
