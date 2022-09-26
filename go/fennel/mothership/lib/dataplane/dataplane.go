@@ -14,6 +14,7 @@ type DataPlane struct {
 	DBInstanceID          uint
 	MemoryDBInstanceID    uint
 	ElasticacheInstanceID uint
+	MetricsServerAddress  string
 
 	DeletedAt soft_delete.DeletedAt `gorm:"softDelete:milli"`
 	CreatedAt int64                 `gorm:"autoUpdateTime:milli"`

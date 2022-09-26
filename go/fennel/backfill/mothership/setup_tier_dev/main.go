@@ -17,9 +17,14 @@ import (
 type Args struct {
 	mothership.MothershipArgs
 	BridgeENV string `arg:"required,--bridge_env,env:BRIDGE_ENV"` // dev, prod
+	APIUrl    string `arg:"required,--api_url,env:API_URL"`       // could be localhost:2425, or prod URL for existing customers
 }
 
-const LOCALHOST = "http://localhost:2425"
+const LOKAL_METRICS_SERVER_ADDRESS = "http://a535b3af4b7e7400bab17167a1f5f7a4-766178462.ap-south-1.elb.amazonaws.com/"
+
+func generateName(prefix string) string {
+	return fmt.Sprintf("%s:%v", prefix, time.Now().UnixMilli())
+}
 
 func run(args Args) error {
 	m, err := mothership.CreateFromArgs(&args.MothershipArgs)
@@ -34,17 +39,18 @@ func run(args Args) error {
 	}
 
 	var tier tierL.Tier
-	if db.Take(&tier, "api_url = ?", LOCALHOST).RowsAffected > 0 {
+	if db.Take(&tier, "api_url = ?", args.APIUrl).RowsAffected > 0 {
 		return nil
 	}
 
 	var dp dataplane.DataPlane
 	if db.Take(&dp).RowsAffected == 0 {
 		dp = dataplane.DataPlane{
-			AwsRole:     "role",
-			Region:      "US Midwest",
-			PulumiStack: "pulumi",
-			VpcID:       "vpc",
+			AwsRole:              "role",
+			Region:               "US Midwest",
+			PulumiStack:          "pulumi",
+			VpcID:                "vpc",
+			MetricsServerAddress: LOKAL_METRICS_SERVER_ADDRESS,
 		}
 		if err = db.Create(&dp).Error; err != nil {
 			return err
@@ -52,9 +58,9 @@ func run(args Args) error {
 	}
 	tier = tierL.Tier{
 		DataPlaneID:   dp.ID,
-		PulumiStack:   fmt.Sprintf("%s:%v", "pulumi", time.Now().UnixMilli()),
-		ApiUrl:        LOCALHOST,
-		K8sNamespace:  fmt.Sprintf("%s:%v", "namespace", time.Now().UnixMilli()),
+		PulumiStack:   generateName("pulumi"),
+		ApiUrl:        args.APIUrl,
+		K8sNamespace:  generateName("namespace"),
 		Plan:          tierL.TierPlanPersonal,
 		RequestsLimit: 1000,
 	}
