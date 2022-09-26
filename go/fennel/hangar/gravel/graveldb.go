@@ -28,9 +28,9 @@ func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc
 	}
 	startReportingMetrics(db)
 	return &gravelDb{
-		planeID:      planeID,
-		db:           db,
-		enc:          enc,
+		planeID: planeID,
+		db:      db,
+		enc:     enc,
 	}, nil
 }
 
@@ -56,8 +56,6 @@ func (g *gravelDb) GetMany(ctx context.Context, kgs []hangar.KeyGroup) ([]hangar
 	ctx, t := timer.Start(ctx, g.planeID, fmt.Sprintf("hangar.gravel.getmany.%s", hangar.GetMode(ctx)))
 	defer t.Stop()
 
-	// We try to spread across available workers while giving each worker
-	// a minimum of CACHE_BATCH_SIZE keyGroups to work on.
 	eks, err := hangar.EncodeKeyManyKG(kgs, g.enc)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding key: %w", err)

@@ -12,24 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBtreeTable(t *testing.T) {
-	testTableType(t, BTreeTable, 100_000)
-}
-
-func TestDiskHashTable(t *testing.T) {
-	testTableType(t, BDiskHashTable, 1000_000)
-}
 func TestHashTable(t *testing.T) {
 	testTableType(t, HashTable, 1000_000)
-}
-
-func BenchmarkDiskHashTable(b *testing.B) {
-	b.Run("keys_present", func(b *testing.B) {
-		benchmarkTableGet(b, 100_1000, BDiskHashTable)
-	})
-	b.Run("keys_absent", func(b *testing.B) {
-		benchmarkTableAbsent(b, 100_1000, BDiskHashTable)
-	})
 }
 
 func BenchmarkHashTable(b *testing.B) {
@@ -51,11 +35,11 @@ func testTableType(t *testing.T, type_ TableType, sz int) {
 	filenames, err := BuildTable(dirname, uint64(numShards), type_, &mt)
 	tables := make([]Table, numShards)
 	for i, fname := range filenames {
-		newname := fmt.Sprintf("%d_%d%s", i, 1, SUFFIX)
+		newname := fmt.Sprintf("%d_%d%s", i, 1, FileExtension)
 		newpath := path.Join(dirname, newname)
 		err = os.Rename(path.Join(dirname, fname), newpath)
 		assert.NoError(t, err)
-		tables[i], err = OpenTable(type_, 1, newpath)
+		tables[i], err = OpenTable(type_, newpath)
 		assert.NoError(t, err)
 	}
 	assert.NoError(t, err)
@@ -65,7 +49,8 @@ func testTableType(t *testing.T, type_ TableType, sz int) {
 		err := os.RemoveAll(dirname)
 		if err != nil {
 			panic(err)
-		} }()
+		}
+	}()
 	presentTime := int64(0)
 	absentTime := int64(0)
 	for s := 0; s < numShards; s++ {
@@ -97,19 +82,20 @@ func benchmarkTableGet(b *testing.B, sz int, type_ TableType) {
 	filenames, _ := BuildTable(dirname, uint64(numShards), type_, &mt)
 	tables := make([]Table, numShards)
 	for i, fname := range filenames {
-		newname := fmt.Sprintf("%d_%d%s", i, 1, SUFFIX)
+		newname := fmt.Sprintf("%d_%d%s", i, 1, FileExtension)
 		newpath := path.Join(dirname, newname)
 		err := os.Rename(path.Join(dirname, fname), newpath)
 		if err != nil {
 			panic(err)
 		}
-		tables[i], _ = OpenTable(type_, 1, newpath)
+		tables[i], _ = OpenTable(type_, newpath)
 	}
 	defer func() {
 		err := os.RemoveAll(dirname)
 		if err != nil {
 			panic(err)
-		} }()
+		}
+	}()
 	b.ReportAllocs()
 	b.ResetTimer()
 	var got Value
@@ -134,19 +120,20 @@ func benchmarkTableAbsent(b *testing.B, sz int, type_ TableType) {
 	filenames, _ := BuildTable(dirname, uint64(numShards), type_, &mt)
 	tables := make([]Table, numShards)
 	for i, fname := range filenames {
-		newname := fmt.Sprintf("%d_%d%s", i, 1, SUFFIX)
+		newname := fmt.Sprintf("%d_%d%s", i, 1, FileExtension)
 		newpath := path.Join(dirname, newname)
 		err := os.Rename(path.Join(dirname, fname), newpath)
 		if err != nil {
 			panic(err)
 		}
-		tables[i], _ = OpenTable(type_, 1, newpath)
+		tables[i], _ = OpenTable(type_, newpath)
 	}
 	defer func() {
 		err := os.RemoveAll(dirname)
 		if err != nil {
 			panic(err)
-		} }()
+		}
+	}()
 	b.ReportAllocs()
 	b.ResetTimer()
 	var got Value

@@ -3,10 +3,8 @@ package gravel
 import (
 	"bufio"
 	"bytes"
-	"testing"
-	"unsafe"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestHeader(t *testing.T) {
@@ -15,7 +13,6 @@ func TestHeader(t *testing.T) {
 		codec:       1,
 		encrypted:   false,
 		compression: 3,
-		shardbits:   11,
 		numRecords:  882318234,
 		numBuckets:  231212,
 		datasize:    85724290131234,
@@ -23,8 +20,6 @@ func TestHeader(t *testing.T) {
 		minExpiry:   25234,
 		maxExpiry:   823042,
 	}
-	head.moduloMask = uint64(head.numBuckets) - 1
-	assert.Equal(t, 64, int(unsafe.Sizeof(head)))
 	var buf bytes.Buffer
 	writer := bufio.NewWriterSize(&buf, 1024)
 	assert.NoError(t, writeHeader(writer, head))

@@ -61,12 +61,12 @@ type aggKey struct {
 }
 
 type NitrousDB struct {
-	nos     nitrous.Nitrous
+	nos             nitrous.Nitrous
 	aggregateTailer *tailer.Tailer
-	binlogTailers []*tailer.Tailer
+	binlogTailers   []*tailer.Tailer
 	// sync map to avoid concurrent access in errgroup - this is usually flagged by go test -race
-	shards  *sync.Map
-	tables  *sync.Map
+	shards           *sync.Map
+	tables           *sync.Map
 	binlogPartitions uint32
 }
 
@@ -100,9 +100,9 @@ func getPartitions(n nitrous.Nitrous, topic string) (kafka.TopicPartitions, erro
 
 func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	ndb := &NitrousDB{
-		nos:    n,
-		tables: new(sync.Map),
-		shards: new(sync.Map),
+		nos:              n,
+		tables:           new(sync.Map),
+		shards:           new(sync.Map),
 		binlogPartitions: n.BinlogPartitions,
 	}
 	// Initialize a binlog tailer per topic partition.
@@ -141,7 +141,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 		//
 		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
 		// memory to be cost efficient
-		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName(fmt.Sprintf("binlog-%d", toppar.Partition))  // 128 MB
+		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName(fmt.Sprintf("binlog-%d", toppar.Partition)).WithNumShards(16).WithCompactionWorkerNum(2)
 		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default())
 		if err != nil {
 			return nil, err
@@ -157,7 +157,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 
 	// Create gravel for aggregate definitions, we don't expect a lot of data to be here, so we use a small ~10MB
 	// memtable
-	aggOpts := gravel.DefaultOptions().WithMaxTableSize(10 << 20).WithName("aggdef")  // 10 MB
+	aggOpts := gravel.DefaultOptions().WithMaxTableSize(10 << 20).WithName("aggdef").WithCompactionWorkerNum(1) // 10 MB
 	aggregatesDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, "aggdef"), &aggOpts, encoders.Default())
 	if err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if len(aggrConfToppars) > 1 {
 		return nil, fmt.Errorf("expected aggregate conf topic partitions to be 1, found: %d", len(aggrConfToppars))
 	}
-	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars[0], aggregatesDb, ndb.ProcessAggregates, 1 * time.Second /*pollTimeout*/, 100 /*batchSize*/)
+	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars[0], aggregatesDb, ndb.ProcessAggregates, 1*time.Second /*pollTimeout*/, 100 /*batchSize*/)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aggregate conf tailer: %v", err)
 	}

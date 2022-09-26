@@ -1,6 +1,7 @@
 package hangar
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"unsafe"
@@ -32,13 +33,12 @@ func (vg *ValGroup) Valid() bool {
 		return false
 	}
 	// Ensure that all fields are unique.
-	fields := stringSet.Get().(map[string]struct{})
-	defer freeStringSet(fields)
-	for _, f := range vg.Fields {
-		if _, ok := fields[asString(f)]; ok {
-			return false
+	for i, f1 := range vg.Fields {
+		for j := i + 1; j < len(vg.Fields); j++ {
+			if bytes.Equal(f1, vg.Fields[j]) {
+				return false
+			}
 		}
-		fields[asString(f)] = struct{}{}
 	}
 	return true
 }

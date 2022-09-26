@@ -24,7 +24,7 @@ import (
 
 type Gravel struct {
 	memtable   Memtable
-	manifest   *Manifest
+	tm         *TableManager
 	commitlock sync.Mutex
 	opts       Options
 	stats      Stats
@@ -38,16 +38,16 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		// testTable is only for testing, not for prod use cases
 		return nil, fmt.Errorf("invalid table type: %d", testTable)
 	}
-	manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
+	//manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
+	tableManager, err := InitTableManager(opts.Dirname, opts.TableType, opts.NumShards, opts.CompactionWorkerNum)
 	if err != nil {
 		return nil, fmt.Errorf("could not init manifest: %w", err)
 	}
-	// if the DB was earlier created with a different number of shards
-	// manifest would have picked that one instead
-	opts.NumShards = manifest.numShards
+	// if the DB was earlier created with a different number of shards, use the existing value in the DB
+	opts.NumShards = tableManager.NumShards()
 	ret = &Gravel{
-		memtable:   NewMemTable(manifest.numShards),
-		manifest:   manifest,
+		memtable:   NewMemTable(tableManager.NumShards()),
+		tm:         tableManager,
 		opts:       opts,
 		commitlock: sync.Mutex{},
 		stats:      Stats{},
@@ -57,11 +57,12 @@ func Open(opts Options) (ret *Gravel, failure error) {
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
+	shardHash := ShardHash(key)
 	hash := Hash(key)
 	sample := shouldSample()
 	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(time.Now().Unix())
-	val, err := g.memtable.Get(key, hash)
+	val, err := g.memtable.Get(key, shardHash)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
@@ -72,14 +73,15 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	default:
 		return nil, err
 	}
-	shard := hash & (g.manifest.numShards - 1)
-	g.manifest.Reserve()
-	defer g.manifest.Release()
-	tables, err := g.manifest.List(shard)
+	shard := shardHash & (g.tm.NumShards() - 1)
+	g.tm.Reserve()
+	defer g.tm.Release()
+	tables, err := g.tm.List(shard)
 	if err != nil {
 		return nil, fmt.Errorf("invalid shard: %w", err)
 	}
-	for _, table := range tables {
+	for i := len(tables) - 1; i >= 0; i-- {
+		table := tables[i]
 		maybeInc(sample, &g.stats.TableIndexReads)
 		val, err := table.Get(key, hash)
 		switch err {
@@ -107,11 +109,11 @@ func (g *Gravel) commit(batch *Batch) error {
 	for _, e := range batch.Entries() {
 		batchsz += uint64(sizeof(e))
 	}
-	if batchsz > g.opts.MaxTableSize {
+	if batchsz > g.opts.MaxMemtableSize {
 		// this batch is so large that it won't fit in any single memtable
 		return errors.New("commit batch too large")
 	}
-	if g.memtable.Size()+batchsz > g.opts.MaxTableSize {
+	if g.memtable.Size()+batchsz > g.opts.MaxMemtableSize {
 		// flush so that this commit can go to the next memtable
 		if err := g.flush(); err != nil {
 			return err
@@ -141,7 +143,11 @@ func (g *Gravel) Teardown() error {
 }
 
 func (g *Gravel) Close() error {
-	return g.manifest.Close()
+	return g.tm.Close()
+}
+
+func (g *Gravel) Backup() error {
+	return g.tm.Close()
 }
 
 // NOTE: the caller of flush is expected to hold commitlock
@@ -150,25 +156,14 @@ func (g *Gravel) flush() error {
 		// no valid reason to flush an empty memtable
 		return nil
 	}
-	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname, g.manifest.numShards)
+	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname)
 	if err != nil {
 		return err
 	}
 	maybeInc(true, &g.stats.NumTableBuilds)
-	if err = g.manifest.Append(tablefiles); err != nil {
+	if err = g.tm.Append(tablefiles); err != nil {
 		return err
 	}
-	g.manifest.Reserve()
-	defer g.manifest.Release()
-	numTables := 0
-	for s := uint64(0); s < g.manifest.numShards; s++ {
-		tables, err := g.manifest.List(s)
-		if err != nil {
-			return err
-		}
-		numTables += len(tables)
-	}
-	g.stats.NumTables.Store(uint64(numTables))
 	if err = g.memtable.Clear(); err != nil {
 		return err
 	}

@@ -96,8 +96,13 @@ func (mt *Memtable) Clear() error {
 	mt.writelock.Lock()
 	defer mt.writelock.Unlock()
 
-	for i := range mt.maps {
-		mt.maps[i] = make(map[string]Value)
+	for _, m := range mt.maps {
+		// erase by deletion instead of creating a new map, only to reduce GC burden
+		// downside is blocking the read due to locking.
+		// TODO: shadow memtable to avoid long lock holding
+		for k := range m {
+			delete(m, k)
+		}
 	}
 
 	mt.size = 0
@@ -108,8 +113,8 @@ func (mt *Memtable) Clear() error {
 // Flush flushes the memtable to the disk
 // Note - it doesn't yet clear the memtable (and so continues serving writes) until
 // explicitly called after the table has been added to the table list
-func (mt *Memtable) Flush(type_ TableType, dirname string, numShards uint64) ([]string, error) {
+func (mt *Memtable) Flush(type_ TableType, dirname string) ([]string, error) {
 	mt.writelock.RLock()
 	defer mt.writelock.RUnlock()
-	return BuildTable(dirname, numShards, type_, mt)
+	return BuildTable(dirname, mt.numShards, type_, mt)
 }
