@@ -45,8 +45,10 @@ type NitrousArgs struct {
 	// Flag to enable data compression.
 	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"false"`
 	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
-	BackupNode   bool   `arg:"--backup-node" json:"backup_node,omitempty"`
+	BackupNode   bool   `arg:"--backupnode" json:"backup_node,omitempty"`
 	BackupBucket string `arg:"--backup-bucket,env:BACKUP_BUCKET" json:"backup_bucket,omitempty"`
+	BackupFrequency time.Duration `arg:"--backup-frequency,env:BACKUP_FREQUENCY" json:"backup_frequency,omitempty"`
+	LocalCopyStalenessDuration time.Duration `arg:"--local-copy-staleness-duration,env:LOCAL_COPY_STALENESS_DURATION" json:"local_copy_staleness_duration,omitempty"`
 	ShardName    string `arg:"--shard-name,env:SHARD_NAME" default:"default" json:"shard_name,omitempty"`
 }
 
@@ -167,15 +169,15 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs, scope resource.Scope) (st
 
 	// Initialize layered storage.
 	currentDBDir := readFlag(currentDirFlag)
-	lastWriteTs := getDirChangeTime(currentDBDir)
+	lastWriteTsSecs := getDirChangeTime(currentDBDir)
 	var DBDirPrecedence []string
 
-	if lastWriteTs+7200 >= time.Now().Unix() {
+	if lastWriteTsSecs + int64(args.LocalCopyStalenessDuration.Seconds()) >= time.Now().Unix() {
 		// pull from the last DB
-		zap.L().Info("Found previous last write timestamp, going to reload the previous DB first", zap.Int64("timestamp", lastWriteTs))
+		zap.L().Info("Found previous last write timestamp, going to reload the previous DB first", zap.Int64("timestamp", lastWriteTsSecs))
 		DBDirPrecedence = append(DBDirPrecedence, currentDBDir, newRestoreDir, newRestoreDir)
 	} else {
-		zap.L().Info("Found previous last write timestampd, going to use backup DB first", zap.Int64("timestamp", lastWriteTs))
+		zap.L().Info("Found previous last write timestampd, going to use backup DB first", zap.Int64("timestamp", lastWriteTsSecs))
 		DBDirPrecedence = append(DBDirPrecedence, newRestoreDir, currentDBDir, newRestoreDir)
 	}
 

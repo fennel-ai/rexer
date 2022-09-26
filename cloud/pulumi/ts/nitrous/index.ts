@@ -572,6 +572,11 @@ export const setup = async (input: inputType) => {
                                     bucketName,
                                     "--shard-name",
                                     "default",
+                                    // TODO(mohit): Tune this based on the metrics from S3 backups
+                                    "--backup-frequency",
+                                    "30m",
+                                    "--local-copy-staleness-duration",
+                                    "2h",
                                     "--backup-node"
                                 ],
                                 name: "nitrous-backup",

@@ -70,7 +70,7 @@ func main() {
 	reportDiskMetrics(flags.GravelDir, stop)
 
 	if flags.NitrousArgs.BackupNode {
-		lastBackupTime := time.Now().Unix()
+		lastBackupTimeSecs := time.Now().Unix()
 		var n *nitrous.Nitrous = nil
 		var svr *server.NitrousDB = nil
 
@@ -93,7 +93,7 @@ func main() {
 			log.Printf("Main procedure sleeping waiting for the next time to create backup...")
 			time.Sleep(time.Minute)
 			now := time.Now().Unix()
-			if now > lastBackupTime+1800 {
+			if now > lastBackupTimeSecs + int64(flags.BackupFrequency.Seconds()) {
 				log.Printf("Going to create backup, closing the DB")
 				svr.Close()
 				log.Printf("Creating the backup")
@@ -104,7 +104,7 @@ func main() {
 				log.Printf("Backup is done")
 				svr = nil
 				n = nil
-				lastBackupTime = now
+				lastBackupTimeSecs = now
 			}
 		}
 	} else {
