@@ -67,13 +67,13 @@ type NitrousConf = {
     enforceReplicaIsolation?: boolean,
     resourceConf?: util.ResourceConf,
     nodeLabels?: Record<string, string>,
-    nodeLabelsForBackup?: Record<string, string>,
     storageClass: string
     storageCapacityGB: number
     blockCacheMB: number,
     kvCacheMB: number,
     binlog: nitrous.binlogConfig,
     mskBinlog?: nitrous.binlogConfig,
+    backupConf?: nitrous.backupConf,
 }
 
 type NewAccount = {
@@ -363,7 +363,6 @@ const setupResources = async () => {
             enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
             resourceConf: input.nitrousConf.resourceConf,
             nodeLabels: input.nitrousConf.nodeLabels,
-            nodeLabelsForBackup: input.nitrousConf.nodeLabelsForBackup,
 
             storageCapacityGB: input.nitrousConf.storageCapacityGB,
             storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],
@@ -383,6 +382,9 @@ const setupResources = async () => {
                 partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
                 max_message_bytes: input.nitrousConf.binlog.max_message_bytes,
             },
+
+            backupConf: input.nitrousConf.backupConf,
+
             protect: input.protectResources,
         })
     }

@@ -238,8 +238,6 @@ func (ndb *NitrousDB) Stop() {
 	// Stop the aggregate tailer later - if this was stopped earlier, it is possible that we did not consume
 	// an aggregate configuration but kept consuming binlog with messages corresponding to this aggregate
 	ndb.aggregateTailer.Stop()
-	// TODO: Should we close the store as well?
-	// _ = ndb.nos.Store.Close()
 }
 
 func (ndb *NitrousDB) SetAggrConfPollTimeout(d time.Duration) {
@@ -259,6 +257,7 @@ func (ndb *NitrousDB) SetBinlogPollTimeout(d time.Duration) {
 func (ndb *NitrousDB) Close() {
 	ndb.Stop()
 	// TODO(mohit): Close underlying DB's as well
+	// _ = ndb.nos.Store.Close()
 }
 
 func (ndb *NitrousDB) GetBinlogPollTimeout() time.Duration {

@@ -36,6 +36,11 @@ const DEFAULT_CPU_LIMIT = "1500m"
 const DEFAULT_MEMORY_REQUEST = "2Gi"
 const DEFAULT_MEMORY_LIMIT = "4Gi"
 
+// Default backups configuration
+const DEFAULT_BACKUP_FREQUENCY = "30m"
+const DEFAULT_LOCAL_COPY_STALENESS = "2h"
+const DEFAULT_REMOTE_COPIES_TO_KEEP = 5
+
 export const name = "nitrous"
 export const namespace = "fennel"
 export const servicePort = 3333;
@@ -64,6 +69,13 @@ export type kafkaAdmin = {
     bootstrapServers: pulumi.Output<string>,
 }
 
+export type backupConf = {
+    nodeLabelsForBackup?: Record<string, string>,
+    backupFrequencyDuration?: string,
+    localCopyStalenessDuration?: string,
+    remoteCopiesToKeep?: number,
+}
+
 export type inputType = {
     planeId: number,
     region: string,
@@ -77,7 +89,6 @@ export type inputType = {
     enforceReplicaIsolation?: boolean,
     resourceConf?: util.ResourceConf
     nodeLabels?: Record<string, string>,
-    nodeLabelsForBackup?: Record<string, string>,
 
     storageClass?: pulumi.Input<string>,
     storageCapacityGB: number
@@ -86,6 +97,8 @@ export type inputType = {
 
     kafka: kafkaAdmin,
     binlog: binlogConfig,
+
+    backupConf?: backupConf,
 
     protect: boolean,
 }
@@ -256,7 +269,7 @@ export const setup = async (input: inputType) => {
 
     // Build and publish the container image.
     let nodeSelector = input.nodeLabels || {};
-    let nodeSelectorForBackup = input.nodeLabelsForBackup || {};
+    let nodeSelectorForBackup = input.backupConf?.nodeLabelsForBackup || {};
     let dockerfile, platform;
     if (input.useAmd64 || DEFAULT_USE_AMD64) {
         dockerfile = path.join(root, "dockerfiles/nitrous.dockerfile")
@@ -273,7 +286,7 @@ export const setup = async (input: inputType) => {
     nodeSelector["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
     nodeSelectorForBackup["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
 
-    const \image = new docker.Image("nitrous-img", {
+    const image = new docker.Image("nitrous-img", {
         build: {
             context: root,
             dockerfile: dockerfile,
@@ -574,7 +587,7 @@ export const setup = async (input: inputType) => {
                                     "default",
                                     // TODO(mohit): Tune this based on the metrics from S3 backups
                                     "--backup-frequency",
-                                    "30m",
+                                    input.backupConf?.backupFrequencyDuration || DEFAULT_BACKUP_FREQUENCY,
                                     // NOTE: Setting this to a value:
                                     // 1. > --backup-frequency: will lead to checking locally if data already exists,
                                     //  it will be prioritized over data from remote backup
@@ -584,11 +597,11 @@ export const setup = async (input: inputType) => {
                                     // provisioned where there is nothing locally. This also roughly determines how
                                     // old of a back up is fine
                                     "--local-copy-staleness-duration",
-                                    "2h",
+                                    input.backupConf?.localCopyStalenessDuration || DEFAULT_LOCAL_COPY_STALENESS,
 
                                     // TODO(mohit): Tune this based on the total backups which are created
                                     "--remote-backups-to-keep",
-                                    "5",
+                                    `${input.backupConf?.remoteCopiesToKeep || DEFAULT_REMOTE_COPIES_TO_KEEP}`,
                                     "--backup-node"
                                 ],
                                 name: "nitrous-backup",

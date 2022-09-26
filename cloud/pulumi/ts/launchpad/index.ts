@@ -534,9 +534,16 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             nodeLabels: {
                 "node-group": "p-3-nitrous-ng",
             },
-            nodeLabelsForBackup: {
-                "node-group": "p-3-nitrous-backup-ng",
-            }
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-3-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "5m",
+                localCopyStalenessDuration: "30m",
+                remoteCopiesToKeep: 2,
+            },
         },
 
         // set up MSK cluster
@@ -737,6 +744,14 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             nodeLabels: {
                 "node-group": "p-5-nitrous-ng",
+            },
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-5-nitrous-ng",
+                },
+                backupFrequencyDuration: "10m",
+                localCopyStalenessDuration: "20m",
+                remoteCopiesToKeep: 2,
             }
         },
 

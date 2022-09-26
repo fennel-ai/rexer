@@ -53,6 +53,18 @@ func reportDiskMetrics(path string, stop chan struct{}) {
 		}
 	}()
 }
+var backupStatusTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "backup_status_total",
+		Help: "Total number of nitrous backup status.",
+	},
+	[]string{"status"},
+)
+
+var backupTimestamp = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "backup_ts",
+	Help: "Timestamp of the latest successful backup",
+})
 
 func main() {
 	arg.MustParse(&flags)
@@ -84,7 +96,7 @@ func main() {
 				n = &nCpy
 
 				// Initialize the db.
-				svr, err := server.InitDB(*n)
+				svr, err = server.InitDB(*n)
 				if err != nil {
 					log.Fatalf("Failed to initialize db: %v", err)
 				}
@@ -95,16 +107,19 @@ func main() {
 			time.Sleep(time.Minute)
 			now := time.Now().Unix()
 			if now > lastBackupTimeSecs + int64(flags.BackupFrequency.Seconds()) {
-				log.Printf("Going to create backup, closing the DB")
-				svr.Close()
+				log.Printf("Going to create backup, stopping tailers...")
+				svr.Stop()
 				log.Printf("Creating the backup")
 				err := n.Backup(flags.NitrousArgs)
 				if err != nil {
 					zap.L().Error("Failed to create backup", zap.Error(err))
+					backupStatusTotal.WithLabelValues("FAIL").Inc()
+				} else {
+					backupStatusTotal.WithLabelValues("SUCCESSFUL").Inc()
+					backupTimestamp.Set(float64(now))
 				}
-				log.Printf("Backup is done")
-				svr = nil
-				n = nil
+				log.Printf("Backup is done, restarting tailers...")
+				svr.Start()
 				lastBackupTimeSecs = now
 			}
 		}
