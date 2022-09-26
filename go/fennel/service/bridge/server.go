@@ -23,7 +23,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -801,33 +800,12 @@ func (s *server) QueryRangeMetrics(c *gin.Context) {
 		return
 	}
 
-	address, err := s.tierMetricsAddress(tier.ApiUrl)
-	if err != nil {
-		respondError(c, err, "get tier metrics address")
-		return
-	}
-
-	result, err := metricC.QueryRange(c.Request.Context(), address, req.Query, start, end, step)
+	result, err := metricC.QueryRange(c.Request.Context(), s.db, tier, req.Query, start, end, step)
 	if err != nil {
 		respondError(c, err, "query range metrics")
 		return
 	}
 	c.JSON(http.StatusOK, result)
-}
-
-func (s *server) tierMetricsAddress(apiUrl string) (string, error) {
-	if s.isDev() {
-		// TODO(xiao): ideally change it to staging server address
-		// use lokal for local dev
-		return "http://a535b3af4b7e7400bab17167a1f5f7a4-766178462.ap-south-1.elb.amazonaws.com/", nil
-	}
-	u, err := url.Parse(apiUrl)
-	if err != nil {
-		return "", err
-	}
-	// our api url contains the /data that we don't need to query metrics
-	u.Path = ""
-	return u.String(), nil
 }
 
 func (req queryRangeRequest) parseParams() (time.Time, time.Time, time.Duration, error) {

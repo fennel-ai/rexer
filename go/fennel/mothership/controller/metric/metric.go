@@ -2,18 +2,27 @@ package metric
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"gorm.io/gorm"
+
+	dataplaneL "fennel/mothership/lib/dataplane"
+	tierL "fennel/mothership/lib/tier"
 )
 
-func QueryRange(ctx context.Context, address string, query string, start, end time.Time, step time.Duration) (model.Value, error) {
+func QueryRange(ctx context.Context, db *gorm.DB, tier tierL.Tier, query string, start, end time.Time, step time.Duration) (model.Value, error) {
+	var dp dataplaneL.DataPlane
+	if err := db.Take(&dp, tier.DataPlaneID).Error; err != nil {
+		return nil, errors.New("no data plane associated with the tier")
+	}
 
 	client, err := api.NewClient(api.Config{
-		Address: address, //"http://a535b3af4b7e7400bab17167a1f5f7a4-766178462.ap-south-1.elb.amazonaws.com/",
+		Address: dp.MetricsServerAddress,
 	})
 	if err != nil {
 		return nil, err

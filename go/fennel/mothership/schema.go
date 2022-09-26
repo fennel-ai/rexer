@@ -159,4 +159,7 @@ var Schema = db.Schema{
 	24: `ALTER TABLE tier
                 ADD COLUMN plan INT UNSIGNED NOT NULL DEFAULT 0;
         `,
+	25: `ALTER TABLE data_plane
+                ADD COLUMN metrics_server_address VARCHAR(255) UNIQUE;
+        `,
 }
