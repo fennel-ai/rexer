@@ -47,8 +47,9 @@ type NitrousArgs struct {
 	// Flag to enable data compression.
 	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"false"`
 	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
-	BackupNode   bool   `arg:"--backupnode" json:"backup_node,omitempty"`
+	BackupNode   bool   `arg:"--backup-node,env:BACKUP_NODE" json:"backup_node,omitempty"`
 	BackupBucket string `arg:"--backup-bucket,env:BACKUP_BUCKET" json:"backup_bucket,omitempty"`
+	RemoteBackupsToKeep uint32 `arg:"--remote-backups-to-keep,env:REMOTE_BACKUPS_TO_KEEP" json:"remote_backups_to_keep,omitempty"`
 	BackupFrequency time.Duration `arg:"--backup-frequency,env:BACKUP_FREQUENCY" json:"backup_frequency,omitempty"`
 	LocalCopyStalenessDuration time.Duration `arg:"--local-copy-staleness-duration,env:LOCAL_COPY_STALENESS_DURATION" json:"local_copy_staleness_duration,omitempty"`
 	ShardName    string `arg:"--shard-name,env:SHARD_NAME" default:"default" json:"shard_name,omitempty"`
@@ -136,8 +137,8 @@ func getDirChangeTime(dir string) int64 {
 	return fileInfo.ModTime().Unix()
 }
 
-func purgeOldBackups(ctx context.Context, bm *backup.BackupManager) {
-	const backupToKeep = 5
+func purgeOldBackups(ctx context.Context, bm *backup.BackupManager, backupsToKeep int) {
+	// TODO(mohit): Consider purging backups based on the timestamp as well.
 	backupList, err := bm.ListBackups(ctx)
 	if err != nil {
 		zap.L().Error("Failed to list backup while purging old backups", zap.Error(err))
@@ -145,10 +146,10 @@ func purgeOldBackups(ctx context.Context, bm *backup.BackupManager) {
 	}
 	sort.Strings(backupList)
 	zap.L().Info("Backups to keep", zap.Strings("list_of_versions", backupList))
-	if len(backupList) < backupToKeep {
+	if len(backupList) < backupsToKeep {
 		return
 	}
-	err = bm.BackupCleanup(ctx, backupList[len(backupList)-backupToKeep:])
+	err = bm.BackupCleanup(ctx, backupList[len(backupList)-backupsToKeep:])
 	if err != nil {
 		zap.L().Info("Failed to purge old backups", zap.Error(err))
 	}
@@ -168,7 +169,7 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs) (string, error) {
 	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
 
 	newRestoreDir := fmt.Sprintf("%s/%s%d", args.GravelDir, dataDirPrefix, time.Now().Unix())
-	err := os.Mkdir(newRestoreDir, os.ModePerm)
+	err := os.MkdirAll(newRestoreDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create new directory for restoring DB: %s, err: %v", newRestoreDir, err)
 	}
@@ -208,9 +209,9 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs) (string, error) {
 	}
 	purgeOldData(args.GravelDir, currentDBDir)
 	if args.BackupNode {
-		purgeOldBackups(ctx, bm)
+		purgeOldBackups(ctx, bm, int(args.RemoteBackupsToKeep))
 	}
-	return currentDirFlag, nil
+	return currentDBDir, nil
 }
 
 func CreateFromArgs(args NitrousArgs) (Nitrous, error) {

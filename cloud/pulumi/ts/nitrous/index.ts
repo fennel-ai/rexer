@@ -273,7 +273,7 @@ export const setup = async (input: inputType) => {
     nodeSelector["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
     nodeSelectorForBackup["eks.amazonaws.com/capacityType"] = "ON_DEMAND";
 
-    const image = new docker.Image("nitrous-img", {
+    const \image = new docker.Image("nitrous-img", {
         build: {
             context: root,
             dockerfile: dockerfile,
@@ -575,8 +575,20 @@ export const setup = async (input: inputType) => {
                                     // TODO(mohit): Tune this based on the metrics from S3 backups
                                     "--backup-frequency",
                                     "30m",
+                                    // NOTE: Setting this to a value:
+                                    // 1. > --backup-frequency: will lead to checking locally if data already exists,
+                                    //  it will be prioritized over data from remote backup
+                                    // 2. Else: will lead to always fetching the latest the data from the remote backups
+                                    //
+                                    // This is helpful when a node restarts or a new instance of nitrous needs to be
+                                    // provisioned where there is nothing locally. This also roughly determines how
+                                    // old of a back up is fine
                                     "--local-copy-staleness-duration",
                                     "2h",
+
+                                    // TODO(mohit): Tune this based on the total backups which are created
+                                    "--remote-backups-to-keep",
+                                    "5",
                                     "--backup-node"
                                 ],
                                 name: "nitrous-backup",
@@ -626,7 +638,7 @@ export const setup = async (input: inputType) => {
                                     },
                                     {
                                         name: "GOMEMLIMIT",
-                                        value: memlimit + "iB",
+                                        value: memlimit + "B",
                                     },
                                     {
                                         name: "OTEL_SERVICE_NAME",

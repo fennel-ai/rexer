@@ -77,13 +77,14 @@ func main() {
 		for {
 			if n == nil {
 				log.Printf("Creating NitrousDB instance")
-				n, err := nitrous.CreateFromArgs(flags.NitrousArgs)
+				nCpy, err := nitrous.CreateFromArgs(flags.NitrousArgs)
 				if err != nil {
 					log.Fatalf("Failed to setup nitrous: %v", err)
 				}
+				n = &nCpy
 
 				// Initialize the db.
-				svr, err := server.InitDB(n)
+				svr, err := server.InitDB(*n)
 				if err != nil {
 					log.Fatalf("Failed to initialize db: %v", err)
 				}
