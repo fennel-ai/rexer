@@ -23,7 +23,6 @@ type Table interface {
 	NumRecords() uint64
 	IndexSize() uint64
 	Close() error
-	DataReads() uint64
 }
 
 // BuildTable persists a memtable on disk broken into numShards shards and returns list of

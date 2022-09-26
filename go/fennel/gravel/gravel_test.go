@@ -3,7 +3,6 @@ package gravel
 import (
 	"encoding/binary"
 	"fennel/lib/utils"
-	"flag"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -79,17 +78,16 @@ func TestGravelTooLargeBatch(t *testing.T) {
 
 }
 
-var heavyTest = flag.Bool("heavy_gravel_test", true, "add 10x load to gravel, takes longer")
-
 func TestFull(t *testing.T) {
 	t.Skip("Skipping test in pull request since it more or less depends on the performance of the running environment")
 	dirname := t.TempDir()
+	heavyTest := true
 
 	var itemCnt int
 	compactionWaitSecs := 25
 	opt := DefaultOptions()
 	opt.Dirname = dirname
-	if *heavyTest {
+	if heavyTest {
 		opt.MaxMemtableSize = 1024 * 1024 * 10
 		itemCnt = 10_000_000
 		opt.NumShards = 16
@@ -125,7 +123,7 @@ func TestFull(t *testing.T) {
 	}
 	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
 
-	if *heavyTest {
+	if heavyTest {
 		fmt.Println("sleeping 10 secs, wait for compaction work to start")
 		time.Sleep(10 * time.Second) // wait for compaction
 	}

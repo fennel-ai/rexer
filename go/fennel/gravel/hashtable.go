@@ -139,7 +139,6 @@ type hashTable struct {
 	overflow   []byte // derived from mmappedData
 	data       []byte // derived from mmappedData
 	size       uint64
-	reads      uint64
 }
 
 func (ht *hashTable) IndexSize() uint64 {
@@ -342,7 +341,6 @@ func (ht *hashTable) readData(start uint64, matchedIndices *[stackMatchedIdxArra
 		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 		defer t.Stop()
 	}
-	ht.reads++
 
 	data := ht.data[start:]
 	sofar := 0
@@ -427,10 +425,6 @@ func (ht *hashTable) Close() error {
 	}
 	runtime.SetFinalizer(ht, nil)
 	return ret
-}
-
-func (ht *hashTable) DataReads() uint64 {
-	return ht.reads
 }
 
 var _ Table = (*hashTable)(nil)
@@ -777,7 +771,6 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 		index:      index,
 		data:       data,
 		size:       uint64(size),
-		reads:      0,
 	}
 	runtime.SetFinalizer(tableObj, (*hashTable).Close)
 	return tableObj, nil

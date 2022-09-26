@@ -14,13 +14,6 @@ import (
 	"github.com/detailyang/fastrand-go"
 )
 
-const (
-	// GET_BATCH_SIZE the size of the batches in which we break down
-	// incoming get calls
-	GET_BATCH_SIZE = 1000
-	PARALLELISM    = 64
-)
-
 type gravelDb struct {
 	planeID ftypes.RealmID
 	db      *gravel.Gravel

@@ -30,10 +30,6 @@ func (d emptyTable) Close() error {
 	return nil
 }
 
-func (d emptyTable) DataReads() uint64 {
-	return 0
-}
-
 func (d emptyTable) GetAll(_ map[string]Value) error {
 	return nil
 }

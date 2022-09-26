@@ -13,11 +13,10 @@ import (
 const (
 	StatsTotalSize      = 0
 	StatsNumTables      = 1
-	StatsTotalReads     = 2
-	StatsTotalRecords   = 3
-	StatsTotalIndexSize = 4
+	StatsTotalRecords   = 2
+	StatsTotalIndexSize = 3
 	// StatsMax should be increased if any new stats inserted here
-	StatsMax = 5
+	StatsMax = 4
 )
 
 const (
@@ -260,7 +259,6 @@ func (t *TableManager) GetStats() []uint64 {
 	for i := uint64(0); i < t.manifest.numShards; i++ {
 		ret[StatsNumTables] += uint64(len(t.tables[i]))
 		for _, table := range t.tables[i] {
-			ret[StatsTotalReads] += table.DataReads()
 			ret[StatsTotalSize] += table.Size()
 			ret[StatsTotalRecords] += table.NumRecords()
 			ret[StatsTotalIndexSize] += table.IndexSize()
