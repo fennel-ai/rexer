@@ -149,17 +149,20 @@ const tierConfs: Record<number, TierConf> = {
         // place the pods across the nodes based on utilization and `limit`
         queryServerConf: {
             podConf: {
-                minReplicas: 1,
+                minReplicas: 2,
                 maxReplicas: 10,
                 resourceConf: {
                     cpu: {
-                        request: "1000m",
-                        limit: "2000m"
+                        request: "28000m",
+                        limit: "31000m"
                     },
                     memory: {
-                        request: "2G",
-                        limit: "3G",
+                        request: "58G",
+                        limit: "63G",
                     }
+                },
+                nodeLabels: {
+                    "node-group": "p-5-queryserver-ng"
                 },
             }
         },
@@ -620,6 +623,24 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     labels: {
                         "node-group": "p-5-common-ng-x86",
                     },
+                },
+                {
+                    name: "p-5-query-ng-32c-64G-arm-spot",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.8xlarge", "c6gn.8xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
+                    },
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
                 },
                 // Nitrous node group.
                 {
