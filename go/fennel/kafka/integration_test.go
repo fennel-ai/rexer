@@ -280,6 +280,38 @@ func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, off
 	return consumer
 }
 
+func TestProduceToOutOfIndexPartition(t *testing.T) {
+	topic := "testtopic-outofindex-partition"
+	tierId := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierId)
+
+	resource, err := RemoteProducerConfig{
+		Topic:           topic,
+		BootstrapServer: test_kafka_servers,
+		Username:        kafka_username,
+		Password:        kafka_password,
+		SaslMechanism: 	 SaslScramSha512Mechanism,
+		Scope:           scope,
+	}.Materialize()
+	assert.NoError(t, err)
+	producer := resource.(FProducer)
+	defer teardownKafkaTopic(t, scope, topic)
+	ctx := context.Background()
+
+	// logging to 2/1 partition, should fail
+	err = producer.LogToPartition(ctx, []byte("foo"), 2, nil)
+	// message is successfully queued
+	assert.NoError(t, err)
+
+	// consumer would not be able to read anything
+	//
+	// we can optionally subscribe to the producer events to watch for errors
+	consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+	x, err := consumer.ReadBatch(ctx, 1, 5 * time.Second)
+	assert.NoError(t, err)
+	assert.Empty(t, x)
+}
+
 func TestExplicitPartitionProducer(t *testing.T) {
 	topic := "testtopic-explicit-partition"
 	tierId := ftypes.RealmID(rand.Uint32())
