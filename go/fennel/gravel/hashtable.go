@@ -189,21 +189,21 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	// for performance consideration, limit the number of matchedIndices to be const so the values can be stored on stack
 	// this causes the bug that if there are more than 'stackMatchedIdxArraySize' matched hashes, we may miss the record
 	// however, in reality, this will (almost ,like 1 every 3e188) never trigger if stackMatchedIdxArraySize == 32
-	matchIndex, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
+	matchIndex, matchCount, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
 	}
 	if matchIndex < 0 {
 		return Value{}, ErrNotFound
 	}
-	ret, err := ht.readData(dataPos, matchIndex, numCandidates, key, head.minExpiry)
+	ret, err := ht.readData(dataPos, matchIndex, matchCount, numCandidates, key, head.minExpiry)
 	return ret, err
 }
 
 // readIndex reads the index for bucketID and searches for the given fingerprint.
 // returns the slice of indices (in current bucket) whose fingerprints matches the given, the total number of records that
 // fall into this bucket, as well as the data section offset, with error if there is any
-func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, uint64, error) {
+func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, uint64, error) {
 	indexStart := int(bucketID) * bucketSizeBytes
 	indexEnd := indexStart + bucketSizeBytes
 	index := ht.index[indexStart:indexEnd]
@@ -224,19 +224,25 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, uint6
 	curFpPos := 0
 	fpB1, fpB2 := byte(fp>>8), byte(fp)
 
+	matchFpPos := -1
+	matchFpCount := 0
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
-		if index[sofar] > fpB1 { // no match, so matchIndex is -1
-			return -1, numKeys, datapos, nil
+		if index[sofar] > fpB1 {
+			break
+			//return -1, 0, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 {
-				return curFpPos, numKeys, datapos, nil
+				if matchFpPos < 0 {
+					matchFpPos = curFpPos
+				}
+				matchFpCount += 1
 			}
 		}
 		sofar += 2
 	}
 	if curFpPos >= numKeys {
 		// no overflow record needs to be compared
-		return -1, numKeys, datapos, nil
+		return matchFpPos, matchFpCount, numKeys, datapos, nil
 	}
 
 	// there are extra fingerprints that are in overflow section and need to check
@@ -244,16 +250,19 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, uint6
 	sofar = 0
 	for ; curFpPos < numKeys; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			return -1, numKeys, datapos, nil
+			break
+			//return -1, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 {
-				return curFpPos, numKeys, datapos, nil
+				if matchFpPos < 0 {
+					matchFpPos = curFpPos
+				}
+				matchFpCount += 1
 			}
 		}
 		sofar += 2
 	}
-	// no match found until the very end
-	return -1, numKeys, datapos, nil
+	return matchFpPos, matchFpCount, numKeys, datapos, nil
 }
 
 // writeIndex writes all the index data via writer and returns the number of bytes
@@ -323,7 +332,7 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
-func (ht *hashTable) readData(start uint64, matchIndex int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
+func (ht *hashTable) readData(start uint64, matchIndex int, matchCount int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
 	if shouldSample() {
 		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 		defer t.Stop()
@@ -338,6 +347,9 @@ func (ht *hashTable) readData(start uint64, matchIndex int, numRecords int, key 
 		}
 		sofar += n
 		if i >= matchIndex {
+			if i >= matchIndex+matchCount {
+				break
+			}
 			// fingerprint match, a potential hit
 			curKey := data[sofar : sofar+int(keyLen)]
 			sofar += int(keyLen)
@@ -678,7 +690,7 @@ func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, err
 
 // take the highest order 24 bits
 func getFingerprint(h uint64) fingerprint {
-	return fingerprint(h >> (64 - 16))
+	return fingerprint(h >> 29)
 }
 
 func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {
