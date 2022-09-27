@@ -79,7 +79,7 @@ func TestGravelTooLargeBatch(t *testing.T) {
 }
 
 func TestFull(t *testing.T) {
-	t.Skip("Skipping test in pull request since it more or less depends on the performance of the running environment")
+	//t.Skip("Skipping test in pull request since it more or less depends on the performance of the running environment")
 	dirname := t.TempDir()
 	heavyTest := true
 

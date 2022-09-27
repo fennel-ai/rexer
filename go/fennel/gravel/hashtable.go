@@ -90,17 +90,17 @@ const (
 	magicHeader         uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
 	magicTailer         uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
 	v1codec_xxhash      uint8  = 1
-	numRecordsPerBucket uint32 = 13
+	numRecordsPerBucket uint32 = 19
 	fileHeaderSize      int    = 64
 	bucketSizeBytes     int    = 64 // a common cache line size
-	maxBucketFpCount    int    = 19
+	maxBucketFpCount    int    = 28
 
 	stackMatchedIdxArraySize int = 64
 )
 
 var incompleteFile = fmt.Errorf("expected end of file")
 
-type fingerprint uint32 // actually value is always 3 bytes, which means highest 8 bits are always 0
+type fingerprint uint16
 
 type header struct {
 	datasize    uint64
@@ -222,17 +222,17 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, uint6
 	}
 	// now compare all sorted fps one by one until seeing a bigger value which indicates a stop
 	curFpPos := 0
-	fpB1, fpB2, fpB3 := byte(fp>>16), byte(fp>>8), byte(fp)
+	fpB1, fpB2 := byte(fp>>8), byte(fp)
 
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
 		if index[sofar] > fpB1 { // no match, so matchIndex is -1
 			return -1, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
-			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
+			if index[sofar+1] == fpB2 {
 				return curFpPos, numKeys, datapos, nil
 			}
 		}
-		sofar += 3
+		sofar += 2
 	}
 	if curFpPos >= numKeys {
 		// no overflow record needs to be compared
@@ -246,11 +246,11 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, uint6
 		if index[sofar] > fpB1 {
 			return -1, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
-			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
+			if index[sofar+1] == fpB2 {
 				return curFpPos, numKeys, datapos, nil
 			}
 		}
-		sofar += 3
+		sofar += 2
 	}
 	// no match found until the very end
 	return -1, numKeys, datapos, nil
@@ -298,15 +298,14 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 			curRecord := l2entry.firstRecord
 			for ; curRecord < fpToPutInBucket+l2entry.firstRecord; curRecord += 1 {
-				entry[sofar] = byte(records[curRecord].fp >> 16)
-				entry[sofar+1] = byte(records[curRecord].fp >> 8)
-				entry[sofar+2] = byte(records[curRecord].fp)
-				sofar += 3
+				entry[sofar] = byte(records[curRecord].fp >> 8)
+				entry[sofar+1] = byte(records[curRecord].fp)
+				sofar += 2
 			}
 
 			// and if any were left, write them to the overflow section
 			for ; curRecord < numKeys+l2entry.firstRecord; curRecord += 1 {
-				overflow = append(overflow, byte(records[curRecord].fp>>16), byte(records[curRecord].fp>>8), byte(records[curRecord].fp))
+				overflow = append(overflow, byte(records[curRecord].fp>>8), byte(records[curRecord].fp))
 			}
 		}
 
@@ -679,7 +678,7 @@ func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, err
 
 // take the highest order 24 bits
 func getFingerprint(h uint64) fingerprint {
-	return fingerprint(h >> 40)
+	return fingerprint(h >> (64 - 16))
 }
 
 func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {
