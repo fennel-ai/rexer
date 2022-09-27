@@ -3,12 +3,13 @@ package gravel
 import (
 	"errors"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.uber.org/zap"
 )
 
 /*
@@ -55,7 +56,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		// testTable is only for testing, not for prod use cases
 		return nil, fmt.Errorf("invalid table type: %d", testTable)
 	}
-	//manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
+	// manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
 	tableManager, err := InitTableManager(opts.Dirname, opts.TableType, opts.NumShards, opts.CompactionWorkerNum)
 	if err != nil {
 		return nil, fmt.Errorf("could not init manifest: %w", err)
@@ -78,13 +79,13 @@ func Open(opts Options) (ret *Gravel, failure error) {
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
 	tablesQueried := 0
-	shardHash := ShardHash(key)
+	shard := Shard(key, g.tm.NumShards())
 	hash := Hash(key)
 	sample := shouldSample()
 
 	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(time.Now().Unix())
-	val, err := g.memtable.Get(key, shardHash)
+	val, err := g.memtable.Get(key, shard)
 	switch err {
 	case ErrNotFound:
 		// do nothing, we will just check it in all the tables
@@ -98,7 +99,6 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	default:
 		return nil, err
 	}
-	shard := shardHash & (g.tm.NumShards() - 1)
 	g.tm.Reserve()
 	defer g.tm.Release()
 	tables, err := g.tm.List(shard)

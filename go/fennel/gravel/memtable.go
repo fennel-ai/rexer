@@ -7,7 +7,6 @@ import (
 
 type Memtable struct {
 	numShards  uint64
-	modulo     uint64
 	writelock  *sync.RWMutex
 	shardLocks []sync.RWMutex
 	maps       []map[string]Value
@@ -24,7 +23,6 @@ func NewMemTable(numShards uint64) Memtable {
 	}
 	return Memtable{
 		numShards:  numShards,
-		modulo:     numShards - 1,
 		writelock:  &sync.RWMutex{},
 		shardLocks: locks,
 		maps:       maps,
@@ -32,8 +30,7 @@ func NewMemTable(numShards uint64) Memtable {
 	}
 }
 
-func (mt *Memtable) Get(k []byte, h uint64) (Value, error) {
-	shard := int(h & mt.modulo)
+func (mt *Memtable) Get(k []byte, shard uint64) (Value, error) {
 	lock := &mt.shardLocks[shard]
 	lock.RLock()
 	val, ok := mt.maps[shard][string(k)]
