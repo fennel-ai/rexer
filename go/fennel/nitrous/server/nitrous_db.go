@@ -462,6 +462,11 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 	if !ok {
 		return nil, fmt.Errorf("no table for aggregate %d in tier %d with codec %d", aggId, tierId, codec)
 	}
+
+	// TODO(mohit): Since the writes in the binlog did not follow the Application sharding logic (i.e. they were put
+	// in the a partition decided by the kafka producer and was not something which was decided based on the hash
+	// custom hash function we have used here), not sure if we should test the reads through this code path.
+
 	// figure out the shards where the groups keys will be situated
 	shardToGkIdx := make(map[int32][]int, 0)
 	for i, gk := range groupkeys {
