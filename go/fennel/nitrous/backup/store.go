@@ -102,7 +102,11 @@ func (store *S3Store) Fetch(ctx context.Context, remoteName string, localFile st
 		return err
 	}
 
-	to, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	// if the parent directories for the `localfile` do not exist, create them
+	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create parent directory for file: %s, err: %v", localFile, err)
+	}
+	to, err := os.OpenFile(localFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}

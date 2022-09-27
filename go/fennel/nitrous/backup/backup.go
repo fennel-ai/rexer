@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fennel/lib/ftypes"
+	"fennel/lib/timer"
 	"fmt"
 	"github.com/gocarina/gocsv"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -14,6 +16,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type BackupManager struct {
@@ -36,37 +39,48 @@ func NewBackupManager(plainID ftypes.RealmID, store BackupStore) (*BackupManager
 
 // TODO(mohit): Rename this -> we have `versionsToKeep` as the argument, the func name should match
 func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []string) error {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.BackupCleanup")
+	defer t.Stop()
 	// The function clean up all the files that are not belong to the backups we want to keep
 	if len(versionsToKeep) == 0 {
 		return fmt.Errorf("can not keep 0 versions for safety purpose")
 	}
 
-	tempManifestFile, _ := ioutil.TempFile("", manifestPrefix)
-	_ = tempManifestFile.Close() // need not the handle, just to use its name
-	defer os.Remove(tempManifestFile.Name())
-
-	sha256DigestsToKeep := map[string]struct{}{}
+	sha256DigestsToKeep := new(sync.Map)
 	// parse the manifest files for the versions we want to keep, and find out all files to keep
+	errgrp, _ := errgroup.WithContext(ctx)
 	for _, version := range versionsToKeep {
-		err := bm.store.Fetch(ctx, manifestPrefix+version, tempManifestFile.Name())
-		if err != nil {
-			return fmt.Errorf("failed to download manifest %s", version)
-		}
-
-		var manifest []*uploadedManifestItem
-		manifestFile, err := os.OpenFile(tempManifestFile.Name(), os.O_RDONLY, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("unable to open the downloaded manifest file: %w", err)
-		} else {
-			if err := gocsv.UnmarshalFile(manifestFile, &manifest); err != nil { // Load clients from file
-				_ = manifestFile.Close()
-				return fmt.Errorf("unable to parse the downloaded manifest file: %w", err)
+		v := version
+		errgrp.Go(func() error {
+			t, _ := ioutil.TempFile("", manifestPrefix+v)
+			_ = t.Close() // need not the handle, just to use its name
+			defer os.Remove(t.Name())
+			err := bm.store.Fetch(ctx, manifestPrefix+v, t.Name())
+			if err != nil {
+				return fmt.Errorf("failed to download manifest %s", v)
 			}
-			_ = manifestFile.Close()
-		}
-		for _, item := range manifest {
-			sha256DigestsToKeep[item.Sha256] = struct{}{}
-		}
+
+			var manifest []*uploadedManifestItem
+			manifestFile, err := os.OpenFile(t.Name(), os.O_RDONLY, os.ModePerm)
+			if err != nil {
+				return fmt.Errorf("unable to open the downloaded manifest file: %w", err)
+			} else {
+				if err := gocsv.UnmarshalFile(manifestFile, &manifest); err != nil { // Load clients from file
+					_ = manifestFile.Close()
+					return fmt.Errorf("unable to parse the downloaded manifest file: %w", err)
+				}
+				_ = manifestFile.Close()
+			}
+			for _, item := range manifest {
+				sha256DigestsToKeep.Store(item.Sha256, struct{}{})
+			}
+			return nil
+		})
+	}
+
+	err := errgrp.Wait()
+	if err != nil {
+		return fmt.Errorf("fetching from remote storage failed: %v", err)
 	}
 
 	allRemoteFiles, err := bm.store.ListFile(ctx, "rawfile_")
@@ -77,7 +91,7 @@ func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []str
 	for _, fileName := range allRemoteFiles {
 		// delete the irrelevant data files from the remote
 		sha256Digest := strings.TrimPrefix(fileName, "rawfile_")
-		if _, keep := sha256DigestsToKeep[sha256Digest]; keep {
+		if _, keep := sha256DigestsToKeep.Load(sha256Digest); keep {
 			zap.L().Info("Keeping file in backup store", zap.String("file_name", fileName))
 			continue
 		}
@@ -116,6 +130,8 @@ func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []str
 }
 
 func (bm *BackupManager) ListBackups(ctx context.Context) ([]string, error) {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.ListBackups")
+	defer t.Stop()
 	manifestList, err := bm.store.ListFile(ctx, manifestPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list backups: %w", err)
@@ -129,6 +145,8 @@ func (bm *BackupManager) ListBackups(ctx context.Context) ([]string, error) {
 }
 
 func (bm *BackupManager) BackupPath(ctx context.Context, dir string, versionName string) error {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.BackupPath")
+	defer t.Stop()
 	var uploadedManifest []*uploadedManifestItem
 	var newManifest []*uploadedManifestItem
 
@@ -246,6 +264,8 @@ func DirIsEmpty(dir string) (bool, error) {
 }
 
 func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionName string) error {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.RestoreToPath")
+	defer t.Stop()
 	zap.L().Info("Starting to restore remote version to local path", zap.String("version", versionName), zap.String("local_dir", dir), zap.Uint32("plane", bm.planeID.Value()))
 
 	folderEmpty, _ := DirIsEmpty(dir)
@@ -272,12 +292,25 @@ func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionN
 		_ = manifestFile.Close()
 	}
 
+	errgrp, _ := errgroup.WithContext(ctx)
+	for _, item := range manifest {
+		i := item
+		errgrp.Go(func() error {
+			localDownloadedName := filepath.Join(dir, i.LocalName)
+			err := bm.store.Fetch(ctx, "rawfile_"+i.Sha256, localDownloadedName)
+			if err != nil {
+				return fmt.Errorf("failed to download one of the file %s: %w", "rawfile_"+i.Sha256, err)
+			}
+			return nil
+		})
+	}
+
+	if err := errgrp.Wait(); err != nil {
+		return fmt.Errorf("failed to fetch files from the remote storage: %v", err)
+	}
+
 	for _, item := range manifest {
 		localDownloadedName := filepath.Join(dir, item.LocalName)
-		err := bm.store.Fetch(ctx, "rawfile_"+item.Sha256, localDownloadedName)
-		if err != nil {
-			return fmt.Errorf("failed to download one of the file %s: %w", "rawfile_"+item.Sha256, err)
-		}
 		fstat, err := os.Stat(localDownloadedName)
 		if err != nil {
 			return fmt.Errorf("failed to get the stat of the downloaded file %s: %w", localDownloadedName, err)
@@ -307,6 +340,8 @@ func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionN
 }
 
 func (bm *BackupManager) RestoreLatest(ctx context.Context, dbDir string) error {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.RestoreLatest")
+	defer t.Stop()
 	backups, err := bm.ListBackups(ctx)
 	if err != nil {
 		return err

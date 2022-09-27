@@ -1,6 +1,8 @@
 package s3
 
 import (
+	"context"
+	"fennel/lib/timer"
 	"io"
 	"os"
 	"strings"
@@ -43,6 +45,8 @@ func NewClient(args S3Args) Client {
 }
 
 func (c Client) ListFiles(bucketName, pathPrefix, continuationToken string) ([]string, error) {
+	_, t := timer.Start(context.Background(), 0, "s3client.ListFiles")
+	defer t.Stop()
 	input := s3.ListObjectsV2Input{
 		Bucket:  aws.String(bucketName),
 		Prefix:  aws.String(pathPrefix),
@@ -79,6 +83,8 @@ func (c Client) ListFiles(bucketName, pathPrefix, continuationToken string) ([]s
 }
 
 func (c Client) Upload(file io.Reader, path, bucketName string) error {
+	_, t := timer.Start(context.Background(), 0, "s3client.Upload")
+	defer t.Stop()
 	input := s3manager.UploadInput{
 		Body:   file,
 		Bucket: aws.String(bucketName),
@@ -108,6 +114,8 @@ func (c Client) Exists(path string, bucketName string) (bool, error) {
 }
 
 func (c Client) Download(path, bucketName string) ([]byte, error) {
+	_, t := timer.Start(context.Background(), 0, "s3client.Download")
+	defer t.Stop()
 	input := s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(path),
@@ -133,6 +141,8 @@ func (c Client) Delete(path string, bucketName string) error {
 // srcPath is the entire path include the bucket name eg s3://bucket/path/to/file ->b srcPath = bucket/path/to/file
 // dstPath is the suffix of the path (excluding the bucket name) eg s3://bucket/path/to/file -> dstPath = path/to/file
 func (c Client) CopyFile(srcPath, dstPath, dstBucketName string) error {
+	_, t := timer.Start(context.Background(), 0, "s3client.CopyFile")
+	defer t.Stop()
 	// Check if bucket exists
 	input := s3.HeadBucketInput{
 		Bucket: aws.String(dstBucketName),
@@ -167,6 +177,8 @@ func (c Client) CopyFile(srcPath, dstPath, dstBucketName string) error {
 
 // Downloads the s3 files to the folder specified with the same file names as in the s3 bucket
 func (c Client) BatchDiskDownload(paths []string, bucketName string, folderName string) error {
+	_, t := timer.Start(context.Background(), 0, "s3client.BatchDiskDownload")
+	defer t.Stop()
 	fileWriters := make([]*os.File, len(paths))
 	var err error
 	for i, path := range paths {
