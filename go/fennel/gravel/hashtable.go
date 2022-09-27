@@ -74,14 +74,15 @@ import (
 	fbinary "fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
-	"go.uber.org/zap"
-	"golang.org/x/sys/unix"
 	math2 "math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"syscall"
+
+	"go.uber.org/zap"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -429,6 +430,36 @@ func (ht *hashTable) Close() error {
 
 var _ Table = (*hashTable)(nil)
 
+func getRecords(data map[string]Value, numBuckets uint32) []record {
+	bucketEntries := make([][]record, numBuckets)
+	for i := range bucketEntries {
+		bucketEntries[i] = make([]record, 0, 2*numRecordsPerBucket)
+	}
+	for k, v := range data {
+		hash := Hash([]byte(k))
+		bucketID := getBucketID(hash, numBuckets)
+		bucketEntries[bucketID] = append(bucketEntries[bucketID], record{
+			bucketID: getBucketID(hash, numBuckets),
+			fp:       getFingerprint(hash),
+			key:      k,
+			value:    v,
+		})
+	}
+	// sort entries within each bucket by their fingerprint so that we
+	// can do early termination in the get path
+	for _, entries := range bucketEntries {
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].fp < entries[j].fp
+		})
+	}
+	i := 0
+	records := make([]record, len(data))
+	for _, entries := range bucketEntries {
+		i += copy(records[i:], entries)
+	}
+	return records
+}
+
 func buildHashTable(filepath string, data map[string]Value) error {
 	f, err := os.Create(filepath)
 	if err != nil {
@@ -440,17 +471,11 @@ func buildHashTable(filepath string, data map[string]Value) error {
 		numBuckets = 1
 	}
 
-	records := make([]record, 0, len(data))
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
-	for k, v := range data {
-		hash := Hash([]byte(k))
-		records = append(records, record{
-			bucketID: getBucketID(hash, numBuckets),
-			fp:       getFingerprint(hash),
-			key:      k,
-			value:    v,
-		})
+	records := getRecords(data, numBuckets)
+	for _, r := range records {
+		v := r.value
 		if v.expires > 0 {
 			if minExpiry > v.expires {
 				minExpiry = v.expires
@@ -460,13 +485,6 @@ func buildHashTable(filepath string, data map[string]Value) error {
 			}
 		}
 	}
-	// sort all the records so that those with the same bucket ID come close together
-	// within the same bucket, we sort records by fingerprint. This will allow us to
-	// early termination when fingerprints don't match
-	sort.Slice(records, func(i, j int) bool {
-		ri, rj := &records[i], &records[j]
-		return ri.bucketID < rj.bucketID || (ri.bucketID == rj.bucketID && ri.fp < rj.fp)
-	})
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
 	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
 	if err != nil {
