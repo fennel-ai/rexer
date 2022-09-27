@@ -193,9 +193,10 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 		if err != nil {
 			return empty, fmt.Errorf("failed to get aggregate: %w", err)
 		}
-		if !agg.Active {
-			return agg, aggregate.ErrNotActive
-		}
+		// TODO(mohit): Remove this once Nitrous replay traffic effort is done
+		//if !agg.Active {
+		//	return agg, aggregate.ErrNotActive
+		//}
 		tier.AggregateDefs.Store(aggname, agg)
 	} else {
 		agg = def.(aggregate.Aggregate)
