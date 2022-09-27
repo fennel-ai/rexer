@@ -187,30 +187,21 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	// for performance consideration, limit the number of matchedIndices to be const so the values can be stored on stack
 	// this causes the bug that if there are more than 'stackMatchedIdxArraySize' matched hashes, we may miss the record
 	// however, in reality, this will (almost ,like 1 every 3e188) never trigger if stackMatchedIdxArraySize == 32
-	var matchedIndices [stackMatchedIdxArraySize]int
-	numCandidates, dataPos, err := ht.readIndex(bucketID, fp, &matchedIndices)
+	matchIndex, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
 	}
-	if matchedIndices[0] == -1 {
+	if matchIndex < 0 {
 		return Value{}, ErrNotFound
 	}
-	ret, err := ht.readData(dataPos, &matchedIndices, numCandidates, key, head.minExpiry)
+	ret, err := ht.readData(dataPos, matchIndex, numCandidates, key, head.minExpiry)
 	return ret, err
 }
 
 // readIndex reads the index for bucketID and searches for the given fingerprint.
 // returns the slice of indices (in current bucket) whose fingerprints matches the given, the total number of records that
 // fall into this bucket, as well as the data section offset, with error if there is any
-func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *[stackMatchedIdxArraySize]int) (int, uint64, error) {
-	matchedIdxIdx := 0
-	defer func() {
-		// seal the result array by appending a "-1"
-		if matchedIdxIdx < stackMatchedIdxArraySize {
-			matchedIndices[matchedIdxIdx] = -1
-		}
-	}()
-
+func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, uint64, error) {
 	indexStart := int(bucketID) * bucketSizeBytes
 	indexEnd := indexStart + bucketSizeBytes
 	index := ht.index[indexStart:indexEnd]
@@ -232,21 +223,18 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *
 	fpB1, fpB2, fpB3 := byte(fp>>16), byte(fp>>8), byte(fp)
 
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
-		if index[sofar] > fpB1 {
-			return numKeys, datapos, nil
+		if index[sofar] > fpB1 { // no match, so matchIndex is -1
+			return -1, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
-				if matchedIdxIdx < stackMatchedIdxArraySize {
-					matchedIndices[matchedIdxIdx] = curFpPos
-					matchedIdxIdx++
-				}
+				return curFpPos, numKeys, datapos, nil
 			}
 		}
 		sofar += 3
 	}
 	if curFpPos >= numKeys {
 		// no overflow record needs to be compared
-		return numKeys, datapos, nil
+		return -1, numKeys, datapos, nil
 	}
 
 	// there are extra fingerprints that are in overflow section and need to check
@@ -254,18 +242,16 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *
 	sofar = 0
 	for ; curFpPos < numKeys; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			return numKeys, datapos, nil
+			return -1, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
-				if matchedIdxIdx < stackMatchedIdxArraySize {
-					matchedIndices[matchedIdxIdx] = curFpPos
-					matchedIdxIdx++
-				}
+				return curFpPos, numKeys, datapos, nil
 			}
 		}
 		sofar += 3
 	}
-	return numKeys, datapos, nil
+	// no match found until the very end
+	return -1, numKeys, datapos, nil
 }
 
 // writeIndex writes all the index data via writer and returns the number of bytes
@@ -336,33 +322,27 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
-func (ht *hashTable) readData(start uint64, matchedIndices *[stackMatchedIdxArraySize]int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
-	sample := shouldSample()
-	if sample {
+func (ht *hashTable) readData(start uint64, matchIndex int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
+	if shouldSample() {
 		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 		defer t.Stop()
 	}
 
 	data := ht.data[start:]
 	sofar := 0
-	curMatchIdx := 0
 	for i := 0; i < numRecords; i++ {
 		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
 		if err != nil {
 			return Value{}, incompleteFile
 		}
 		sofar += n
-		if i == matchedIndices[curMatchIdx] {
+		if i >= matchIndex {
 			// fingerprint match, a potential hit
 			curKey := data[sofar : sofar+int(keyLen)]
 			sofar += int(keyLen)
 			if bytes.Equal(key, curKey) {
 				ret, _, err := readValue(data[sofar:], minExpiry, false)
 				return ret, err
-			}
-			curMatchIdx += 1
-			if curMatchIdx >= stackMatchedIdxArraySize || matchedIndices[curMatchIdx] == -1 {
-				return Value{}, ErrNotFound
 			}
 		} else {
 			sofar += int(keyLen)
