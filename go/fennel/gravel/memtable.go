@@ -2,6 +2,7 @@ package gravel
 
 import (
 	"sync"
+	"unsafe"
 )
 
 type Memtable struct {
@@ -69,14 +70,19 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 		shard := Shard(e.key, mt.numShards)
 		map_ := mt.maps[shard]
 		mt.shardLocks[shard].Lock()
-		if v, found := map_[string(e.key)]; found {
+		// keys/values of entries are owned by gravel (because we clone this data)
+		// and so this data isn't going to be modified by anyone ever. Given this,
+		// we can safely typecast []byte to string without worries of modification
+		// and save one allocation
+		s := *(*string)(unsafe.Pointer(&e.key))
+		if v, found := map_[s]; found {
 			mt.size -= uint64(sizeof(Entry{
 				key: e.key,
 				val: v,
 			}))
 			mt.len -= 1
 		}
-		map_[string(e.key)] = e.val
+		map_[s] = e.val
 		mt.size += uint64(sizeof(e))
 		mt.len += 1
 		if e.val.deleted {
