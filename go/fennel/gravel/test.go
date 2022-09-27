@@ -30,8 +30,8 @@ func (d emptyTable) Close() error {
 	return nil
 }
 
-func (d emptyTable) GetAll(_ map[string]Value) error {
-	return nil
+func (d emptyTable) GetAll() ([]Entry, error) {
+	return nil, nil
 }
 
 func (d emptyTable) Size() uint64 {
