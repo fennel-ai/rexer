@@ -1,6 +1,7 @@
 package gravel
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fennel/lib/timer"
@@ -10,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unsafe"
 )
 
 const maxCompactBatch = 4
@@ -18,7 +20,7 @@ const tableSizeLimit = 2 * 1024 * 1024 * 1024
 type Table interface {
 	Name() string
 	Get(key []byte, hash uint64) (Value, error)
-	GetAll(m map[string]Value) error
+	GetAll() ([]Entry, error)
 	Size() uint64
 	NumRecords() uint64
 	IndexSize() uint64
@@ -42,12 +44,19 @@ func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable)
 		if len(data) == 0 {
 			filename = ""
 		} else {
+			entries := make([]Entry, 0, mt.Len())
+			for k, v := range data {
+				entries = append(entries, Entry{
+					key: *(*[]byte)(unsafe.Pointer(&k)),
+					val: v,
+				})
+			}
 			filename = fmt.Sprintf("%d_%d%s", shard, time.Now().UnixMicro(), tempFileExtension)
 			filepath := path.Join(dirname, filename)
 			var err error
 			switch type_ {
 			case HashTable:
-				err = buildHashTable(filepath, data)
+				err = buildHashTable(filepath, entries)
 			default:
 				err = fmt.Errorf("invalid table type")
 			}
@@ -118,31 +127,19 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 	}
 
 	var err error
-	m := make(map[string]Value, totalRecords)
+	entries := make([]Entry, totalRecords)
+	n := 0
 	for _, table := range tables {
-		err = table.GetAll(m)
+		its, err := table.GetAll()
 		if err != nil {
 			return "", err
 		}
+		n += copy(entries[n:], its)
 	}
-	if compactToFinal {
-		// remove expired items and deletion marker in the furthest file
-		now := Timestamp(time.Now().Unix())
-		for k, v := range m {
-			if _, err := handle(v, now); err == ErrNotFound {
-				delete(m, k)
-			}
-		}
-	}
+	entries = dedup(compactToFinal, entries)
 	switch type_ {
-	/*
-		case BDiskHashTable:
-			return buildBDiskHashTable(dirname, numShards, mt)
-		case testTable:
-			return buildEmptyTable(dirname, numShards, mt)
-	*/
 	case HashTable:
-		err = buildHashTable(filepath, m)
+		err = buildHashTable(filepath, entries)
 	default:
 		err = fmt.Errorf("compaction is not supported for such table type")
 	}
@@ -175,4 +172,43 @@ func sizeof(e Entry) int {
 		sz += len(e.val.data) + 4
 	}
 	return sz
+}
+
+// dedup takes a list of entries and returned a single deduped list
+// If the same key appears multiple times, only the last value is
+// retained. If gcFinal is true, the key is removed if the value is
+// expired/deleted
+func dedup(gcFinal bool, entries []Entry) []Entry {
+	buckets := make([][]Entry, 1<<20)
+	for i := range buckets {
+		buckets[i] = make([]Entry, 0, len(entries)/(1<<20))
+	}
+	for _, e := range entries {
+		hash := Hash(e.key)
+		bucketID := uint32(hash & ((1 << 20) - 1))
+		buckets[bucketID] = append(buckets[bucketID], e)
+	}
+	for _, bucket := range buckets {
+		sort.Slice(bucket, func(i, j int) bool {
+			return bytes.Compare(bucket[i].key, bucket[j].key) < 0
+		})
+	}
+	n := 0
+	now := Timestamp(time.Now().Unix())
+	for _, bucket := range buckets {
+		len_ := len(bucket)
+		for j := 0; j < len_; j++ {
+			for j+1 < len_ && bytes.Equal(bucket[j].key, bucket[j+1].key) {
+				j += 1
+			}
+			if gcFinal {
+				if _, err := handle(bucket[j].val, now); err == ErrNotFound {
+					continue
+				}
+			}
+			entries[n] = bucket[j]
+			n += 1
+		}
+	}
+	return entries[:n]
 }
