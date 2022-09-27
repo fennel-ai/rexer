@@ -1,3 +1,5 @@
+//go:build integration
+
 package backup_test
 
 import (
@@ -6,54 +8,35 @@ import (
 	"fennel/hangar"
 	"fennel/hangar/encoders"
 	gravelDB "fennel/hangar/gravel"
-	"fennel/lib/ftypes"
-	"fennel/lib/utils"
+	"fennel/nitrous"
 	"fennel/nitrous/backup"
 	"fmt"
-	"github.com/samber/mo"
-	"math/rand"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/alexflint/go-arg"
 	"github.com/stretchr/testify/assert"
 )
 
-func getData(numKey, numIndex int) ([]hangar.Key, []hangar.KeyGroup, []hangar.ValGroup) {
-	keys := make([]hangar.Key, numKey)
-	kgs := make([]hangar.KeyGroup, numKey)
-	vgs := make([]hangar.ValGroup, numKey)
-	fields := make(hangar.Fields, numIndex)
-	for i := range fields {
-		fields[i] = []byte(fmt.Sprintf("field%d", i))
-	}
-	for i := range keys {
-		keys[i] = hangar.Key{Data: []byte(utils.RandString(10))}
-		kgs[i] = hangar.KeyGroup{
-			Prefix: keys[i],
-			Fields: mo.Some(fields),
-		}
-		vgs[i] = hangar.ValGroup{
-			Fields: fields,
-		}
-		for j := range kgs[i].Fields.OrEmpty() {
-			vgs[i].Values = append(vgs[i].Values, []byte(fmt.Sprintf("value%d", i*numIndex+j)))
-		}
-	}
-	return keys, kgs, vgs
-}
+func TestBackupRestoreIntegration(t *testing.T) {
+	// import test nitrous seems unnecessary here since we create the backup manager instance here. Instead parse
+	// the env vars to extract necessary information here
+	var flags nitrous.NitrousArgs
+	// Parse flags / environment variables.
+	arg.Parse(&flags)
+	planeId := flags.PlaneID
 
-// TODO(mohit): Create an integration test version with S3 storage instead of local storage
-
-func TestBackupRestore(t *testing.T) {
-	planeId := ftypes.RealmID(rand.Uint32())
 	ctx := context.Background()
 
 	dbDir := t.TempDir()
-	fsDir := t.TempDir()
+	dbName := fmt.Sprintf("t-%d", time.Now().Unix())
 	numBackups := 6
 
-	fs, _ := backup.NewLocalStore(fsDir, planeId)
+	fs, _ := backup.NewS3Store(flags.Region, flags.BackupBucket, dbName, planeId)
 	dm, _ := backup.NewBackupManager(planeId, fs)
+	// cleanup all the backups
+	defer dm.BackupCleanup(ctx, nil)
 
 	// this is to validate later that the data was successfully backed up
 	keyGroupByIt := make(map[int][][]hangar.KeyGroup, 6)

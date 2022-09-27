@@ -104,19 +104,26 @@ func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []str
 		versionSet[manifestPrefix+version] = struct{}{}
 	}
 
-	for _, fileName := range allRemoteFiles {
-		// delete the irrelevant version manifests from the remote
-		if _, keep := versionSet[fileName]; keep {
-			zap.L().Info("Keeping file in backup store", zap.String("file_name", fileName))
-			continue
+	pool := parallel.NewWorkerPool[string, struct{}]("backup_deleter", 50 /*nWorkers=*/)
+	_, err = pool.Process(ctx, allRemoteFiles, func(m []string, f []struct{}) error {
+		for _, fileName := range m {
+			// delete the irrelevant version manifests from the remote
+			if _, keep := versionSet[fileName]; keep {
+				zap.L().Info("Keeping file in backup store", zap.String("file_name", fileName))
+				continue
+			}
+			zap.L().Info("Deleting from backup store", zap.String("file_name", fileName))
+			err := bm.store.Delete(ctx, fileName)
+			if err != nil {
+				zap.L().Error("Deletion failed from backup store", zap.String("file_name", fileName), zap.Error(err))
+			}
 		}
-		zap.L().Info("Deleting from backup store", zap.String("file_name", fileName))
-		err := bm.store.Delete(ctx, fileName)
-		if err != nil {
-			zap.L().Error("Deletion failed from backup store", zap.String("file_name", fileName), zap.Error(err))
-		}
+		return nil
+	}, 10 /*batchSize=*/)
+	if err != nil {
+		return fmt.Errorf("failed to delete remote stale backup files: %v", err)
 	}
-
+	pool.Close()
 	return nil
 }
 
@@ -180,37 +187,49 @@ func (bm *BackupManager) BackupPath(ctx context.Context, dir string, versionName
 		return err
 	}
 
-	for _, item := range newManifest {
-		previousItem, ok := lastUploaded[item.LocalName]
-		if ok {
-			if (previousItem.FileSize == item.FileSize) && (previousItem.LocalModifyTime == item.LocalModifyTime) {
-				item.Sha256 = previousItem.Sha256
-				continue
+	// Each local sharded file could be in the order of XX MB (currently capped at 2GB). Since most of the instance
+	// types are limited by 1.5 GBps network bandwidth, we configure the parallel workers and the batch size for
+	// each accordingly
+	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("shard_uploader", 50 /*nWorkers=*/)
+	_, err = pool.Process(ctx, newManifest, func(m []*uploadedManifestItem, f []struct{}) error {
+		for _, item := range m {
+			previousItem, ok := lastUploaded[item.LocalName]
+			if ok {
+				if (previousItem.FileSize == item.FileSize) && (previousItem.LocalModifyTime == item.LocalModifyTime) {
+					item.Sha256 = previousItem.Sha256
+					continue
+				}
+			}
+
+			itemFullName := filepath.Join(dir, item.LocalName)
+			f, err := os.Open(itemFullName)
+			if err != nil {
+				return err
+			}
+
+			h := sha256.New()
+			if _, err := io.Copy(h, f); err != nil {
+				_ = f.Close()
+				return err
+			}
+			_ = f.Close()
+			sha256Digest := fmt.Sprintf("%x", h.Sum(nil))
+
+			item.Sha256 = sha256Digest
+			// upload current item
+			remoteName := "rawfile_" + sha256Digest
+			err = bm.store.Store(ctx, itemFullName, remoteName)
+			if err != nil {
+				return fmt.Errorf("failed to upload the local file %s to remote %s: %w", itemFullName, remoteName, err)
 			}
 		}
-
-		itemFullName := filepath.Join(dir, item.LocalName)
-		f, err := os.Open(itemFullName)
-		if err != nil {
-			return err
-		}
-
-		h := sha256.New()
-		if _, err := io.Copy(h, f); err != nil {
-			_ = f.Close()
-			return err
-		}
-		_ = f.Close()
-		sha256Digest := fmt.Sprintf("%x", h.Sum(nil))
-
-		item.Sha256 = sha256Digest
-		// upload current item
-		remoteName := "rawfile_" + sha256Digest
-		err = bm.store.Store(ctx, itemFullName, remoteName)
-		if err != nil {
-			return fmt.Errorf("failed to upload the local file %s to remote %s: %w", itemFullName, remoteName, err)
-		}
+		return nil
+	}, 10 /*batchSize=*/)
+	if err != nil {
+		return fmt.Errorf("failed to upload files remotely: %v", err)
 	}
+	pool.Close()
+
 	uploadedManifestTmpFilename := dir + "/_RexUploadedManifest.csv.tmp"
 	uploadedManifestTmpFile, err := os.OpenFile(uploadedManifestTmpFilename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
@@ -285,7 +304,7 @@ func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionN
 
 	// Each remote file could be in the order of XX MB (currently capped at 2GB). Since most of the instance types are
 	// limited by 1.5 GBps, we configure the parallel workers and the batch size for each accordingly
-	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("manifest_downloader", 50 /*nWorkers=*/)
+	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("backup_downloader", 50 /*nWorkers=*/)
 	_, err = pool.Process(ctx, manifest, func(m []*uploadedManifestItem, f []struct{}) error {
 		for _, i := range m {
 			localDownloadedName := filepath.Join(dir, i.LocalName)
