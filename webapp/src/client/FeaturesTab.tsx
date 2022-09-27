@@ -12,9 +12,26 @@ interface Column {
     key: string,
 }
 
+const COLUMN_TITLE_MAP = new Map<string, string>([
+    ["candidate_oid", "Candidate oid"],
+    ["candidate_otype", "Candidate otype"],
+    ["context_oid", "Context oid"],
+    ["context_otype", "Context otype"],
+    ["model_name", "Model Name"],
+    ["model_prediction", "Model Prediction"],
+    ["model_version", "Model Version"],
+    ["workflow", "Workflow"],
+    ["request_id", "Request ID"],
+    ["timestamp", "Timestamp"],
+]);
+
+function columnTitle(name: string): string {
+    return COLUMN_TITLE_MAP.get(name) || name;
+}
+
 function columnsFromNames(names: string[]): Column[] {
     return names.map(name => ({
-        title: name,
+        title: columnTitle(name),
         dataIndex: name,
         key: name,
     }));
@@ -26,6 +43,11 @@ const DEFAULT_COLUMNS = columnsFromNames([
     "model_version", "workflow",
     "request_id", "timestamp",
 ])
+
+// full date structure in lib/feature.go FeatureRow
+interface Feature {
+	timestamp: number,
+}
 
 function FeaturesTab() {
     const [dataSource, setDataSource] = useState<object[]>([]);
@@ -39,10 +61,11 @@ function FeaturesTab() {
     const queryFeatures = () => {
         setLoading(true);
         axios.get(`/tier/${tierID}/features`)
-            .then((response: AxiosResponse<{features: object[]}>) => {
-                const newData = response.data.features.map((feature: object, idx: number) => ({
-                    key: idx,
+            .then((response: AxiosResponse<{features: Feature[]}>) => {
+                const newData = response.data.features.map((feature: Feature, idx: number) => ({
                     ...feature,
+                    key: idx,
+                    timestamp: new Date(feature.timestamp * 1000).toISOString(),
                 }));
                 setDataSource(newData);
                 setLoading(false);
