@@ -43,6 +43,16 @@ type MemDB struct {
 	closeWg sync.WaitGroup
 }
 
+func (m *MemDB) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MemDB) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *MemDB) Flush() error {
 	//TODO implement me
 	panic("implement me")

@@ -53,6 +53,16 @@ type rcache struct {
 	workerPool *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
+func (c *rcache) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *rcache) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (c *rcache) Flush() error {
 	//TODO implement me
 	panic("implement me")

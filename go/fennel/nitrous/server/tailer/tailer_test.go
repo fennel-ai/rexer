@@ -2,9 +2,9 @@ package tailer
 
 import (
 	"context"
-	"fennel/hangar/db"
+	"fennel/gravel"
 	"fennel/hangar/encoders"
-	"github.com/dgraph-io/badger/v3"
+	gravelDB "fennel/hangar/gravel"
 	"testing"
 	"time"
 
@@ -35,7 +35,8 @@ func TestTailer(t *testing.T) {
 	n := test.NewTestNitrous(t)
 	// Create the producer first so the topic is initialized.
 	producer := n.NewBinlogProducer(t)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(0, t.TempDir(), &gravelOpts, encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 

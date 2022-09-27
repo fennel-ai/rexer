@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 	"fmt"
 	"github.com/gocarina/gocsv"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 )
 
 type BackupManager struct {
@@ -46,41 +45,33 @@ func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []str
 		return fmt.Errorf("can not keep 0 versions for safety purpose")
 	}
 
-	sha256DigestsToKeep := new(sync.Map)
-	// parse the manifest files for the versions we want to keep, and find out all files to keep
-	errgrp, _ := errgroup.WithContext(ctx)
+	tempManifestFile, _ := ioutil.TempFile("", manifestPrefix)
+	_ = tempManifestFile.Close() // need not the handle, just to use its name
+	defer os.Remove(tempManifestFile.Name())
+
+	sha256DigestsToKeep := map[string]struct{}{}
+
+	// we don't expect a lot of versions for which manifest files need to be loaded, so fetch them sequentially
 	for _, version := range versionsToKeep {
-		v := version
-		errgrp.Go(func() error {
-			t, _ := ioutil.TempFile("", manifestPrefix+v)
-			_ = t.Close() // need not the handle, just to use its name
-			defer os.Remove(t.Name())
-			err := bm.store.Fetch(ctx, manifestPrefix+v, t.Name())
-			if err != nil {
-				return fmt.Errorf("failed to download manifest %s", v)
-			}
+		err := bm.store.Fetch(ctx, manifestPrefix+version, tempManifestFile.Name())
+		if err != nil {
+			return fmt.Errorf("failed to download manifest %s", version)
+		}
 
-			var manifest []*uploadedManifestItem
-			manifestFile, err := os.OpenFile(t.Name(), os.O_RDONLY, os.ModePerm)
-			if err != nil {
-				return fmt.Errorf("unable to open the downloaded manifest file: %w", err)
-			} else {
-				if err := gocsv.UnmarshalFile(manifestFile, &manifest); err != nil { // Load clients from file
-					_ = manifestFile.Close()
-					return fmt.Errorf("unable to parse the downloaded manifest file: %w", err)
-				}
+		var manifest []*uploadedManifestItem
+		manifestFile, err := os.OpenFile(tempManifestFile.Name(), os.O_RDONLY, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("unable to open the downloaded manifest file: %w", err)
+		} else {
+			if err := gocsv.UnmarshalFile(manifestFile, &manifest); err != nil { // Load clients from file
 				_ = manifestFile.Close()
+				return fmt.Errorf("unable to parse the downloaded manifest file: %w", err)
 			}
-			for _, item := range manifest {
-				sha256DigestsToKeep.Store(item.Sha256, struct{}{})
-			}
-			return nil
-		})
-	}
-
-	err := errgrp.Wait()
-	if err != nil {
-		return fmt.Errorf("fetching from remote storage failed: %v", err)
+			_ = manifestFile.Close()
+		}
+		for _, item := range manifest {
+			sha256DigestsToKeep[item.Sha256] = struct{}{}
+		}
 	}
 
 	allRemoteFiles, err := bm.store.ListFile(ctx, "rawfile_")
@@ -91,7 +82,7 @@ func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []str
 	for _, fileName := range allRemoteFiles {
 		// delete the irrelevant data files from the remote
 		sha256Digest := strings.TrimPrefix(fileName, "rawfile_")
-		if _, keep := sha256DigestsToKeep.Load(sha256Digest); keep {
+		if _, keep := sha256DigestsToKeep[sha256Digest]; keep {
 			zap.L().Info("Keeping file in backup store", zap.String("file_name", fileName))
 			continue
 		}
@@ -292,32 +283,29 @@ func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionN
 		_ = manifestFile.Close()
 	}
 
-	errgrp, _ := errgroup.WithContext(ctx)
-	for _, item := range manifest {
-		i := item
-		errgrp.Go(func() error {
+	// Each remote file could be in the order of XX MB (currently capped at 2GB). Since most of the instance types are
+	// limited by 1.5 GBps, we configure the parallel workers and the batch size for each accordingly
+	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("manifest_downloader", 50 /*nWorkers=*/)
+	_, err = pool.Process(ctx, manifest, func(m []*uploadedManifestItem, f []struct{}) error {
+		for _, i := range m {
 			localDownloadedName := filepath.Join(dir, i.LocalName)
 			err := bm.store.Fetch(ctx, "rawfile_"+i.Sha256, localDownloadedName)
 			if err != nil {
 				return fmt.Errorf("failed to download one of the file %s: %w", "rawfile_"+i.Sha256, err)
 			}
-			return nil
-		})
-	}
-
-	if err := errgrp.Wait(); err != nil {
-		return fmt.Errorf("failed to fetch files from the remote storage: %v", err)
-	}
-
-	for _, item := range manifest {
-		localDownloadedName := filepath.Join(dir, item.LocalName)
-		fstat, err := os.Stat(localDownloadedName)
-		if err != nil {
-			return fmt.Errorf("failed to get the stat of the downloaded file %s: %w", localDownloadedName, err)
+			fstat, err := os.Stat(localDownloadedName)
+			if err != nil {
+				return fmt.Errorf("failed to get the stat of the downloaded file %s: %w", localDownloadedName, err)
+			}
+			i.FileSize = fstat.Size()
+			i.LocalModifyTime = fstat.ModTime().UnixNano()
 		}
-		item.FileSize = fstat.Size()
-		item.LocalModifyTime = fstat.ModTime().UnixNano()
+		return nil
+	}, 10 /*batchSize=*/)
+	if err != nil {
+		return fmt.Errorf("failed to download remote files locally: %v", err)
 	}
+	pool.Close()
 
 	manifestFileName = filepath.Join(dir, "_RexUploadedManifest.csv.tmp")
 	manifestFile, err = os.OpenFile(manifestFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)

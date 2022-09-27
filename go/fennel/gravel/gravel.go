@@ -164,6 +164,16 @@ func isExpired(expires, now Timestamp) bool {
 	return expires > 0 && expires < now
 }
 
+func (g *Gravel) StartCompaction() error {
+	g.tm.StartCompactionWorkers()
+	return nil
+}
+
+func (g *Gravel) StopCompaction() error {
+	g.tm.StopCompactionWorkers()
+	return nil
+}
+
 func (g *Gravel) Teardown() error {
 	if err := g.Close(); err != nil {
 		return err

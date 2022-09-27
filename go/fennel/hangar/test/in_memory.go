@@ -18,6 +18,16 @@ type InMemoryHangar struct {
 	mu sync.RWMutex
 }
 
+func (h *InMemoryHangar) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (h *InMemoryHangar) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (h *InMemoryHangar) Flush() error {
 	//TODO implement me
 	panic("implement me")

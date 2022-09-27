@@ -20,6 +20,14 @@ type gravelDb struct {
 	enc     hangar.Encoder
 }
 
+func (g *gravelDb) StartCompaction() error {
+	return g.db.StartCompaction()
+}
+
+func (g *gravelDb) StopCompaction() error {
+	return g.db.StopCompaction()
+}
+
 func (g *gravelDb) Flush() error {
 	return g.db.Flush()
 }

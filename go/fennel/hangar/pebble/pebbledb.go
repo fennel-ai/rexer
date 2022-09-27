@@ -31,6 +31,16 @@ type pebbleDB struct {
 	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
+func (p *pebbleDB) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (p *pebbleDB) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *pebbleDB) Flush() error {
 	//TODO implement me
 	panic("implement me")

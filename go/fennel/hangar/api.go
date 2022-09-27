@@ -47,12 +47,19 @@ type Hangar interface {
 	Teardown() error
 	Backup(sink io.Writer, since uint64) (uint64, error)
 
+	// NOTE: The following methods could be called multiple times or/and out of order, hence the implementation should
+	// handle the cases explicitly.
+
+	StartCompaction() error
+	StopCompaction() error
+
 	// TODO(mohit): Remove this or make this explicit that this is for testing purpose
 	//
 	// NOTE: This is purely for testing purpose - in the tests, we often want all the data to exist at rest.
 	// In prod, this can still be used but involves an added latency due to table building and logging data to disk.
-	// There it is okay to have some data in memory and gets lost as part of `Close()` or `TearDown()` since on
+	// There it is okay to have some data in memory which gets lost as part of `Close()` or `TearDown()` since on
 	// startup, the DB will sync by tailing from the last checkpoint.
+
 	Flush() error
 }
 

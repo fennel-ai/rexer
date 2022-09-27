@@ -38,6 +38,16 @@ type badgerDB struct {
 	closeCh    chan int
 }
 
+func (b *badgerDB) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (b *badgerDB) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (b *badgerDB) Flush() error {
 	//TODO implement me
 	panic("implement me")
