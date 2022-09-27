@@ -194,6 +194,9 @@ func (k RemoteConsumer) Offsets() (kafka.TopicPartitions, error) {
 // https://github.com/confluentinc/confluent-kafka-go/issues/690#issuecomment-932810037.
 func (k RemoteConsumer) Backlog() (int, error) {
 	var n int
+
+	e := k.Poll(5_000)
+	fmt.Printf("e: %v\n", e)
 	// Get the current assigned topic partitions.
 	toppars, err := k.Assignment()
 	if err != nil {
@@ -289,6 +292,12 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	// partitions to itself instead of the ones assigned by the broker(s).
 	if err := configmap.SetKey("go.application.rebalance.enable", true); err != nil {
 		return nil, err
+	}
+
+	if conf.Topic == "aggregates_conf" {
+		if err := configmap.SetKey("debug", "consumer,cgrp"); err != nil {
+			return nil, err
+		}
 	}
 
 	// set additional consumer configurations
