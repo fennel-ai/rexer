@@ -13,7 +13,7 @@ import (
 )
 
 func TestHashTable(t *testing.T) {
-	testTableType(t, HashTable, 1000_000)
+	testTableType(t, HashTable, 5000_000)
 }
 
 func BenchmarkHashTable(b *testing.B) {
@@ -70,8 +70,8 @@ func testTableType(t *testing.T, type_ TableType, sz int) {
 			assert.Equal(t, ErrNotFound, err)
 		}
 	}
-	fmt.Printf("Time taken to make all gets for present keys: %dms\n", presentTime/1e6)
-	fmt.Printf("Time taken to make all gets for absent keys: %dms\n", absentTime/1e6)
+	fmt.Printf("Time taken to make all gets for present keys: %dns\n", presentTime/int64(sz))
+	fmt.Printf("Time taken to make all gets for absent keys: %dns\n", absentTime/int64(sz))
 }
 
 func benchmarkTableGet(b *testing.B, sz int, type_ TableType) {
