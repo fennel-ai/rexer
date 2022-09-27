@@ -13,16 +13,16 @@ import (
 )
 
 /*
-	Gravel is a fast key/Value store that is a hybrid of LSM and Btrees. It makes one
-	key assumption -- it's okay to lose the last few writes as long as each commit
-	batch is either persisted atomically on the disk or it is not. In other words,
-	disk persistence represents batch boundaries. This relaxation of correctness
-	enables Gravel to support a VERY high burst commit throughput.
+	Gravel is a fast key/Value store that is a hybrid of LSM and Hash Tables.
 
-	Gravel is represented by a series of files on the disk with *.grvl extension. Each
-	file's name is an uint64 number. Files written later (which contain more recent
-	data) have a higher index number. This index number of each file helps Gravel
-	understand which files to look into first ahead of others.
+	It is a general purpose disk backed k-v store with just two relaxations on
+	semantics compared to a typical LSM database --
+		1. It assumes that it's okay to lose the last few writes as long as each
+		commit batch is either persisted atomically on the disk or it is not. In
+		other words, disk persistence respects batch boundaries.
+
+		2. Unlike conventional LSMs, it doesn't support sorted forward/backward
+		iteration on key space.
 
 */
 

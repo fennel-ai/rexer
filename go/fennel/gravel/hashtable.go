@@ -186,9 +186,6 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	bucketID := getBucketID(hash, head.numBuckets)
 	fp := getFingerprint(hash)
 
-	// for performance consideration, limit the number of matchedIndices to be const so the values can be stored on stack
-	// this causes the bug that if there are more than 'stackMatchedIdxArraySize' matched hashes, we may miss the record
-	// however, in reality, this will (almost ,like 1 every 3e188) never trigger if stackMatchedIdxArraySize == 32
 	matchIndex, matchCount, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
@@ -196,8 +193,7 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	if matchIndex < 0 {
 		return Value{}, ErrNotFound
 	}
-	ret, err := ht.readData(dataPos, matchIndex, matchCount, numCandidates, key, head.minExpiry)
-	return ret, err
+	return ht.readData(dataPos, matchIndex, matchCount, numCandidates, key, head.minExpiry)
 }
 
 // readIndex reads the index for bucketID and searches for the given fingerprint.
@@ -636,13 +632,6 @@ func readValue(data []byte, minExpiry Timestamp, onlysize bool, cloneValue bool)
 	if err != nil {
 		return Value{}, 0, incompleteFile
 	}
-	// if expiry > uint32(time.Now().Unix()) { // item has expired
-	// 	return Value{
-	// 		data:    []byte{},
-	// 		expires: Timestamp(expiry),
-	// 		deleted: false,
-	// 	}, cur + uint32(valLen), nil
-	// }
 	if onlysize {
 		return Value{}, cur + int(valLen), nil
 	}
