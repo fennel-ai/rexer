@@ -174,6 +174,12 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs) (string, error) {
 		return "", fmt.Errorf("failed to create new directory for restoring DB: %s, err: %v", newRestoreDir, err)
 	}
 
+	// TODO(mohit): This is not ideal..
+	// Here we compare the time with the last restore or when the db was created -> it still possible that a lot of data
+	// was written to the db post creation which is not considered here..
+	//
+	// This might result in very large restores (potentially full size restores), we should try to minimize this
+
 	// Initialize layered storage.
 	currentDBDir := readFlag(currentDirFlag)
 	lastWriteTsSecs := getDirChangeTime(currentDBDir)
@@ -184,7 +190,7 @@ func dbDir(bm *backup.BackupManager, args NitrousArgs) (string, error) {
 		zap.L().Info("Found previous last write timestamp, going to reload the previous DB first", zap.Int64("timestamp", lastWriteTsSecs))
 		DBDirPrecedence = append(DBDirPrecedence, currentDBDir, newRestoreDir, newRestoreDir)
 	} else {
-		zap.L().Info("Found previous last write timestampd, going to use backup DB first", zap.Int64("timestamp", lastWriteTsSecs))
+		zap.L().Info("Found previous last write timestamp, going to use backup DB first", zap.Int64("timestamp", lastWriteTsSecs))
 		DBDirPrecedence = append(DBDirPrecedence, newRestoreDir, currentDBDir, newRestoreDir)
 	}
 
