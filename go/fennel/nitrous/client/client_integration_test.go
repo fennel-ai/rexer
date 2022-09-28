@@ -5,15 +5,16 @@ import (
 	fkafka "fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
+	libnitrous "fennel/lib/nitrous"
 	"fennel/lib/value"
-    fnitrous "fennel/nitrous"
+	fnitrous "fennel/nitrous"
 	"fennel/nitrous/client"
-	"fennel/nitrous/test"
 	"fennel/resource"
 	"fennel/test/kafka"
 	"fennel/test/nitrous"
 	"fmt"
 	"github.com/alexflint/go-arg"
+	confKafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"math/rand"
@@ -21,43 +22,77 @@ import (
 	"time"
 )
 
+func topicProducer(args fnitrous.NitrousArgs, scope resource.Scope, topic string) (fkafka.FProducer, error) {
+	config := fkafka.RemoteProducerConfig{
+		Scope: scope,
+		Topic: topic,
+		BootstrapServer: args.MskKafkaServer,
+		Username: args.MskKafkaUsername,
+		Password: args.MskKafkaPassword,
+		SaslMechanism: fkafka.SaslScramSha512Mechanism,
+	}
+	p, err := config.Materialize()
+	return p.(fkafka.FProducer), err
+}
+
 func TestPushToShardedNitrous(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	planeId := ftypes.RealmID(rand.Uint32())
-
+	scope := resource.NewPlaneScope(planeId)
 	var flags fnitrous.NitrousArgs
 	// Parse flags / environment variables.
 	err := arg.Parse(&flags)
-	assert.NoError(t, err)
 	flags.Dev = true
 	flags.PlaneID = planeId
 	flags.GravelDir = t.TempDir()
 	flags.BadgerBlockCacheMB = 1000
 	flags.RistrettoMaxCost = 1000
 	flags.RistrettoAvgCost = 1
-	flags.BinPartitions = 1
+
+	// We will configure multiple partitions, to which the client will push based on the hash of the group keys
+	flags.BinPartitions = 2
 	flags.Identity = "localhost"
 	p, err := fnitrous.CreateFromArgs(flags)
 	require.NoError(t, err)
 	t.Setenv("PLANE_ID", fmt.Sprintf("%d", p.PlaneID))
-	// Create plane-level kafka topics.
-	scope := resource.NewPlaneScope(p.PlaneID)
 
-	// need to configure with partitions set for binlog topic\
-	err = kafka.SetupKafkaTopics(scope, flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, fkafka.ALL_TOPICS)
+	// we need to create only the nitrous based topics
+	topics := make([]confKafka.TopicSpecification, 0)
+	topics = append(topics, confKafka.TopicSpecification{
+		Topic: scope.PrefixedName(libnitrous.BINLOG_KAFKA_TOPIC),
+		NumPartitions: 2,
+		ReplicationFactor: 0,
+	})
+	topics = append(topics, confKafka.TopicSpecification{
+		Topic: scope.PrefixedName(libnitrous.REQS_KAFKA_TOPIC),
+		NumPartitions: 1,
+		ReplicationFactor: 0,
+	})
+	topics = append(topics, confKafka.TopicSpecification{
+		Topic: scope.PrefixedName(libnitrous.AGGR_CONF_KAFKA_TOPIC),
+		NumPartitions: 1,
+		ReplicationFactor: 0,
+	})
+
+	err = kafka.SetupKafkaTopicsFromSpec(flags.MskKafkaServer, flags.MskKafkaUsername, flags.MskKafkaPassword, fkafka.SaslScramSha512Mechanism, topics)
 	assert.NoError(t, err)
 
-	n := test.NewTestNitrous(t)
-	s, addr := nitrous.StartNitrousServer(t, n.Nitrous)
+	s, addr := nitrous.StartNitrousServer(t, p)
 
 	// Create client.
+	binlogProducer, err := topicProducer(flags, scope, libnitrous.BINLOG_KAFKA_TOPIC)
+	assert.NoError(t, err)
+	reqslogProducer, err := topicProducer(flags, scope, libnitrous.REQS_KAFKA_TOPIC)
+	assert.NoError(t, err)
+	aggrConfProducer, err := topicProducer(flags, scope, libnitrous.AGGR_CONF_KAFKA_TOPIC)
+	assert.NoError(t, err)
 	cfg := client.NitrousClientConfig{
 		TierID:         0,
 		ServerAddr:     addr.String(),
-		BinlogProducer: n.NewBinlogProducer(t),
-		BinlogPartitions: 1,
-		ReqsLogProducer: n.NewReqLogProducer(t),
-		AggregateConfProducer: n.NewAggregateConfProducer(t),
+		BinlogProducer: binlogProducer,
+		BinlogPartitions: 2,
+		ReqsLogProducer: reqslogProducer,
+		AggregateConfProducer: aggrConfProducer,
 	}
 	res, err := cfg.Materialize()
 	assert.NoError(t, err)
