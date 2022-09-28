@@ -32,6 +32,11 @@ enum OpType {
   DELETE_AGGREGATE = 3;
 }
 
+message NitrousBinlogEvent {
+  uint32 tier_id = 1;
+  AggEvent agg_event = 2;
+}
+
 message NitrousOp {
   uint32 tier_id = 1;
   OpType type = 2;
@@ -41,6 +46,8 @@ message NitrousOp {
     // Delete an aggregate from nitrous.
     DeleteAggregate delete_aggregate = 4;
     // Log an aggregate event.
+    //
+    // TODO(mohit): Deprecate this once all the messages in the binlog with this message type have been consumed
     AggEvent agg_event = 5;
     // Log a profile update.
     ProfileUpdate profile = 6;

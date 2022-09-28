@@ -135,11 +135,7 @@ func FromCapnValue(cv CapnValue) (Value, error) {
 			if err != nil {
 				return Nil, fmt.Errorf("failed to get dict key from capnvalue: %w", err)
 			}
-			ev, err := entry.Value()
-			if err != nil {
-				return Nil, fmt.Errorf("failed to get dict value from capnvalue: %w", err)
-			}
-			val, err := FromCapnValue(CapnValue{ev.Struct()})
+			val, err := FromCapnValue(CapnValue{})
 			if err != nil {
 				return Nil, fmt.Errorf("failed to convert dict value from capnvalue to Value: %w", err)
 			}
