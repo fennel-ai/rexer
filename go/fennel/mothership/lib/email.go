@@ -25,7 +25,7 @@ func ExtractEmailDomain(email string) string {
 	return strings.ToLower(email[idx+1:])
 }
 
-var DomainWhitelist = []string{"fennel.ai"}
+var DomainWhitelist = []string{"fennel.ai", "getlokalapp.com", "convoynetwork.com"}
 
 func IsEmailDomainWhitelisted(email string) bool {
 	domain := ExtractEmailDomain(email)
