@@ -3,6 +3,7 @@ package gravel
 import (
 	"errors"
 	"fmt"
+	"go.uber.org/zap"
 	"os"
 	"sync"
 	"time"
@@ -22,15 +23,16 @@ import (
 
 */
 
+const periodicFlushTickerDur = 10 * time.Minute
+
 type Gravel struct {
 	memtable   Memtable
 	tm         *TableManager
 	commitlock sync.Mutex
 	opts       Options
 	stats      Stats
-	// TODO(mohit): Consider adding back periodic flushing if the memtable has not reached it's size limit for a while.
-	// This can happen when the write throughput is not high - and we might want to write the tables periodically
-	// to avoid startup and binlog catchup latency.
+	closeCh    chan struct{}
+	periodicFlushTicker *time.Ticker
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
@@ -51,7 +53,10 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		opts:       opts,
 		commitlock: sync.Mutex{},
 		stats:      Stats{},
+		closeCh: 	make(chan struct{}, 1),
+		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
 	}
+	go ret.periodicallyFlush()
 	go ret.reportStats()
 	return ret, nil
 }
@@ -143,6 +148,8 @@ func (g *Gravel) Teardown() error {
 }
 
 func (g *Gravel) Close() error {
+	// notify that the db has been closed
+	g.closeCh <- struct {}{}
 	return g.tm.Close()
 }
 
@@ -156,6 +163,8 @@ func (g *Gravel) flush() error {
 		// no valid reason to flush an empty memtable
 		return nil
 	}
+	// since a flush is being attempted, reset the periodic flush
+	g.periodicFlushTicker.Reset(periodicFlushTickerDur)
 	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname)
 	if err != nil {
 		return err
@@ -170,4 +179,26 @@ func (g *Gravel) flush() error {
 	g.stats.MemtableSizeBytes.Store(0)
 	g.stats.MemtableKeys.Store(0)
 	return err
+}
+
+// If write volume is low, memtable may not reach tablesize for
+// a while, and so may not flush. While it's technically not an issue,
+// flushing doesn't hurt us and can make future startup faster.
+// This function forces a flush 10 minutes after the last natural flush.
+func (g *Gravel) periodicallyFlush() {
+	for {
+		select {
+		case <-g.periodicFlushTicker.C:
+			func() {
+				g.commitlock.Lock()
+				defer g.commitlock.Unlock()
+				if err := g.flush(); err != nil {
+					zap.L().Warn("periodic flush failed", zap.Error(err))
+				}
+			}()
+		case <- g.closeCh:
+			g.periodicFlushTicker.Stop()
+			return
+		}
+	}
 }
