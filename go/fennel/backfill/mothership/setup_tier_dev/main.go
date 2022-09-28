@@ -62,7 +62,7 @@ func run(args Args) error {
 		ApiUrl:        args.APIUrl,
 		K8sNamespace:  generateName("namespace"),
 		Plan:          tierL.TierPlanPersonal,
-		RequestsLimit: 1000,
+		RequestsLimit: 0,
 	}
 	err = db.Create(&tier).Error
 	return err
