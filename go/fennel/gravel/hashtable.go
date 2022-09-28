@@ -226,10 +226,18 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 
 	matchFpPos := -1
 	matchFpCount := 0
+
+	if fpInBucket > maxBucketFpCount/2 {
+		// accelerate the fingerprint searching
+		skipPos := fpInBucket >> 1
+		if index[sofar+skipPos*2] < fpB1 {
+			curFpPos = skipPos + 1
+			sofar += (skipPos + 1) * 2
+		}
+	}
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			break
-			//return -1, 0, numKeys, datapos, nil
+			return matchFpPos, matchFpCount, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 {
 				if matchFpPos < 0 {
@@ -250,8 +258,7 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 	sofar = 0
 	for ; curFpPos < numKeys; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			break
-			//return -1, numKeys, datapos, nil
+			return matchFpPos, matchFpCount, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
 			if index[sofar+1] == fpB2 {
 				if matchFpPos < 0 {
@@ -269,7 +276,7 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 // written and the error if any. This assumes that both l2entries and records are
 // sorted on bucketID
 func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, records []record) (uint32, error) {
-	overflow := make([]byte, 0, 3*numBuckets*4) // reserve some size (but not too large, 4 times the number of buckets) to avoid too much copying
+	overflow := make([]byte, 0, 2*numBuckets*8) // reserve some size (but not too large, 8 times the number of buckets) to avoid too much copying
 	entry := make([]byte, 64)
 	for bid := uint32(0); bid < numBuckets; bid++ {
 		slice.Fill(entry, 0)

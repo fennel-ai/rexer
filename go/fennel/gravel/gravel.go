@@ -77,18 +77,11 @@ func Open(opts Options) (ret *Gravel, failure error) {
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
-	found := false
 	tablesQueried := 0
-	defer func() {
-		if found && shouldSampleEvery1024() {
-			// report numbers of table queried when returning a value
-			tablesQueriedReporter.WithLabelValues("0").Observe(float64(tablesQueried))
-		}
-	}()
-
 	shardHash := ShardHash(key)
 	hash := Hash(key)
 	sample := shouldSample()
+
 	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(time.Now().Unix())
 	val, err := g.memtable.Get(key, shardHash)
@@ -98,7 +91,9 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 		maybeInc(sample, &g.stats.MemtableMisses)
 	case nil:
 		maybeInc(sample, &g.stats.MemtableHits)
-		found = true
+		if shouldSampleEvery1024() {
+			tablesQueriedReporter.WithLabelValues("0").Observe(float64(tablesQueried))
+		}
 		return handle(val, now)
 	default:
 		return nil, err
@@ -118,7 +113,9 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 		switch err {
 		case ErrNotFound:
 		case nil:
-			found = true
+			if shouldSampleEvery1024() {
+				tablesQueriedReporter.WithLabelValues("0").Observe(float64(tablesQueried))
+			}
 			return handle(val, now)
 		default:
 			return nil, err
