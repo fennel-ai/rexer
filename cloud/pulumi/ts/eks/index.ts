@@ -815,11 +815,13 @@ async function setupMetricsServer(provider: aws.Provider, input: inputType, clus
         },
         chart: "metrics-server",
         namespace: "kube-system",
+        version: "3.8.2",
         values: {
             "fullnameOverride": metricServerName,
-            "extraArgs": [
+            "args": [
                 // this needs to be at least 10s - https://github.com/kubernetes-sigs/metrics-server/blob/master/cmd/metrics-server/app/options/options.go#L67
-                "--metric-resolution=10s"
+                "--metric-resolution=10s",
+                "--kubelet-insecure-tls"
             ],
             // we should schedule all components of kubernetes metrics server on ON_DEMAND instances
             "nodeSelector": {
