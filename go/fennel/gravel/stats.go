@@ -69,3 +69,7 @@ func maybeInc(shouldSample bool, a *atomic.Uint64) {
 func shouldSample() bool {
 	return (fastrand.FastRand() & (sampleRate - 1)) == 0
 }
+
+func shouldSampleEvery1024() bool {
+	return (fastrand.FastRand() & 1023) == 0
+}

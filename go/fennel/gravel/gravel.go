@@ -3,6 +3,8 @@ package gravel
 import (
 	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 	"os"
 	"sync"
@@ -25,13 +27,26 @@ import (
 
 const periodicFlushTickerDur = 10 * time.Minute
 
+var tablesQueriedReporter = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	Name: "number_of_tables_queried_for_gravel_value",
+	Help: "The number of tables queried when there is a query hit",
+	Objectives: map[float64]float64{
+		0.25: 0.05,
+		0.50: 0.05,
+		0.75: 0.05,
+		0.90: 0.05,
+		0.95: 0.02,
+		0.99: 0.01,
+	},
+}, []string{"realm_id"})
+
 type Gravel struct {
-	memtable   Memtable
-	tm         *TableManager
-	commitlock sync.Mutex
-	opts       Options
-	stats      Stats
-	closeCh    chan struct{}
+	memtable            Memtable
+	tm                  *TableManager
+	commitlock          sync.Mutex
+	opts                Options
+	stats               Stats
+	closeCh             chan struct{}
 	periodicFlushTicker *time.Ticker
 }
 
@@ -48,12 +63,12 @@ func Open(opts Options) (ret *Gravel, failure error) {
 	// if the DB was earlier created with a different number of shards, use the existing value in the DB
 	opts.NumShards = tableManager.NumShards()
 	ret = &Gravel{
-		memtable:   NewMemTable(tableManager.NumShards()),
-		tm:         tableManager,
-		opts:       opts,
-		commitlock: sync.Mutex{},
-		stats:      Stats{},
-		closeCh: 	make(chan struct{}, 1),
+		memtable:            NewMemTable(tableManager.NumShards()),
+		tm:                  tableManager,
+		opts:                opts,
+		commitlock:          sync.Mutex{},
+		stats:               Stats{},
+		closeCh:             make(chan struct{}, 1),
 		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
 	}
 	go ret.periodicallyFlush()
@@ -62,6 +77,15 @@ func Open(opts Options) (ret *Gravel, failure error) {
 }
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
+	found := false
+	tablesQueried := 0
+	defer func() {
+		if found && shouldSampleEvery1024() {
+			// report numbers of table queried when returning a value
+			tablesQueriedReporter.WithLabelValues("0").Observe(float64(tablesQueried))
+		}
+	}()
+
 	shardHash := ShardHash(key)
 	hash := Hash(key)
 	sample := shouldSample()
@@ -74,6 +98,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 		maybeInc(sample, &g.stats.MemtableMisses)
 	case nil:
 		maybeInc(sample, &g.stats.MemtableHits)
+		found = true
 		return handle(val, now)
 	default:
 		return nil, err
@@ -92,6 +117,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 		switch err {
 		case ErrNotFound:
 		case nil:
+			found = true
 			return handle(val, now)
 		default:
 			return nil, err
@@ -149,7 +175,7 @@ func (g *Gravel) Teardown() error {
 
 func (g *Gravel) Close() error {
 	// notify that the db has been closed
-	g.closeCh <- struct {}{}
+	g.closeCh <- struct{}{}
 	return g.tm.Close()
 }
 
@@ -196,7 +222,7 @@ func (g *Gravel) periodicallyFlush() {
 					zap.L().Warn("periodic flush failed", zap.Error(err))
 				}
 			}()
-		case <- g.closeCh:
+		case <-g.closeCh:
 			g.periodicFlushTicker.Stop()
 			return
 		}

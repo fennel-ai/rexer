@@ -10,6 +10,10 @@ import (
 type emptyTable struct {
 }
 
+func (d emptyTable) ShouldGCExpired() bool {
+	return false
+}
+
 func (d emptyTable) IndexSize() uint64 {
 	return 0
 }

@@ -93,8 +93,6 @@ const (
 	fileHeaderSize      int    = 64
 	bucketSizeBytes     int    = 64 // a common cache line size
 	maxBucketFpCount    int    = 28
-
-	stackMatchedIdxArraySize int = 64
 )
 
 var incompleteFile = fmt.Errorf("expected end of file")
@@ -140,6 +138,10 @@ type hashTable struct {
 	overflow   []byte // derived from mmappedData
 	data       []byte // derived from mmappedData
 	size       uint64
+}
+
+func (ht *hashTable) ShouldGCExpired() bool {
+	return false
 }
 
 func (ht *hashTable) IndexSize() uint64 {
