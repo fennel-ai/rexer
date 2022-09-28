@@ -30,7 +30,7 @@ func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.
 	if tdb.next == nil {
 		return fmt.Errorf("no values")
 	}
-	ret = tdb.next
+	copy(ret, tdb.next)
 	return nil
 }
 
