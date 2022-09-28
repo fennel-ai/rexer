@@ -167,7 +167,7 @@ func (ht *hashTable) GetAll(m map[string]Value) error {
 		sofar += n
 		curKey := string(data[sofar : sofar+int(keyLen)])
 		sofar += int(keyLen)
-		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false)
+		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false, false)
 		if err != nil {
 			return incompleteFile
 		}
@@ -361,13 +361,13 @@ func (ht *hashTable) readData(start uint64, matchIndex int, matchCount int, numR
 			curKey := data[sofar : sofar+int(keyLen)]
 			sofar += int(keyLen)
 			if bytes.Equal(key, curKey) {
-				ret, _, err := readValue(data[sofar:], minExpiry, false)
+				ret, _, err := readValue(data[sofar:], minExpiry, false, true)
 				return ret, err
 			}
 		} else {
 			sofar += int(keyLen)
 		}
-		_, m, err := readValue(data[sofar:], minExpiry, true)
+		_, m, err := readValue(data[sofar:], minExpiry, true, false)
 		if err != nil {
 			return Value{}, err
 		}
@@ -614,7 +614,7 @@ func writeKey(writer *bufio.Writer, k string) (uint32, error) {
 // readValue reads a value and returns the number of bytes taken by this value
 // if onlysize is true, the caller is only interested in the size of this value
 // so this function can avoid expensive operations in those cases
-func readValue(data []byte, minExpiry Timestamp, onlysize bool) (Value, int, error) {
+func readValue(data []byte, minExpiry Timestamp, onlysize bool, cloneValue bool) (Value, int, error) {
 	if len(data) == 0 {
 		return Value{}, 0, incompleteFile
 	}
@@ -647,8 +647,11 @@ func readValue(data []byte, minExpiry Timestamp, onlysize bool) (Value, int, err
 		return Value{}, cur + int(valLen), nil
 	}
 	value := data[cur : cur+int(valLen)]
+	if cloneValue {
+		value = clonebytes(value)
+	}
 	return Value{
-		data:    clonebytes(value),
+		data:    value,
 		expires: expiry,
 		deleted: false,
 	}, cur + int(valLen), nil
