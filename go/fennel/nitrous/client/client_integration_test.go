@@ -8,6 +8,7 @@ import (
 	"fennel/lib/aggregate"
 	"fennel/lib/ftypes"
 	libnitrous "fennel/lib/nitrous"
+	"fennel/lib/utils"
 	"fennel/lib/value"
 	fnitrous "fennel/nitrous"
 	"fennel/nitrous/client"
@@ -142,25 +143,40 @@ func TestPushToShardedNitrous(t *testing.T) {
 	kwargs.Set("duration", value.Int(24*3600))
 
 	// Get current value for the defined aggregate.
-	out := make([]value.Value, 1)
+	out := make([]value.Value, 10_000, 10_000)
 	err = nc.GetMulti(ctx, aggId, []value.Value{value.String("mygk")}, []value.Dict{kwargs}, out)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, out[0])
 
-	// Push a new event for the aggregate.
-	v := value.Int(124)
-	groupkey := value.String("mygk")
-	event := value.NewDict(map[string]value.Value{
-		"groupkey":  groupkey,
-		"timestamp": value.Int(time.Now().Unix()),
-		"value":     v,
-	})
-	err = nc.Push(ctx, aggId, value.NewList(event))
+	// Create multiple events in the binlog - this is increase the likelihood of the messages going to different
+	// topic partitions and while reading, it will validate that the read request was forwarded to the right
+	// application shard and fetched
+	expectedVals := make(map[value.String]value.Value, 10_000)
+	events := make([]value.Value, 10_000)
+	groupKeys := make([]value.Value, 10_000)
+	kwargsL := make([]value.Dict, 10_000)
+	for i := 0; i < 10_000; i++ {
+		v := value.Int(rand.Uint32())
+		groupkey := value.String(utils.RandString(6))
+		event := value.NewDict(map[string]value.Value{
+			"groupkey":  groupkey,
+			"timestamp": value.Int(time.Now().Unix()),
+			"value":     v,
+		})
+		events[i] = event
+		groupKeys[i] = groupkey
+		// use same kwargs
+		kwargsL[i] = kwargs
+		expectedVals[groupkey] = v
+	}
+	err = nc.Push(ctx, aggId, value.NewList(events...))
 	assert.NoError(t, err)
 	// Wait for the event to be consumed.
 	waitToConsume()
-	// Now the value for the aggregate should be 124.
-	err = nc.GetMulti(ctx, aggId, []value.Value{groupkey}, []value.Dict{kwargs}, out)
+
+	err = nc.GetMulti(ctx, aggId, groupKeys, kwargsL, out)
 	assert.NoError(t, err)
-	assert.EqualValues(t, v, out[0])
+	for i, actual := range out {
+		assert.EqualValues(t, actual, expectedVals[groupKeys[i].(value.String)])
+	}
 }

@@ -194,7 +194,6 @@ func (k RemoteConsumer) Offsets() (kafka.TopicPartitions, error) {
 // https://github.com/confluentinc/confluent-kafka-go/issues/690#issuecomment-932810037.
 func (k RemoteConsumer) Backlog() (int, error) {
 	var n int
-
 	// Get the current assigned topic partitions.
 	toppars, err := k.Assignment()
 	if err != nil {
