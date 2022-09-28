@@ -3,14 +3,15 @@ package rpc
 import (
 	"context"
 	"errors"
-	"fennel/lib/arena"
-	"fennel/lib/utils/parallel"
 	"fmt"
-	"google.golang.org/grpc/keepalive"
-	"io"
 	"log"
 	"net"
 	"time"
+
+	"google.golang.org/grpc/keepalive"
+
+	"fennel/lib/arena"
+	"fennel/lib/utils/parallel"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
@@ -21,8 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.uber.org/zap"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -127,7 +127,8 @@ func (s *Server) GetLag(_ context.Context, _ *LagRequest) (*LagResponse, error) 
 	}, nil
 }
 
-func (s *Server) processRequest(ctx context.Context, req *AggregateValuesRequest) (*AggregateValuesResponse, error) {
+func (s *Server) GetAggregateValues(ctx context.Context, req *AggregateValuesRequest) (*AggregateValuesResponse, error) {
+	ctx = timer.WithTracing(ctx)
 	start := time.Now()
 	s.rateLimiter <- struct{}{}
 	defer func() {
@@ -166,41 +167,6 @@ func (s *Server) processRequest(ctx context.Context, req *AggregateValuesRequest
 	}
 	resp := &AggregateValuesResponse{Results: pvalues}
 	return resp, nil
-}
-
-func (s *Server) GetAggregateValues(stream Nitrous_GetAggregateValuesServer) error {
-	zap.L().Debug("Got new GetAggregateValues stream")
-	streamCtx := stream.Context()
-	_, cancelFn := context.WithCancel(streamCtx)
-	defer cancelFn()
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		ctx := context.Background()
-		ctx = timer.WithTracing(ctx)
-		resp, err := s.processRequest(ctx, req)
-		if err != nil {
-			s := status.Newf(codes.Internal, "error processing request: %v", err).Proto()
-			if err = stream.Send(&AggregateValuesResponse{
-				Status: s,
-			}); err != nil {
-				zap.L().Warn("Error sending failed response to client", zap.Error(err))
-				return err
-			}
-			continue
-		} else {
-			resp.Status = OK
-			if err = stream.Send(resp); err != nil {
-				zap.L().Warn("Error sending response to client", zap.Error(err))
-				return err
-			}
-		}
-	}
 }
 
 func (s *Server) Serve(listener net.Listener) error {

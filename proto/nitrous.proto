@@ -14,8 +14,8 @@ import "google/rpc/status.proto";
 service Nitrous {
   // APIs to read data.
   rpc GetProfiles(ProfilesRequest) returns (ProfilesResponse);
-  rpc GetAggregateValues(stream AggregateValuesRequest)
-      returns (stream AggregateValuesResponse);
+  rpc GetAggregateValues(AggregateValuesRequest)
+      returns (AggregateValuesResponse);
   // API to get processing lag. This is especially useful in tests.
   rpc GetLag(LagRequest) returns (LagResponse);
 }

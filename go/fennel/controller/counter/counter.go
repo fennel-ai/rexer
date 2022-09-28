@@ -3,6 +3,7 @@ package counter
 import (
 	"context"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 
 	"fennel/lib/aggregate"
 	"fennel/lib/arena"
@@ -43,27 +44,35 @@ func NitrousBatchValue(
 	}
 	// Note: we make the calls serially because for the most part, we will only
 	// have one aggregate per call.
-	// TODO(abhay): Call nitrous in parallel if/when we have multiple aggregates.
-	for aggId, indices := range idxByAgg {
-		aggkeys := arena.Values.Alloc(len(indices), len(indices))
-		defer arena.Values.Free(aggkeys)
-		aggkwargs := arena.DictValues.Alloc(len(indices), len(indices))
-		defer arena.DictValues.Free(aggkwargs)
-		for i, index := range indices {
-			aggkeys[i] = keys[index]
-			aggkwargs[i] = kwargs[index]
-		}
-		output := arena.Values.Alloc(len(indices), len(indices))
-		defer arena.Values.Free(output)
+	errgrp, ctx := errgroup.WithContext(ctx)
+	for id, idx := range idxByAgg {
+		aggId := id
+		indices := idx
+		errgrp.Go(func() error {
+			aggkeys := arena.Values.Alloc(len(indices), len(indices))
+			defer arena.Values.Free(aggkeys)
+			aggkwargs := arena.DictValues.Alloc(len(indices), len(indices))
+			defer arena.DictValues.Free(aggkwargs)
+			for i, index := range indices {
+				aggkeys[i] = keys[index]
+				aggkwargs[i] = kwargs[index]
+			}
+			output := arena.Values.Alloc(len(indices), len(indices))
+			defer arena.Values.Free(output)
 
-		// TODO(mohit): We should send the Get request based on the groupkey ('aggkeys') since the binlog is sharded
-		err := tier.NitrousClient.MustGet().GetMulti(ctx, aggId, aggkeys, aggkwargs, output)
-		if err != nil {
-			return nil, err
-		}
-		for i, index := range indices {
-			ret[index] = output[i]
-		}
+			// TODO(mohit): We should send the Get request based on the groupkey ('aggkeys') since the binlog is sharded
+			err := tier.NitrousClient.MustGet().GetMulti(ctx, aggId, aggkeys, aggkwargs, output)
+			if err != nil {
+				return err
+			}
+			for i, index := range indices {
+				ret[index] = output[i]
+			}
+			return nil
+		})
+	}
+	if err := errgrp.Wait(); err != nil {
+		return nil, err
 	}
 	return ret, nil
 }

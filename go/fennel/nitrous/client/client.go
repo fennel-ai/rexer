@@ -15,23 +15,11 @@ import (
 	"fennel/nitrous/rpc"
 	"fennel/resource"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/samber/mo"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
-)
-
-var aggValueQueue = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "nitrous_GetAggregateValue_queue",
-		Help: "GetAggregateValue client side queue stats",
-	},
-	[]string{"action"},
 )
 
 type NitrousClient struct {
@@ -184,34 +172,14 @@ func (nc NitrousClient) GetMulti(ctx context.Context, aggId ftypes.AggId, groupk
 		// TODO: Make codec an argument to GetMulti instead of hard-coding.
 		Codec: rpc.AggCodec_V2,
 	}
-	// Create a buffered channel of size 1 to not block the sender in case we
-	// bail-out early because of a context cancellation.
-	ch := make(chan mo.Result[[]*value.PValue], 1)
-	aggValueQueue.WithLabelValues("queuing").Inc()
-	select {
-	// Return early if context is cancelled even before we could send the request.
-	case <-ctx.Done():
-		return ctx.Err()
-	case nc.reqCh <- getRequest{
-		ctx:    ctx,
-		msg:    req,
-		respCh: ch,
-	}:
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case res := <-ch:
-			err := res.Error()
-			if err != nil {
-				return fmt.Errorf("failed to get values: %w", err)
-			} else {
-				for i, pv := range res.MustGet() {
-					output[i], err = value.FromProtoValue(pv)
-					if err != nil {
-						return fmt.Errorf("could not convert proto value to value: %w", err)
-					}
-				}
-			}
+	resp, err := nc.reader.GetAggregateValues(ctx, req)
+	if err != nil {
+		return err
+	}
+	for i, pv := range resp.Results {
+		output[i], err = value.FromProtoValue(pv)
+		if err != nil {
+			return fmt.Errorf("could not convert proto value to value: %w", err)
 		}
 	}
 	return nil
@@ -242,13 +210,6 @@ type getRequest struct {
 	msg    *rpc.AggregateValuesRequest
 	respCh chan<- mo.Result[[]*value.PValue]
 }
-
-var (
-	numStreamsGauge = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "nitrous_client_num_streams",
-		Help: "Number of open streams to nitrous server",
-	})
-)
 
 func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 	conn, err := grpc.Dial(cfg.ServerAddr,
@@ -296,100 +257,9 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to nitrous: %w", err)
 	}
-	rpcclient := rpc.NewNitrousClient(conn)
-	// Channel to send requests to workers.
-	reqCh := make(chan getRequest, 16)
-	// Channel to initite creation of a worker.
-	runWorkerCh := make(chan struct{})
-	runWorker := func() {
-		numStreamsGauge.Inc()
-		// When terminating, trigger creation of a new worker.
-		defer func() {
-			numStreamsGauge.Dec()
-			runWorkerCh <- struct{}{}
-		}()
-		ctx := context.Background()
-		ctx, cancelFn := context.WithCancel(ctx)
-		// Cancel the stream context to cleanly terminate the stream without
-		// leaking resources.
-		defer cancelFn()
-		worker, err := rpcclient.GetAggregateValues(ctx)
-		if err != nil {
-			zap.L().Error("Failed to create getter", zap.Error(err))
-			return
-		}
-		respChCh := make(chan chan<- mo.Result[[]*value.PValue], 16)
-		// Start a go-routine to collect responses from the server and send
-		// them to the appropriate caller.
-		go func() {
-			for {
-				respCh, ok := <-respChCh
-				if !ok {
-					return
-				}
-				resp, err := worker.Recv()
-				if err != nil {
-					zap.L().Warn("Failed to receive response", zap.Error(err))
-					// This request has faield, so send an error to the caller.
-					respCh <- mo.Err[[]*value.PValue](err)
-					// Return from the receiving go-routine. The worker should
-					// also terminate since the stream is broken.
-					cancelFn()
-					return
-				} else {
-					if codes.Code(resp.Status.Code) != codes.OK {
-						respCh <- mo.Err[[]*value.PValue](fmt.Errorf("server error: [Code: %v, Message: %s]", resp.Status.Code, resp.Status.Message))
-					} else {
-						respCh <- mo.Ok(resp.Results)
-					}
-				}
-			}
-		}()
-		for {
-			req, ok := <-reqCh
-			if !ok {
-				// Channel closed, no more requests expected.
-				return
-			}
-			aggValueQueue.WithLabelValues("outOfQueue").Inc()
-			// If request has already been cancelled, don't bother sending it.
-			if err := req.ctx.Err(); err != nil {
-				req.respCh <- mo.Err[[]*value.PValue](err)
-				continue
-			}
-			reqLog := &rpc.ReqLog{
-				Req: req.msg,
-				Timestamp: uint32(time.Now().UnixMilli()),
-			}
-			if err := cfg.ReqsLogProducer.LogProto(ctx, reqLog, nil); err != nil {
-				zap.L().Warn("Could not log nitrous request", zap.Error(err))
-			}
-			err := worker.Send(req.msg)
-			if err != nil {
-				zap.L().Warn("Stream with Nitrous server closed", zap.Error(err))
-				// Return an error to the caller
-				req.respCh <- mo.Err[[]*value.PValue](fmt.Errorf("could not send request: %w", err))
-				close(respChCh)
-				cancelFn()
-				return
-			} else {
-				respChCh <- req.respCh
-			}
-		}
-	}
-	go func() {
-		for {
-			<-runWorkerCh
-			go runWorker()
-		}
-	}()
-	for i := 0; i < 16; i++ {
-		runWorkerCh <- struct{}{}
-	}
 	return NitrousClient{
 		Scope:  resource.NewPlaneScope(cfg.TierID),
-		reader: rpcclient,
-		reqCh:  reqCh,
+		reader: rpc.NewNitrousClient(conn),
 		binlog: cfg.BinlogProducer,
 		binlogPartitions: cfg.BinlogPartitions,
 		aggregateConf: cfg.AggregateConfProducer,
