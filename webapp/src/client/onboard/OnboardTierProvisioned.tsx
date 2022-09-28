@@ -128,7 +128,7 @@ function OnboardTierProvisioned(props: Props) {
                                             </tr>
                                             <tr>
                                                 <td>Limit</td>
-                                                <td>{`${tier.limit} requests/day`}</td>
+                                                <td>{tier.limit > 0 ? `${tier.limit} requests/day` : "Unlimited"}</td>
                                             </tr>
                                             <tr>
                                                 <td>Status</td>
