@@ -80,7 +80,6 @@ import (
 	"runtime"
 	"sort"
 	"syscall"
-	"unsafe"
 
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
@@ -155,26 +154,25 @@ func (ht *hashTable) NumRecords() uint64 {
 	return uint64(ht.head.numRecords)
 }
 
-func (ht *hashTable) GetAll() ([]Entry, error) {
+func (ht *hashTable) GetAll(m map[string]Value) error {
 	data := ht.data
 	sofar := 0
-	entries := make([]Entry, ht.head.numRecords)
-	for i := range entries {
+	for i := uint32(0); i < ht.head.numRecords; i++ {
 		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
 		if err != nil {
-			return nil, incompleteFile
+			return incompleteFile
 		}
 		sofar += n
-		curKey := data[sofar : sofar+int(keyLen)]
+		curKey := string(data[sofar : sofar+int(keyLen)])
 		sofar += int(keyLen)
 		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false)
 		if err != nil {
-			return nil, incompleteFile
+			return incompleteFile
 		}
 		sofar += n
-		entries[i] = Entry{key: curKey, val: v}
+		m[curKey] = v
 	}
-	return entries, nil
+	return nil
 }
 
 func (ht *hashTable) Size() uint64 {
@@ -423,19 +421,19 @@ func (ht *hashTable) Close() error {
 
 var _ Table = (*hashTable)(nil)
 
-func getRecords(allEntries []Entry, numBuckets uint32) []record {
+func getRecords(data map[string]Value, numBuckets uint32) []record {
 	bucketEntries := make([][]record, numBuckets)
 	for i := range bucketEntries {
 		bucketEntries[i] = make([]record, 0, 2*numRecordsPerBucket)
 	}
-	for _, e := range allEntries {
-		hash := Hash(e.key)
+	for k, v := range data {
+		hash := Hash([]byte(k))
 		bucketID := getBucketID(hash, numBuckets)
 		bucketEntries[bucketID] = append(bucketEntries[bucketID], record{
 			bucketID: getBucketID(hash, numBuckets),
 			fp:       getFingerprint(hash),
-			key:      *(*string)(unsafe.Pointer(&e.key)),
-			value:    e.val,
+			key:      k,
+			value:    v,
 		})
 	}
 	// sort entries within each bucket by their fingerprint so that we
@@ -446,19 +444,19 @@ func getRecords(allEntries []Entry, numBuckets uint32) []record {
 		})
 	}
 	i := 0
-	records := make([]record, len(allEntries))
+	records := make([]record, len(data))
 	for _, entries := range bucketEntries {
 		i += copy(records[i:], entries)
 	}
 	return records
 }
 
-func buildHashTable(filepath string, entries []Entry) error {
+func buildHashTable(filepath string, data map[string]Value) error {
 	f, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
-	numRecords := uint32(len(entries))
+	numRecords := uint32(len(data))
 	numBuckets := numRecords / numRecordsPerBucket
 	if numBuckets == 0 {
 		numBuckets = 1
@@ -466,7 +464,7 @@ func buildHashTable(filepath string, entries []Entry) error {
 
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
-	records := getRecords(entries, numBuckets)
+	records := getRecords(data, numBuckets)
 	for _, r := range records {
 		v := r.value
 		if v.expires > 0 {

@@ -25,59 +25,6 @@ func BenchmarkHashTable(b *testing.B) {
 	})
 }
 
-func TestDedup(t *testing.T) {
-	now := time.Now().Unix()
-	scenarios := []struct {
-		entries  []Entry
-		gc       bool
-		expected []Entry
-	}{
-		{
-			[]Entry{
-				{key: []byte("k1"), val: Value{data: []byte("v1"), expires: 0, deleted: false}},
-				{key: []byte("k2"), val: Value{data: []byte("v2"), expires: 0, deleted: false}},
-				{key: []byte("k3"), val: Value{data: []byte("v3"), expires: Timestamp(now + 10), deleted: false}},
-				{key: []byte("k4"), val: Value{data: []byte("v4"), expires: Timestamp(now + 10), deleted: true}},
-				{key: []byte("k5"), val: Value{data: []byte("v5"), expires: Timestamp(now + 10), deleted: true}},
-				{key: []byte("k6"), val: Value{data: []byte("v6"), expires: Timestamp(now + 10), deleted: false}},
-				{key: []byte("k1"), val: Value{data: []byte("v12"), expires: 0, deleted: true}},
-				{key: []byte("k2"), val: Value{data: []byte("v22"), expires: Timestamp(now - 1), deleted: false}},
-				{key: []byte("k5"), val: Value{data: []byte("v5"), expires: Timestamp(now - 10), deleted: false}},
-			},
-			true,
-			[]Entry{
-				{key: []byte("k3"), val: Value{data: []byte("v3"), expires: Timestamp(now + 10), deleted: false}},
-				{key: []byte("k6"), val: Value{data: []byte("v6"), expires: Timestamp(now + 10), deleted: false}},
-			},
-		},
-		{
-			[]Entry{
-				{key: []byte("k1"), val: Value{data: []byte("v1"), expires: 0, deleted: false}},
-				{key: []byte("k2"), val: Value{data: []byte("v2"), expires: 0, deleted: false}},
-				{key: []byte("k3"), val: Value{data: []byte("v3"), expires: Timestamp(now + 10), deleted: false}},
-				{key: []byte("k4"), val: Value{data: []byte("v4"), expires: Timestamp(now + 10), deleted: true}},
-				{key: []byte("k5"), val: Value{data: []byte("v5"), expires: Timestamp(now + 10), deleted: true}},
-				{key: []byte("k6"), val: Value{data: []byte("v6"), expires: Timestamp(now + 10), deleted: false}},
-				{key: []byte("k1"), val: Value{data: []byte("v12"), expires: 0, deleted: true}},
-				{key: []byte("k2"), val: Value{data: []byte("v22"), expires: Timestamp(now - 1), deleted: false}},
-				{key: []byte("k5"), val: Value{data: []byte("v5"), expires: Timestamp(now - 10), deleted: false}},
-			},
-			false,
-			[]Entry{
-				{key: []byte("k1"), val: Value{data: []byte("v12"), expires: 0, deleted: true}},
-				{key: []byte("k2"), val: Value{data: []byte("v22"), expires: Timestamp(now - 1), deleted: false}},
-				{key: []byte("k3"), val: Value{data: []byte("v3"), expires: Timestamp(now + 10), deleted: false}},
-				{key: []byte("k4"), val: Value{data: []byte("v4"), expires: Timestamp(now + 10), deleted: true}},
-				{key: []byte("k5"), val: Value{data: []byte("v5"), expires: Timestamp(now - 10), deleted: false}},
-				{key: []byte("k6"), val: Value{data: []byte("v6"), expires: Timestamp(now + 10), deleted: false}},
-			},
-		},
-	}
-	for _, scenario := range scenarios {
-		assert.ElementsMatch(t, scenario.expected, dedup(scenario.gc, scenario.entries))
-	}
-}
-
 func testTableType(t *testing.T, type_ TableType, sz int) {
 	rand.Seed(time.Now().Unix())
 	numShards := 4
