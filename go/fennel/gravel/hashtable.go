@@ -688,7 +688,7 @@ func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, err
 	return total + uint32(vl), nil
 }
 
-// take the highest order 24 bits
+// take the arbitrary middle bits from the hash and trim to 16 bits
 func getFingerprint(h uint64) fingerprint {
 	return fingerprint(h >> 29)
 }

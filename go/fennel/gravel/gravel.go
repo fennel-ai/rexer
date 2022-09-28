@@ -114,6 +114,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 		table := tables[i]
 		maybeInc(sample, &g.stats.TableIndexReads)
 		val, err := table.Get(key, hash)
+		tablesQueried++
 		switch err {
 		case ErrNotFound:
 		case nil:
