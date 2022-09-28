@@ -70,7 +70,7 @@ func SendConfirmationEmail(c context.Context, db *gorm.DB, client *sendgrid.Clie
 		return user, result.Error
 	}
 
-	from := mail.NewEmail("Fennel AI", "xiao+dev@fennel.ai")
+	from := mail.NewEmail("Fennel AI", "no-reply@fennel.ai")
 	subject := "Almost there, let’s confirm your email"
 	to := mail.NewEmail("", user.Email)
 
@@ -178,7 +178,7 @@ func SendResetPasswordEmail(c context.Context, db *gorm.DB, client *sendgrid.Cli
 		return result.Error
 	}
 
-	from := mail.NewEmail("Fennel AI", "xiao+dev@fennel.ai")
+	from := mail.NewEmail("Fennel AI", "no-reply@fennel.ai")
 	subject := "Link to Reset your password"
 	to := mail.NewEmail("", user.Email)
 
