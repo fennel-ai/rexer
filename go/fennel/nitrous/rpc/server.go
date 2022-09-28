@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fennel/lib/arena"
 	"fmt"
 	"google.golang.org/grpc/keepalive"
 	"io"
@@ -56,7 +57,7 @@ const (
 )
 
 type AggDB interface {
-	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error)
+	Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec AggCodec, groupkeys []string, kwargs []value.Dict, ret []value.Value) error
 	GetLag() (int, error)
 	GetBinlogPollTimeout() time.Duration
 
@@ -144,7 +145,10 @@ func (s *Server) processRequest(ctx context.Context, req *AggregateValuesRequest
 			return nil, fmt.Errorf("error converting kwarg [%s] to value: %w", s, err)
 		}
 	}
-	vals, err := s.aggdb.Get(ctx, tierId, aggId, codec, req.GetGroupkeys(), kwargs)
+	gks := req.GetGroupkeys()
+	vals := arena.Values.Alloc(len(gks), len(gks))
+	defer arena.Values.Free(vals)
+	err = s.aggdb.Get(ctx, tierId, aggId, codec, gks, kwargs, vals)
 	if err != nil {
 		return nil, fmt.Errorf("error getting aggregate values: %w", err)
 	}

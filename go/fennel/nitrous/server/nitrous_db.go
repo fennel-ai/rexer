@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fennel/lib/arena"
 	"fmt"
 	"path"
 	"sync"
@@ -456,11 +457,11 @@ func (ndb *NitrousDB) setupAggregateTable(tierId ftypes.RealmID, aggId ftypes.Ag
 	return nil
 }
 
-func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error) {
+func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, groupkeys []string, kwargs []value.Dict, ret []value.Value) error {
 	// Get the aggregate store for this aggregate.
 	v, ok := ndb.tables.Load(aggKey{tierId, aggId, codec})
 	if !ok {
-		return nil, fmt.Errorf("no table for aggregate %d in tier %d with codec %d", aggId, tierId, codec)
+		return fmt.Errorf("no table for aggregate %d in tier %d with codec %d", aggId, tierId, codec)
 	}
 	// figure out the shards where the groups keys will be situated
 	shardToGkIdx := make(map[int32][]int, 0)
@@ -472,8 +473,6 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 		}
 		shardToGkIdx[shard] = append(shardToGkIdx[shard], i)
 	}
-	// TODO(mohit): Consider using Arena
-	ret := make([]value.Value, len(groupkeys))
 	egrp, _ := errgroup.WithContext(ctx)
 	for s, is := range shardToGkIdx {
 		shard := s
@@ -486,14 +485,22 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 			if s, ok = s.(hangar.Hangar); !ok {
 				return fmt.Errorf("instance loaded from the shards is not a hangar instance: %v", s)
 			}
-			// TODO(mohit): Consider using Arena
-			keys := make([]string, len(indices))
-			args := make([]value.Dict, len(indices))
+
+			keys := arena.Strings.Alloc(len(indices), len(indices))
+			defer arena.Strings.Free(keys)
+			args := arena.DictValues.Alloc(len(indices), len(indices))
+			defer arena.DictValues.Free(args)
+			// TODO(mohit): This seems inefficient.. ret is already allocated from Arena and then we are
+			// allocating parts of the ret through Arena again
+			//
+			// consider passing id mapping to write to the correct indices directly in `ret`
+			vals := arena.Values.Alloc(len(indices), len(indices))
+			defer arena.Values.Free(vals)
 			for i, id := range indices {
 				keys[i] = groupkeys[id]
 				args[i] = kwargs[id]
 			}
-			vals, err := v.(store.Table).Get(ctx, keys, args, s.(hangar.Hangar))
+			err := v.(store.Table).Get(ctx, keys, args, s.(hangar.Hangar), vals)
 			if err != nil {
 				return err
 			}
@@ -507,9 +514,9 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 		})
 	}
 	if err := egrp.Wait(); err != nil {
-		return ret, fmt.Errorf("failed to get values from sharded gravel: %v", err)
+		return fmt.Errorf("failed to get values from sharded gravel: %v", err)
 	}
-	return ret, nil
+	return nil
 }
 
 func (ndb *NitrousDB) GetLag() (int, error) {

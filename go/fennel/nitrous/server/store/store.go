@@ -23,7 +23,7 @@ var (
 
 type Table interface {
 	Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
-	Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar) ([]value.Value, error)
+	Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar, ret []value.Value) error
 	Options() aggregate.Options
 }
 

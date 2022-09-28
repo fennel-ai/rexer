@@ -331,7 +331,7 @@ func (c *Closet) Options() aggregate.Options {
 	return c.mr.Options()
 }
 
-func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar) ([]value.Value, error) {
+func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, store hangar.Hangar, ret []value.Value) error {
 	ctx, t := timer.Start(ctx, c.tierId, "nitrous.closet.get")
 	defer t.Stop()
 	kgs := make([]hangar.KeyGroup, 0, len(keys)*(c.bucketizer.NumBucketsHint()/c.levelSize+2))
@@ -343,15 +343,15 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 	for i, key := range keys {
 		duration, err := getRequestDuration(c.mr.Options(), kwargs[i])
 		if err != nil {
-			return nil, fmt.Errorf("error extracting duration from request: %w", err)
+			return fmt.Errorf("error extracting duration from request: %w", err)
 		}
 		buckets, err := c.bucketizer.Bucketize(c.mr, duration)
 		if err != nil {
-			return nil, fmt.Errorf("error bucketizing: %w", err)
+			return fmt.Errorf("error bucketizing: %w", err)
 		}
 		encoded, err := c.getKeyGroupsToRead(key, buckets)
 		if err != nil {
-			return nil, fmt.Errorf("error encoding: %w", err)
+			return fmt.Errorf("error encoding: %w", err)
 		}
 		kgs = append(kgs, encoded...)
 		numKeys[i] = len(encoded)
@@ -369,9 +369,8 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 	}
 	vgs, err := store.GetMany(ctx, kgs)
 	if err != nil {
-		return nil, fmt.Errorf("error getting values: %w", err)
+		return fmt.Errorf("error getting values: %w", err)
 	}
-	ret := make([]value.Value, len(keys))
 	// Slice allocated for storing the result of each field.
 	vals := arena.Values.Alloc(maxFields, maxFields)
 	defer arena.Values.Free(vals)
@@ -383,7 +382,7 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 				if len(v) > 0 {
 					uv, err := value.Unmarshal(v)
 					if err != nil {
-						return nil, fmt.Errorf("error decoding value(%s): %w", uv, err)
+						return fmt.Errorf("error decoding value(%s): %w", uv, err)
 					}
 					intermediate = append(intermediate, uv)
 				}
@@ -391,11 +390,11 @@ func (c *Closet) Get(ctx context.Context, keys []string, kwargs []value.Dict, st
 		}
 		ret[i], err = c.mr.Reduce(intermediate)
 		if err != nil {
-			return nil, fmt.Errorf("error reducing: %w", err)
+			return fmt.Errorf("error reducing: %w", err)
 		}
 		vgs = vgs[n:]
 	}
-	return ret, nil
+	return nil
 }
 
 func (c *Closet) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) ([]hangar.Key, []hangar.ValGroup, error) {
