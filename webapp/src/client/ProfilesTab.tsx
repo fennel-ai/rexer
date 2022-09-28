@@ -10,9 +10,9 @@ import profileStyles from "./styles/ProfilesTab.module.scss";
 const columns = [
     { title: 'otype', dataIndex: 'otype', key: 'otype' },
     { title: 'oid', dataIndex: 'oid', key: 'oid' },
-    { title: 'key', dataIndex: 'keyCol', key: 'keyCol' },
-    { title: "value", dataIndex: 'value', key: 'value' },
-    { title: "updated time", dataIndex: 'updatedTime', key: 'updatedTime' },
+    { title: 'Key', dataIndex: 'keyCol', key: 'keyCol' },
+    { title: "Value", dataIndex: 'value', key: 'value' },
+    { title: "Updated Time", dataIndex: 'updatedTime', key: 'updatedTime' },
 ];
 
 interface ProfileResponse {
