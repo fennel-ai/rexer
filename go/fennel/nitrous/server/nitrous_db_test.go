@@ -324,3 +324,6 @@ func TestGetLag(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, 1, lag)
 }
+
+// Test case: 1 tailer gets 1 partition. Only tails and maintains a state for it
+

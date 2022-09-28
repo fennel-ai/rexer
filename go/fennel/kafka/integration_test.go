@@ -5,6 +5,8 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"github.com/samber/mo"
+	"go.uber.org/zap"
 	"math/rand"
 	"sync"
 	"testing"
@@ -276,6 +278,151 @@ func integrationConsumer(t *testing.T, scope resource.Scope, topic, groupid, off
 	assert.NoError(t, err)
 	consumer := resource.(FConsumer)
 	return consumer
+}
+
+func TestProduceToOutOfIndexPartition(t *testing.T) {
+	topic := "testtopic-outofindex-partition"
+	tierId := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierId)
+
+	resource, err := RemoteProducerConfig{
+		Topic:           topic,
+		BootstrapServer: test_kafka_servers,
+		Username:        kafka_username,
+		Password:        kafka_password,
+		SaslMechanism: 	 SaslScramSha512Mechanism,
+		Scope:           scope,
+	}.Materialize()
+	assert.NoError(t, err)
+	producer := resource.(FProducer)
+	defer teardownKafkaTopic(t, scope, topic)
+	ctx := context.Background()
+
+	// logging to 2/1 partition, should fail
+	err = producer.LogToPartition(ctx, []byte("foo"), 2, nil)
+	// message is successfully queued
+	assert.NoError(t, err)
+
+	// consumer would not be able to read anything
+	//
+	// we can optionally subscribe to the producer events to watch for errors
+	consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
+	x, err := consumer.ReadBatch(ctx, 1, 5 * time.Second)
+	assert.NoError(t, err)
+	assert.Empty(t, x)
+}
+
+func TestExplicitPartitionProducer(t *testing.T) {
+	topic := "testtopic-explicit-partition"
+	tierId := ftypes.RealmID(rand.Uint32())
+	scope := resource.NewTierScope(tierId)
+	producer := multiPartitionProducer(t, scope, topic)
+	defer teardownKafkaTopic(t, scope, topic)
+
+	// create the ordered list of messages producer to each partition
+	ctx := context.Background()
+	msgs := make(map[int][][]byte, 2)
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 10; j++ {
+			msg := []byte(fmt.Sprintf("%d_%s", i, utils.RandString(j+1)))
+			msgs[i] = append(msgs[i], msg)
+			err := producer.LogToPartition(ctx, msg, int32(i), nil)
+			assert.NoError(t, err)
+		}
+	}
+
+	consumers := make([]FConsumer, 0)
+
+	// create two consumers assigned to each of the partition
+	groupid := utils.RandString(5)
+	resource1, err := RemoteConsumerConfig{
+		BootstrapServer: test_kafka_servers,
+		Username:        kafka_username,
+		Password:        kafka_password,
+		SaslMechanism:   SaslScramSha512Mechanism,
+		ConsumerConfig: ConsumerConfig{
+			Scope:        scope,
+			Topic:        topic,
+			GroupID:      groupid,
+			OffsetPolicy: DefaultOffsetPolicy,
+			RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
+				zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", groupid), zap.String("consumer", c.String()), zap.String("event", e.String()))
+				switch event := e.(type) {
+				case kafka.AssignedPartitions:
+					if len(event.Partitions) > 0 {
+						toppars := make(kafka.TopicPartitions, 1)
+						toppars = append(toppars, kafka.TopicPartition{
+							Topic: &topic,
+							Partition: 0,
+							Offset: 0,
+						})
+						zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
+						err := c.Assign(toppars)
+						if err != nil {
+							zap.L().Fatal("Failed to assign partitions", zap.Error(err))
+						}
+					}
+				}
+				return nil
+			}),
+		},
+	}.Materialize()
+	assert.NoError(t, err)
+	// assigned with partition 0/1
+	c1 := resource1.(FConsumer)
+	// defer c1.Close()
+	consumers = append(consumers, c1)
+
+	resource2, err := RemoteConsumerConfig{
+		BootstrapServer: test_kafka_servers,
+		Username:        kafka_username,
+		Password:        kafka_password,
+		SaslMechanism:   SaslScramSha512Mechanism,
+		ConsumerConfig: ConsumerConfig{
+			Scope:        scope,
+			Topic:        topic,
+			GroupID:      groupid,
+			OffsetPolicy: DefaultOffsetPolicy,
+			RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
+				zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", groupid), zap.String("consumer", c.String()), zap.String("event", e.String()))
+				switch event := e.(type) {
+				case kafka.AssignedPartitions:
+					if len(event.Partitions) > 0 {
+						toppars := make(kafka.TopicPartitions, 1)
+						toppars = append(toppars, kafka.TopicPartition{
+							Topic: &topic,
+							Partition: 1,
+							Offset: 0,
+						})
+						zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
+						err := c.Assign(toppars)
+						if err != nil {
+							zap.L().Fatal("Failed to assign partitions", zap.Error(err))
+						}
+					}
+				}
+				return nil
+			}),
+		},
+	}.Materialize()
+	assert.NoError(t, err)
+	// assigned with partition 1/1
+	c2 := resource2.(FConsumer)
+	// defer c2.Close()
+
+	consumers = append(consumers, c2)
+
+	fmt.Printf("%v\n", consumers)
+
+	// validate that the consumers are reading from the assigned partitions and match the messages produced into those
+	// partitions
+	for i, consumer := range consumers {
+		d, err := consumer.ReadBatch(ctx, 10, 10 * time.Second)
+		assert.NoError(t, err)
+		for j, dd := range d {
+			assert.Equal(t, dd, msgs[i][j])
+		}
+	}
 }
 
 func testSameKeyReadBySameConsumer(t *testing.T, producer FProducer, consumer1, consumer2 FConsumer, ordered bool) {

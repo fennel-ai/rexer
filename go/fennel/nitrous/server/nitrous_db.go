@@ -468,7 +468,7 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 		// get shard
 		shard := int32(nitrous.HashedPartition(gk, ndb.binlogPartitions))
 		if _, ok := shardToGkIdx[shard]; !ok {
-			shardToGkIdx[shard] = make([]int, len(groupkeys))
+			shardToGkIdx[shard] = make([]int, 0)
 		}
 		shardToGkIdx[shard] = append(shardToGkIdx[shard], i)
 	}
