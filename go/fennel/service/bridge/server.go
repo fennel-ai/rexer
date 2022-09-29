@@ -439,6 +439,7 @@ func (s *server) Home(c *gin.Context) {
 	}
 	if len(tiers) == 0 {
 		c.Redirect(http.StatusFound, TierManagementURL)
+		return
 	}
 	tier := tiers[0]
 	c.Redirect(http.StatusFound, tierDashboardURL(tier))
