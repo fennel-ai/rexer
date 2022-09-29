@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"bytes"
 	"capnproto.org/go/capnp/v3"
 	"fennel/lib/utils"
 	"fennel/lib/value"
@@ -129,7 +128,7 @@ func benchmarkCaptain(b *testing.B) {
 	b.StartTimer()
 	parsedOps := make([]*NitrousBinlogEventCap, 10_000)
 	for i := 0; i < 10_000; i++ {
-		msg, err := capnp.NewDecoder(bytes.NewBuffer(ops[i])).Decode()
+		msg, err := capnp.Unmarshal(ops[i])
 		assert.NoError(b, err)
 		x, err := ReadRootNitrousBinlogEventCap(msg)
 		assert.NoError(b, err)
@@ -144,9 +143,9 @@ func benchmarkCaptain(b *testing.B) {
 }
 
 /*
-BenchmarkUnmarshal/oneof-10         	1000000000	         0.003888 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshal/simple-10        	1000000000	         0.003023 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshal/captain-simple-10         	1000000000	         0.003326 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/oneof-10         	1000000000	         0.003835 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/simple-10        	1000000000	         0.003041 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/captain-simple-10         	1000000000	         0.002221 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkUnmarshal(b *testing.B) {
 	b.Run("oneof", benchmarkOneof)
