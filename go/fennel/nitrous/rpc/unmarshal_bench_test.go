@@ -107,12 +107,19 @@ func benchmarkCaptain(b *testing.B) {
 		assert.NoError(b, err)
 		cv, err := NewRootNitrousBinlogEventCap(seg)
 		cv.SetTierId(uint32(i))
+
 		_, s, err := capnp.NewMessage(capnp.SingleSegment(nil))
 		aggEvent, err := NewAggEventCap(s)
 		aggEvent.SetAggId(uint32(21))
 		err = aggEvent.SetGroupkey(utils.RandString(10))
 		assert.NoError(b, err)
 		aggEvent.SetTimestamp(uint32(i * 100))
+		v := value.Int(10)
+		capv, _, err := value.ToCapnValue(v)
+		assert.NoError(b, err)
+		err = aggEvent.SetValue(capv)
+		assert.NoError(b, err)
+
 		err = cv.SetAggEvent(aggEvent)
 		assert.NoError(b, err)
 
@@ -143,9 +150,9 @@ func benchmarkCaptain(b *testing.B) {
 }
 
 /*
-BenchmarkUnmarshal/oneof-10         	1000000000	         0.003835 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshal/simple-10        	1000000000	         0.003041 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshal/captain-simple-10         	1000000000	         0.002221 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/oneof-10         	1000000000	         0.003902 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/simple-10        	1000000000	         0.003139 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/captain-simple-10         	1000000000	         0.002178 ns/op	       0 B/op	       0 allocs/op
 */
 func BenchmarkUnmarshal(b *testing.B) {
 	b.Run("oneof", benchmarkOneof)

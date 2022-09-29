@@ -6,6 +6,7 @@ import (
 	capnp "capnproto.org/go/capnp/v3"
 	text "capnproto.org/go/capnp/v3/encoding/text"
 	schemas "capnproto.org/go/capnp/v3/schemas"
+	value "fennel/lib/value"
 )
 
 type AggEventCap capnp.Struct
@@ -14,12 +15,12 @@ type AggEventCap capnp.Struct
 const AggEventCap_TypeID = 0xe9b3b3f9d1c6adb6
 
 func NewAggEventCap(s *capnp.Segment) (AggEventCap, error) {
-	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
 	return AggEventCap(st), err
 }
 
 func NewRootAggEventCap(s *capnp.Segment) (AggEventCap, error) {
-	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
 	return AggEventCap(st), err
 }
 
@@ -89,12 +90,36 @@ func (s AggEventCap) SetTimestamp(v uint32) {
 	capnp.Struct(s).SetUint32(4, v)
 }
 
+func (s AggEventCap) Value() (value.CapnValue, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return value.CapnValue(p.Struct()), err
+}
+
+func (s AggEventCap) HasValue() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s AggEventCap) SetValue(v value.CapnValue) error {
+	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
+}
+
+// NewValue sets the value field to a newly
+// allocated value.CapnValue struct, preferring placement in s's segment.
+func (s AggEventCap) NewValue() (value.CapnValue, error) {
+	ss, err := value.NewCapnValue(capnp.Struct(s).Segment())
+	if err != nil {
+		return value.CapnValue{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
 // AggEventCap_List is a list of AggEventCap.
 type AggEventCap_List = capnp.StructList[AggEventCap]
 
 // NewAggEventCap creates a new list of AggEventCap.
 func NewAggEventCap_List(s *capnp.Segment, sz int32) (AggEventCap_List, error) {
-	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
 	return capnp.StructList[AggEventCap](l), err
 }
 
@@ -104,6 +129,10 @@ type AggEventCap_Future struct{ *capnp.Future }
 func (p AggEventCap_Future) Struct() (AggEventCap, error) {
 	s, err := p.Future.Struct()
 	return AggEventCap(s), err
+}
+
+func (p AggEventCap_Future) Value() value.CapnValue_Future {
+	return value.CapnValue_Future{Future: p.Future.Field(1, nil)}
 }
 
 type NitrousBinlogEventCap capnp.Struct
@@ -206,25 +235,28 @@ func (p NitrousBinlogEventCap_Future) AggEvent() AggEventCap_Future {
 	return AggEventCap_Future{Future: p.Future.Field(0, nil)}
 }
 
-const schema_896ac3e20ff6ad0c = "x\xdal\x8e1/\x03a\x1c\xc6\x9f\xe7}[\xedp" +
-	"\xe8\xa5M\xd8$\xc2 QQ\x93tQ\x9a&*H" +
-	"\xffbd\xb8p\xb9\x1cz\xbd\xb4W\xe2#\xf8\x02&" +
-	"\x9b\xb914\xf1\x05\x84\x9d\xc4\x17\xb0\x19-\x12\x03\xaf" +
-	"\\Kk\xb0=\xef\x9b_\xfe\xbf_\xe6\xba\x94(\x8c" +
-	"N((\x99L\x8e\x98\xaf\xce\xe5\xd6\xf3\xec\xd5=d" +
-	"\x8c4V\xe7}\xfc\xe5\xee\xe8\x02I\xa6\x80\xc2\xdb4" +
-	"\xb3\x8c\x97\xfdy\x06\x9a\xdb\xce\xc3\xe3G\xb7\xfb\xfa\x1f" +
-	"\x9b\xdd\xe7S\xd6\xef-\x977\xc8\x9b\xc0\x8f\x9a\x8dv" +
-	"kA\x1f8a\x10\x16\xb7\xfb\xcf5?8ix\x95" +
-	"S7\x88Re'\xac\x91\x92\xd6\x09 A\xc0\x9e+" +
-	"\x022\xa3)\x8b\x8ad\x8e\xf1_~\x03\x90yMY" +
-	"V\\\x89|\xb7Y=d\x1a\x8ai\xd08^\xff\x12" +
-	"\x00f\x86u 3\xe0 @\xf5\x03V\x7f\xe0\xb2\xc3" +
-	"\x9e\xd6\x1ah+K\x80\x944es\xa8\xad\xc6\xdau" +
-	"M\xd9U\xb4\x15sT\x80-;\x80\xd44eOq" +
-	"\xca\xf1\xbc?)^\xb3\xd1\x0e\x8f\xdd\xf38\xc5\x82\xa2" +
-	"\x05\x9a\xc8\xaf\xbb\xad\xc8\xa9\x83\xe1/\xf7\x1d\x00\x00\xff" +
-	"\xff[\"^\x7f"
+const schema_896ac3e20ff6ad0c = "x\xda\\\x8f?K#A\x18\x87\x7f\xbf\x99\xe4\x92\"" +
+	"\xb9\xec\x92\\q\xd7\x04\x8e;\xb8\x83\xbb\xe3\xeel$" +
+	"\x8d\x7f\x82\x85\x82\xe2\xd8\x096\x83Y\xd6\xd5\xcdfI" +
+	"v\x13\x05;+\x1b;\xadl\xfc\x00[H\xc0/ " +
+	"\xda+\xd8Z\xd8\x88\xa5\x8dh\xe3\xca&1\x11\xbbw" +
+	"\x86g\xe6y^\xe3z2\xf5/\xdf\x91\x10\xeaG\xfa" +
+	"C\xfc\x1c\x1d\xcc_}?<\x83\xfaH\xc6\xb9\xe8\xa1" +
+	"ps\xba\xbe\x8b43\xc0\xd8\x11\xbf\xb2x\x9c\x8c\xc5" +
+	"\x88\x1d0>\x89\xce/\x9e\xba\xdd\xbb\xf7\xb4H\x90\xbc" +
+	"\xb8,~\xeeM\x9f\xc4-\x96c\xcf\x09\x9a\x8d\xb0\xf5" +
+	"G\xaej\xdf\xf3+\x0b\xfd\xe3\xb4\xe3\xb9\x0d{\xa6m" +
+	"yA\xa6\xaa\xfdERee\x0aH\x110\x7fV\x00" +
+	"\xf5MR\xfd\x15$KL\xee~\xcf\x01\xea\x97\xa4\x1a" +
+	"\x17\x9c\x08\x1c\xab9[c\x16\x82Y0\xd6v\xff'" +
+	"\x004Fu \x0dp\x18 \xfa\x01S\x03\xb8\xaa\xd9" +
+	"\xd3\x1aC\xad\xfe\x0f\xa8\x15I\xb56\xd2Z\x89\xb6&" +
+	"\xa9|AS\xb0D\x01\x98\xf5%@\xb9\x92jS\xd0" +
+	"\x94,Q\x02f\x98\xbc\xf6%\xd5\xb6`Y\xdb\xf6\x9b" +
+	">\xbb\xd9\x08\xfd\x0dk+\xe9\xcbA0\x07\xc6\x81S" +
+	"\xb7Z\x81\xae\x83\xfe+Wnk7\xb4h\xc4_\xf6" +
+	"\x0b\x8f{;\xee\xfd`\x83\x97\x00\x00\x00\xff\xffo\xc6" +
+	"i\xb6"
 
 func init() {
 	schemas.Register(schema_896ac3e20ff6ad0c,
