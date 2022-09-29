@@ -14,6 +14,7 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.8.2
 	github.com/detailyang/fastrand-go v0.0.0-20191106153122-53093851e761
 	github.com/dgraph-io/badger/v3 v3.2103.2
+	github.com/gin-contrib/gzip v0.0.6
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-redis/redis/v8 v8.11.5
@@ -31,10 +32,10 @@ require (
 	github.com/samber/lo v1.25.0
 	github.com/samber/mo v1.0.0
 	github.com/segmentio/fasthash v1.0.3
+	github.com/segmentio/kafka-go v0.4.35
 	github.com/sendgrid/sendgrid-go v3.11.1+incompatible
 	github.com/stretchr/testify v1.8.0
 	github.com/zeebo/xxh3 v1.0.2
-	go.etcd.io/bbolt v1.3.6
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.33.0
 	go.opentelemetry.io/contrib/propagators/aws v1.7.0
 	go.opentelemetry.io/otel v1.8.0
@@ -44,7 +45,6 @@ require (
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	google.golang.org/appengine v1.6.6
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
@@ -67,7 +67,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/elastic/gosigar v0.12.0 // indirect
-	github.com/gin-contrib/gzip v0.0.6 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
@@ -95,10 +94,11 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
-	github.com/segmentio/kafka-go v0.4.35 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/twmb/murmur3 v1.1.5 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
+	github.com/xdg/scram v1.0.5 // indirect
+	github.com/xdg/stringprep v1.0.3 // indirect
 	go.opencensus.io v0.22.5 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.7.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.7.0 // indirect

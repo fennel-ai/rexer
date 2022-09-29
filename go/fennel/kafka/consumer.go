@@ -283,6 +283,9 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	if err := configmap.SetKey("enable.auto.commit", false); err != nil {
 		return nil, err
 	}
+	//if err := configmap.SetKey("debug", "consumer,cgrp"); err != nil {
+	//	return nil, err
+	//}
 
 	// Enable application to receive rebalance event notifications.
 	// This is required for the consumer to be able to assign specific topic
