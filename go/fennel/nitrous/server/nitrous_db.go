@@ -128,19 +128,19 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	//}
 
 	//for _, toppar := range requiredToppar {
-		// Instantiate gravel instance per tailer
-		//
-		// We set the `MaxTableSize` for each gravel instance taking total system memory into consideration.
-		// We expect the following entities to be in-memory:
-		// i) Memtable of each tailer
-		// ii) Index of the files in the disk (using mmap) for fast lookups
-		// iii) >= 2 files loaded into memory for compaction
-		//
-		// + leaving some room for any unexpected entities around
-		//
-		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
-		// memory to be cost efficient
-	gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("binlog").WithNumShards(16 * 32).WithCompactionWorkerNum(2 * 16)
+	// Instantiate gravel instance per tailer
+	//
+	// We set the `MaxTableSize` for each gravel instance taking total system memory into consideration.
+	// We expect the following entities to be in-memory:
+	// i) Memtable of each tailer
+	// ii) Index of the files in the disk (using mmap) for fast lookups
+	// iii) >= 2 files loaded into memory for compaction
+	//
+	// + leaving some room for any unexpected entities around
+	//
+	// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
+	// memory to be cost efficient
+	gravelOpts := gravel.DefaultOptions().WithMaxTableSize(4 << 30).WithName("binlog").WithNumShards(16 * 32)
 	gravelDb, err := gravelDB.NewHangar(n.PlaneID, n.DbDir, &gravelOpts, encoders.Default())
 	if err != nil {
 		return nil, err
@@ -507,7 +507,7 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 	//	ret[id] = vals[i]
 	//}
 	//return nil
-		//})
+	//})
 	//}
 	//if err := egrp.Wait(); err != nil {
 	//	return ret, fmt.Errorf("failed to get values from sharded gravel: %v", err)
