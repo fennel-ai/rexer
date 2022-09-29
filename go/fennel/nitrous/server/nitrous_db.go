@@ -114,18 +114,18 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	// if the assigned partitions are empty, assume all binlog partitions
 	//
 	// else, filter out the topic partitions which are assigned to this nitrous instance
-	//requiredToppar := make(kafka.TopicPartitions, 0, len(n.Partitions))
-	//if len(n.Partitions) == 0 {
-	//	requiredToppar = toppars
-	//} else {
-	//	for _, par := range n.Partitions {
-	//		for _, toppar := range toppars {
-	//			if toppar.Partition == par {
-	//				requiredToppar = append(requiredToppar, toppar)
-	//			}
-	//		}
-	//	}
-	//}
+	requiredToppar := make(kafka.TopicPartitions, 0, len(n.Partitions))
+	if len(n.Partitions) == 0 {
+		requiredToppar = toppars
+	} else {
+		for _, par := range n.Partitions {
+			for _, toppar := range toppars {
+				if toppar.Partition == par {
+					requiredToppar = append(requiredToppar, toppar)
+				}
+			}
+		}
+	}
 
 	//for _, toppar := range requiredToppar {
 	// Instantiate gravel instance per tailer
@@ -145,12 +145,26 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	t, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppars, gravelDb, ndb.Process, tailer.DefaultPollTimeout, tailer.DefaultTailerBatch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup tailer for partitions %v: %w", toppars, err)
-	}
-	tailers = append(tailers, t)
 	ndb.shards = gravelDb
+	for _, toppar := range requiredToppar {
+		// Instantiate gravel instance per tailer
+		//
+		// We set the `MaxTableSize` for each gravel instance taking total system memory into consideration.
+		// We expect the following entities to be in-memory:
+		// i) Memtable of each tailer
+		// ii) Index of the files in the disk (using mmap) for fast lookups
+		// iii) >= 2 files loaded into memory for compaction
+		//
+		// + leaving some room for any unexpected entities around
+		//
+		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
+		// memory to be cost efficient
+		t, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppar, gravelDb, ndb.Process, tailer.DefaultPollTimeout, tailer.DefaultTailerBatch)
+		if err != nil {
+			return nil, fmt.Errorf("failed to setup tailer for partition %v: %w", toppar, err)
+		}
+		tailers = append(tailers, t)
+	}
 	ndb.binlogTailers = tailers
 
 	// Create gravel for aggregate definitions, we don't expect a lot of data to be here, so we use a small ~10MB
@@ -178,7 +192,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if len(aggrConfToppars) > 1 {
 		return nil, fmt.Errorf("expected aggregate conf topic partitions to be 1, found: %d", len(aggrConfToppars))
 	}
-	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars, aggregatesDb, ndb.ProcessAggregates, 1*time.Second /*pollTimeout*/, 100 /*batchSize*/)
+	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars[0], aggregatesDb, ndb.ProcessAggregates, 1*time.Second /*pollTimeout*/, 100 /*batchSize*/)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aggregate conf tailer: %v", err)
 	}
