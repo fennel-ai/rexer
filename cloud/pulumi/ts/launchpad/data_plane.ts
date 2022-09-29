@@ -431,6 +431,7 @@ const setupResources = async () => {
         customerId: input.customer === undefined ? 0 : input.customer.id,
         region: input.region,
         nitrous: nitrousOutput,
+        prometheus: prometheusOutput,
     }
 };
 

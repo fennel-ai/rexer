@@ -34,7 +34,7 @@ function getStackName(scope: Scope, scopeId: number): string {
     }
 }
 
-async function getProperty(data: any, path: string[]): Promise<string[]> {
+export async function getProperty(data: any, path: string[]): Promise<string[]> {
     var dataJsonStr = JSON.stringify(data)
     dataJsonStr = dataJsonStr.replaceAll("launchpad:", "")
     var result: string[] = []
@@ -107,14 +107,18 @@ export class MothershipDBUpdater {
         const planeStackName = getFullyQualifiedStackName(getStackName(Scope.DATAPLANE, +planeId))
         return workspace.stackOutputs(planeStackName).then(output => {
             console.log(output)
-            return getProperty(output, [".region.value", ".vpc.value.vpcId", ".roleArn.value"]).then(dataArr => {
+            return getProperty(output, [".region.value", ".vpc.value.vpcId", ".roleArn.value", ".prometheus.value.loadBalancerURL"]).then(dataArr => {
                 return this.db.then(db => {
+                    console.log(dataArr)
                     const region = dataArr[0]
                     const vpcId = dataArr[1]
                     const awsRole = dataArr[2]
-                    db.query(sql`INSERT INTO data_plane (data_plane_id, aws_role, region, pulumi_stack, vpc_id, eks_instance_id, kafka_instance_id, db_instance_id, memory_db_instance_id, elasticache_instance_id, deleted_at, created_at, updated_at)
-                    VALUES (${planeId}, ${awsRole}, ${region}, ${planeStackName}, ${vpcId}, -1, -1, -1, -1, -1, 0, ${time}, ${time})
-                    ON DUPLICATE KEY UPDATE data_plane_id=${planeId}, aws_role=${awsRole}, region=${region}, pulumi_stack=${planeStackName}, vpc_id=${vpcId}, updated_at=${time}`)
+                    const metricsServerUrl = `http://${dataArr[3]}`
+                    console.log("metrics server url " + metricsServerUrl)
+
+                    db.query(sql`INSERT INTO data_plane (data_plane_id, aws_role, region, pulumi_stack, vpc_id, deleted_at, created_at, updated_at, metrics_server_address)
+                    VALUES (${planeId}, ${awsRole}, ${region}, ${planeStackName}, ${vpcId}, 0, ${time}, ${time}, ${metricsServerUrl})
+                    ON DUPLICATE KEY UPDATE data_plane_id=${planeId}, aws_role=${awsRole}, region=${region}, pulumi_stack=${planeStackName}, vpc_id=${vpcId}, updated_at=${time}, metrics_server_address=${metricsServerUrl}`)
                 })
             })
         })

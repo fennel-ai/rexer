@@ -52,7 +52,7 @@ export const serviceEnvs = [
                 key: "mothership_endpoint"
             }
         }
-    }
+    },
 ];
 
 export function ReadinessProbe(metricPort: number) {

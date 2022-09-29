@@ -36,12 +36,23 @@ const controlPlane: vpc.controlPlaneConfig = {
     secondaryPublicSubnet: "subnet-0f3a7cbfd18588331",
 }
 
-const selfServeCustomer: Customer = {
-    id: 0,
-    domain: "fennel.ai",
-    name: "self-serve",
-}
-
+const customers: Record<number, Customer> = {
+    1: {
+        id: 1,
+        domain: "fennel.ai",
+        name: "self-serve",
+    },
+    2: {
+        id: 2,
+        domain: "convoynetwork.com",
+        name: "convoy",
+    },
+    3: {
+        id: 3,
+        domain: "getlokalapp.com",
+        name: "lokal",
+    }
+};
 //================ Static data plane / tier configurations =====================
 
 // map from tier id to plane id.
@@ -179,6 +190,8 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
         airbyteConf: {},
+        plan: Plan.STARTUP,
+        requestLimit: 0,
     },
     // Convoy staging tier using Fennel's staging data plane.
     108: {
@@ -266,6 +279,8 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+        plan: Plan.STARTUP,
+        requestLimit: 0,
     },
     // Yext demo tier
     115: {
@@ -339,7 +354,7 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-        plan: Plan.BASIC,
+        plan: Plan.PERSONAL,
         requestLimit: 1000,
     },
     // reserver tierIds 1001 to 2000 for self-serve.
@@ -350,7 +365,7 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-        plan: Plan.BASIC,
+        plan: Plan.PERSONAL,
         requestLimit: 1000,
     }
 }
@@ -765,6 +780,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numberOfBrokerNodes: 4,
             storageVolumeSizeGiB: 1636,
         },
+        customer: customers[3],
+        mothershipId: 12,
     },
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
@@ -835,6 +852,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
+        customer: customers[2],
+        mothershipId: 12,
     },
     10: {
         protectResources: true,
@@ -895,7 +914,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             ],
         },
         mothershipId: 12,
-        customer: selfServeCustomer,
+        customer: customers[1],
         // set up MSK cluster
         mskConf: {
             // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
@@ -952,10 +971,20 @@ const mothershipConfs: Record<number, MothershipConf> = {
                     }
                 },
                 useAmd64: true,
-            }
+            },
+            envVars: [
+                {
+                    "name": "GIN_MODE",
+                    "value": "release"
+                },
+                {
+                    "name": "BRIDGE_SESSION_KEY",
+                    "value": "a2ecf773ab9055f6c8af782bf606a495089b2e2f18636d3e3bd78804776fa529a80550359f48be67bcfa03e037ee90b1dc6bb389b32e3e54f0c87a6aaa77ac1b"
+                }
+            ],
+
         },
         dnsName: "app.fennel.ai",
-
     },
     // Dogfood mothership.
     13: {
@@ -1000,7 +1029,17 @@ const mothershipConfs: Record<number, MothershipConf> = {
                     }
                 },
                 useAmd64: true,
-            }
+            },
+            envVars: [
+                {
+                    "name": "GIN_MODE",
+                    "value": "release"
+                },
+                {
+                    "name": "BRIDGE_SESSION_KEY",
+                    "value": "92975472fc84378f5a3bebfaf464ddc6cd4b908af4ebb447ae934ce6e6e4156b31667821e49019f86f2ff383f175212db8d5f4f856f68fa18f5c91a3cdcfc955"
+                }
+            ],
         },
 
     }
@@ -1061,8 +1100,8 @@ if (id in dataPlaneConfs) {
     if (mothershipId !== undefined && mothership !== undefined) {
         console.log('updating mothership database...')
         await mothership.insertOrUpdateDataPlane(id, id => {
-            if (id == 0) {
-                return selfServeCustomer
+            if (id in customers) {
+                return customers[id]
             }
             return undefined
         })
@@ -1126,7 +1165,7 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
     const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType
-    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType | undefined
+    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")] !== undefined ? dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType : undefined
 
     // Create/update/delete the tier.
     if (tierId !== 0) {

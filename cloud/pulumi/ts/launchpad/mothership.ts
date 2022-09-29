@@ -11,10 +11,12 @@ import * as cert from "../cert";
 import { MASTER_ACCOUNT_ADMIN_ROLE_ARN } from "../account";
 import * as bridgeserver from "../bridge";
 import * as mothershipconfigs from "../mothership-configs"
+import * as k8s from "@pulumi/kubernetes";
 
 
 export type BridgeServerConf = {
     podConf?: util.PodConf,
+    envVars?: pulumi.Input<k8s.types.input.core.v1.EnvVar>[],
 }
 
 export type MothershipConf = {
@@ -152,19 +154,22 @@ const setupResources = async () => {
     // setup configs after resources are setup.
     const configsOutput = pulumi.all(
         [input.dbConf.password, auroraOutput]).apply(async ([dbPassword, auroraOutput]) => {
-            return await mothershipconfigs.setup({
-                kubeconfig: kconf,
-                namespace: nsName,
-                mothershipConfig: {
-                    "mothership_id": String(input.planeId),
-                    "mothership_endpoint": input.dnsName === undefined ? String(ingressOutput.loadBalancerUrl) : input.dnsName,
-                },
-                dbConfig: pulumi.output({
-                    "host": auroraOutput.host,
-                    "db": dbName,
-                    "username": dbUser,
-                    "password": dbPassword,
-                } as Record<string, string>),
+            return await ingressOutput.apply(async ingress => {
+                return await mothershipconfigs.setup({
+                    kubeconfig: kconf,
+                    namespace: nsName,
+                    mothershipConfig: {
+                        "mothership_id": String(input.planeId),
+                        "mothership_endpoint": input.dnsName === undefined ? `http://${ingress.loadBalancerUrl}` : `https://${input.dnsName}`,
+                        "gin_mode": "release",
+                    },
+                    dbConfig: pulumi.output({
+                        "host": auroraOutput.host,
+                        "db": dbName,
+                        "username": dbUser,
+                        "password": dbPassword,
+                    } as Record<string, string>),
+                })
             })
         })
     configsOutput.apply(async () => {
@@ -193,6 +198,7 @@ const setupResources = async () => {
                 nodeLabels: input.bridgeServerConf?.podConf?.nodeLabels,
                 pprofHeapAllocThresholdMegaBytes: input.bridgeServerConf?.podConf?.pprofHeapAllocThresholdMegaBytes,
                 tlsCertK8sSecretName: certOut !== undefined ? certOut.tlsCertK8sSecretName : ingressOutput.tlsK8sSecretRef,
+                envVars: input.bridgeServerConf.envVars,
             });
 
         }

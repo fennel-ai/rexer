@@ -1,5 +1,9 @@
+import { getOriginRequestPolicyOutput } from "@pulumi/aws/cloudfront";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
+import { resolveTripleslashReference } from "typescript";
+import { local } from "@pulumi/command";
+import { getProperty } from "../mothership-updates";
 
 export const plugins = {
     "aws": "v5.0.0",
@@ -197,7 +201,7 @@ function scrapeConfigs(input: inputType) {
             const servers = bootstrapServers.split(",");
             const server = servers[0];
             const idx = server.indexOf(".", 0);
-            const commonDns = server.substring(idx+1);
+            const commonDns = server.substring(idx + 1);
             let jmxServers: string[] = [];
             let nodeServers: string[] = [];
             for (let i = 1; i <= numBrokers; i++) {
@@ -282,6 +286,7 @@ async function setupPrometheus(input: inputType) {
                 "repo": "https://prometheus-community.github.io/helm-charts"
             },
             chart: "prometheus",
+            version: "15.12.0",
             values: {
                 "serviceAccounts": {
                     "alertmanager": {
@@ -330,11 +335,20 @@ async function setupPrometheus(input: inputType) {
                     metricLabelsAllowlist: ["nodes=[eks.amazonaws.com/capacityType,eks.amazonaws.com/nodegroup,kubernetes.io/arch]"],
                 }
             },
-        }, {provider: k8sProvider, protect: input.protect});
+        }, { provider: k8sProvider, protect: input.protect });
     });
+
+    return k8s.core.v1.Service.get(`${input.planeId}-prometheus-server`,
+        pulumi.interpolate`${prometheusRelease.namespace}/${prometheusRelease.status.name}-server`, {
+        provider: k8sProvider, dependsOn: prometheusRelease,
+    }).status.apply(status => {
+        return status.loadBalancer.ingress.at(0)?.hostname
+    })
 }
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
-    await setupPrometheus(input);
-    return pulumi.output({});
+    const loadBalancerURL = await setupPrometheus(input);
+    return pulumi.output({
+        loadBalancerURL: loadBalancerURL,
+    })
 }

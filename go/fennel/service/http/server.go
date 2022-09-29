@@ -106,7 +106,7 @@ func NewServer(tier *tier.Tier, usageController usage.UsageController) *server {
 }
 
 func (s *server) LimitFunc(ctx context.Context, rateLimit int64) bool {
-	if rateLimit == -1 {
+	if rateLimit <= 0 {
 		return true
 	}
 	endTime := uint64(s.tier.Clock.Now())
