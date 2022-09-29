@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"syscall"
+	"time"
 
 	"fennel/lib/timer"
 	"fennel/nitrous"
@@ -12,6 +14,8 @@ import (
 	"fennel/service/common"
 
 	"github.com/alexflint/go-arg"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +27,31 @@ var flags struct {
 	common.PrometheusArgs
 	timer.TracerArgs
 	common.HealthCheckArgs
+}
+
+var fsStats = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "nitrous_fs_stats",
+	Help: "Stats about nitrous file system",
+}, []string{"metric"})
+
+func reportDiskMetrics(path string, stop chan struct{}) {
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		for {
+			select {
+			case <-ticker.C:
+				var stats syscall.Statfs_t
+				if err := syscall.Statfs(path, &stats); err != nil {
+					zap.L().Warn("failed to get statistics for the file system", zap.String("path", path), zap.Error(err))
+					continue
+				}
+				fsStats.WithLabelValues("size").Set(float64(stats.Blocks * uint64(stats.Bsize)))
+				fsStats.WithLabelValues("available").Set(float64(stats.Bavail * uint64(stats.Bsize)))
+			case <-stop:
+				return
+			}
+		}
+	}()
 }
 
 func main() {
@@ -59,6 +88,9 @@ func main() {
 	profiler := common.CreateProfiler(flags.PprofArgs)
 	profiler.StartPprofServer()
 
+	stop := make(chan struct{}, 1)
+	reportDiskMetrics(flags.GravelDir, stop)
+
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", flags.ListenPort))
 	if err != nil {
 		zap.L().Fatal("Failed to listen", zap.Uint32("port", flags.ListenPort), zap.Error(err))
@@ -67,4 +99,5 @@ func main() {
 	if err = s.Serve(lis); err != nil {
 		zap.L().Fatal("Server terminated / failed to start", zap.Error(err))
 	}
+	stop <- struct{}{}
 }

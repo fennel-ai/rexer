@@ -159,6 +159,29 @@ function scrapeConfigs(input: inputType) {
             "source_labels": ["__meta_kubernetes_service_name"],
             "target_label": "Service"
         }],
+    }, {
+        "job_name": 'kubernetes-nodes',
+        "kubernetes_sd_configs": [{
+            "role": "node"
+        }],
+        "scheme": "https",
+        "tls_config": {
+            "ca_file": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+            "insecure_skip_verify": true,
+        },
+        "bearer_token_file": "/var/run/secrets/kubernetes.io/serviceaccount/token",
+        "relabel_configs": [{
+            "action": "labelmap",
+            "regex": "__meta_kubernetes_node_label_(.+)",
+        }, {
+            "target_label": "__address__",
+            "replacement": "kubernetes.default.svc:443"
+        }, {
+            "source_labels": ["__meta_kubernetes_node_name"],
+            "regex": "(.+)",
+            "target_label": "__metrics_path__",
+            "replacement": "/api/v1/nodes/${1}/proxy/metrics/cadvisor"
+        }],
     }];
 
     if (input.mskBootstrapServers !== undefined && input.numBrokers !== undefined) {
@@ -251,6 +274,8 @@ async function setupPrometheus(input: inputType) {
                 "size": `${input.volumeSizeGiB}Gi`
             }
         }
+
+        console.log(config)
 
         return new k8s.helm.v3.Release("prometheus", {
             repositoryOpts: {
