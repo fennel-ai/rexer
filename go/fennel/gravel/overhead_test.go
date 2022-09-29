@@ -13,7 +13,7 @@ func TestOverhead(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 	for k := 0; k < 10; k++ {
 		N := uint64(rand.Intn(10_000_000))
-		PerBucket := uint64(13)
+		PerBucket := uint64(19)
 		Buckets := uint64(N/PerBucket) + 1
 		data := make(map[uint64]int)
 		for i := 0; i < int(N); i++ {
@@ -23,7 +23,7 @@ func TestOverhead(t *testing.T) {
 		}
 		l1miss := 0
 		for _, v := range data {
-			delta := v - 19
+			delta := v - 28
 			if delta > 0 {
 				l1miss += v
 			}

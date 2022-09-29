@@ -74,31 +74,30 @@ import (
 	fbinary "fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
 	"fmt"
-	"go.uber.org/zap"
-	"golang.org/x/sys/unix"
 	math2 "math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"syscall"
+
+	"go.uber.org/zap"
+	"golang.org/x/sys/unix"
 )
 
 const (
 	magicHeader         uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
 	magicTailer         uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
 	v1codec_xxhash      uint8  = 1
-	numRecordsPerBucket uint32 = 13
+	numRecordsPerBucket uint32 = 19
 	fileHeaderSize      int    = 64
 	bucketSizeBytes     int    = 64 // a common cache line size
-	maxBucketFpCount    int    = 19
-
-	stackMatchedIdxArraySize int = 64
+	maxBucketFpCount    int    = 28
 )
 
 var incompleteFile = fmt.Errorf("expected end of file")
 
-type fingerprint uint32 // actually value is always 3 bytes, which means highest 8 bits are always 0
+type fingerprint uint16
 
 type header struct {
 	datasize    uint64
@@ -141,6 +140,10 @@ type hashTable struct {
 	size       uint64
 }
 
+func (ht *hashTable) ShouldGCExpired() bool {
+	return false
+}
+
 func (ht *hashTable) IndexSize() uint64 {
 	return uint64(ht.head.indexsize)
 }
@@ -164,7 +167,7 @@ func (ht *hashTable) GetAll(m map[string]Value) error {
 		sofar += n
 		curKey := string(data[sofar : sofar+int(keyLen)])
 		sofar += int(keyLen)
-		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false)
+		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false, false)
 		if err != nil {
 			return incompleteFile
 		}
@@ -186,30 +189,21 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	// for performance consideration, limit the number of matchedIndices to be const so the values can be stored on stack
 	// this causes the bug that if there are more than 'stackMatchedIdxArraySize' matched hashes, we may miss the record
 	// however, in reality, this will (almost ,like 1 every 3e188) never trigger if stackMatchedIdxArraySize == 32
-	var matchedIndices [stackMatchedIdxArraySize]int
-	numCandidates, dataPos, err := ht.readIndex(bucketID, fp, &matchedIndices)
+	matchIndex, matchCount, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
 	}
-	if matchedIndices[0] == -1 {
+	if matchIndex < 0 {
 		return Value{}, ErrNotFound
 	}
-	ret, err := ht.readData(dataPos, &matchedIndices, numCandidates, key, head.minExpiry)
+	ret, err := ht.readData(dataPos, matchIndex, matchCount, numCandidates, key, head.minExpiry)
 	return ret, err
 }
 
 // readIndex reads the index for bucketID and searches for the given fingerprint.
 // returns the slice of indices (in current bucket) whose fingerprints matches the given, the total number of records that
 // fall into this bucket, as well as the data section offset, with error if there is any
-func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *[stackMatchedIdxArraySize]int) (int, uint64, error) {
-	matchedIdxIdx := 0
-	defer func() {
-		// seal the result array by appending a "-1"
-		if matchedIdxIdx < stackMatchedIdxArraySize {
-			matchedIndices[matchedIdxIdx] = -1
-		}
-	}()
-
+func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, uint64, error) {
 	indexStart := int(bucketID) * bucketSizeBytes
 	indexEnd := indexStart + bucketSizeBytes
 	index := ht.index[indexStart:indexEnd]
@@ -228,24 +222,35 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *
 	}
 	// now compare all sorted fps one by one until seeing a bigger value which indicates a stop
 	curFpPos := 0
-	fpB1, fpB2, fpB3 := byte(fp>>16), byte(fp>>8), byte(fp)
+	fpB1, fpB2 := byte(fp>>8), byte(fp)
 
+	matchFpPos := -1
+	matchFpCount := 0
+
+	if fpInBucket > maxBucketFpCount/2 {
+		// accelerate the fingerprint searching
+		skipPos := fpInBucket >> 1
+		if index[sofar+skipPos*2] < fpB1 {
+			curFpPos = skipPos + 1
+			sofar += (skipPos + 1) * 2
+		}
+	}
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			return numKeys, datapos, nil
+			return matchFpPos, matchFpCount, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
-			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
-				if matchedIdxIdx < stackMatchedIdxArraySize {
-					matchedIndices[matchedIdxIdx] = curFpPos
-					matchedIdxIdx++
+			if index[sofar+1] == fpB2 {
+				if matchFpPos < 0 {
+					matchFpPos = curFpPos
 				}
+				matchFpCount += 1
 			}
 		}
-		sofar += 3
+		sofar += 2
 	}
 	if curFpPos >= numKeys {
 		// no overflow record needs to be compared
-		return numKeys, datapos, nil
+		return matchFpPos, matchFpCount, numKeys, datapos, nil
 	}
 
 	// there are extra fingerprints that are in overflow section and need to check
@@ -253,25 +258,25 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint, matchedIndices *
 	sofar = 0
 	for ; curFpPos < numKeys; curFpPos += 1 {
 		if index[sofar] > fpB1 {
-			return numKeys, datapos, nil
+			return matchFpPos, matchFpCount, numKeys, datapos, nil
 		} else if index[sofar] == fpB1 {
-			if index[sofar+1] == fpB2 && index[sofar+2] == fpB3 {
-				if matchedIdxIdx < stackMatchedIdxArraySize {
-					matchedIndices[matchedIdxIdx] = curFpPos
-					matchedIdxIdx++
+			if index[sofar+1] == fpB2 {
+				if matchFpPos < 0 {
+					matchFpPos = curFpPos
 				}
+				matchFpCount += 1
 			}
 		}
-		sofar += 3
+		sofar += 2
 	}
-	return numKeys, datapos, nil
+	return matchFpPos, matchFpCount, numKeys, datapos, nil
 }
 
 // writeIndex writes all the index data via writer and returns the number of bytes
 // written and the error if any. This assumes that both l2entries and records are
 // sorted on bucketID
 func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, records []record) (uint32, error) {
-	overflow := make([]byte, 0, 3*numBuckets*4) // reserve some size (but not too large, 4 times the number of buckets) to avoid too much copying
+	overflow := make([]byte, 0, 2*numBuckets*8) // reserve some size (but not too large, 8 times the number of buckets) to avoid too much copying
 	entry := make([]byte, 64)
 	for bid := uint32(0); bid < numBuckets; bid++ {
 		slice.Fill(entry, 0)
@@ -309,15 +314,14 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 			curRecord := l2entry.firstRecord
 			for ; curRecord < fpToPutInBucket+l2entry.firstRecord; curRecord += 1 {
-				entry[sofar] = byte(records[curRecord].fp >> 16)
-				entry[sofar+1] = byte(records[curRecord].fp >> 8)
-				entry[sofar+2] = byte(records[curRecord].fp)
-				sofar += 3
+				entry[sofar] = byte(records[curRecord].fp >> 8)
+				entry[sofar+1] = byte(records[curRecord].fp)
+				sofar += 2
 			}
 
 			// and if any were left, write them to the overflow section
 			for ; curRecord < numKeys+l2entry.firstRecord; curRecord += 1 {
-				overflow = append(overflow, byte(records[curRecord].fp>>16), byte(records[curRecord].fp>>8), byte(records[curRecord].fp))
+				overflow = append(overflow, byte(records[curRecord].fp>>8), byte(records[curRecord].fp))
 			}
 		}
 
@@ -335,38 +339,35 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 // readData reads the data segment starting at 'start' and read upto numRecords to find a
 // record that matches given key. If found, the value is returned, else err is set to ErrNotFound
-func (ht *hashTable) readData(start uint64, matchedIndices *[stackMatchedIdxArraySize]int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
-	sample := shouldSample()
-	if sample {
+func (ht *hashTable) readData(start uint64, matchIndex int, matchCount int, numRecords int, key []byte, minExpiry Timestamp) (Value, error) {
+	if shouldSample() {
 		_, t := timer.Start(context.TODO(), 1, "gravel.table.dataread")
 		defer t.Stop()
 	}
 
 	data := ht.data[start:]
 	sofar := 0
-	curMatchIdx := 0
 	for i := 0; i < numRecords; i++ {
 		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
 		if err != nil {
 			return Value{}, incompleteFile
 		}
 		sofar += n
-		if i == matchedIndices[curMatchIdx] {
+		if i >= matchIndex {
+			if i >= matchIndex+matchCount {
+				break
+			}
 			// fingerprint match, a potential hit
 			curKey := data[sofar : sofar+int(keyLen)]
 			sofar += int(keyLen)
 			if bytes.Equal(key, curKey) {
-				ret, _, err := readValue(data[sofar:], minExpiry, false)
+				ret, _, err := readValue(data[sofar:], minExpiry, false, true)
 				return ret, err
-			}
-			curMatchIdx += 1
-			if curMatchIdx >= stackMatchedIdxArraySize || matchedIndices[curMatchIdx] == -1 {
-				return Value{}, ErrNotFound
 			}
 		} else {
 			sofar += int(keyLen)
 		}
-		_, m, err := readValue(data[sofar:], minExpiry, true)
+		_, m, err := readValue(data[sofar:], minExpiry, true, false)
 		if err != nil {
 			return Value{}, err
 		}
@@ -429,6 +430,36 @@ func (ht *hashTable) Close() error {
 
 var _ Table = (*hashTable)(nil)
 
+func getRecords(data map[string]Value, numBuckets uint32) []record {
+	bucketEntries := make([][]record, numBuckets)
+	for i := range bucketEntries {
+		bucketEntries[i] = make([]record, 0, 2*numRecordsPerBucket)
+	}
+	for k, v := range data {
+		hash := Hash([]byte(k))
+		bucketID := getBucketID(hash, numBuckets)
+		bucketEntries[bucketID] = append(bucketEntries[bucketID], record{
+			bucketID: getBucketID(hash, numBuckets),
+			fp:       getFingerprint(hash),
+			key:      k,
+			value:    v,
+		})
+	}
+	// sort entries within each bucket by their fingerprint so that we
+	// can do early termination in the get path
+	for _, entries := range bucketEntries {
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].fp < entries[j].fp
+		})
+	}
+	i := 0
+	records := make([]record, len(data))
+	for _, entries := range bucketEntries {
+		i += copy(records[i:], entries)
+	}
+	return records
+}
+
 func buildHashTable(filepath string, data map[string]Value) error {
 	f, err := os.Create(filepath)
 	if err != nil {
@@ -440,17 +471,11 @@ func buildHashTable(filepath string, data map[string]Value) error {
 		numBuckets = 1
 	}
 
-	records := make([]record, 0, len(data))
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
-	for k, v := range data {
-		hash := Hash([]byte(k))
-		records = append(records, record{
-			bucketID: getBucketID(hash, numBuckets),
-			fp:       getFingerprint(hash),
-			key:      k,
-			value:    v,
-		})
+	records := getRecords(data, numBuckets)
+	for _, r := range records {
+		v := r.value
 		if v.expires > 0 {
 			if minExpiry > v.expires {
 				minExpiry = v.expires
@@ -460,13 +485,6 @@ func buildHashTable(filepath string, data map[string]Value) error {
 			}
 		}
 	}
-	// sort all the records so that those with the same bucket ID come close together
-	// within the same bucket, we sort records by fingerprint. This will allow us to
-	// early termination when fingerprints don't match
-	sort.Slice(records, func(i, j int) bool {
-		ri, rj := &records[i], &records[j]
-		return ri.bucketID < rj.bucketID || (ri.bucketID == rj.bucketID && ri.fp < rj.fp)
-	})
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
 	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
 	if err != nil {
@@ -596,7 +614,7 @@ func writeKey(writer *bufio.Writer, k string) (uint32, error) {
 // readValue reads a value and returns the number of bytes taken by this value
 // if onlysize is true, the caller is only interested in the size of this value
 // so this function can avoid expensive operations in those cases
-func readValue(data []byte, minExpiry Timestamp, onlysize bool) (Value, int, error) {
+func readValue(data []byte, minExpiry Timestamp, onlysize bool, cloneValue bool) (Value, int, error) {
 	if len(data) == 0 {
 		return Value{}, 0, incompleteFile
 	}
@@ -629,8 +647,11 @@ func readValue(data []byte, minExpiry Timestamp, onlysize bool) (Value, int, err
 		return Value{}, cur + int(valLen), nil
 	}
 	value := data[cur : cur+int(valLen)]
+	if cloneValue {
+		value = clonebytes(value)
+	}
 	return Value{
-		data:    clonebytes(value),
+		data:    value,
 		expires: expiry,
 		deleted: false,
 	}, cur + int(valLen), nil
@@ -677,9 +698,9 @@ func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, err
 	return total + uint32(vl), nil
 }
 
-// take the highest order 24 bits
+// take the arbitrary middle bits from the hash and trim to 16 bits
 func getFingerprint(h uint64) fingerprint {
-	return fingerprint(h >> 40)
+	return fingerprint(h >> 29)
 }
 
 func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {

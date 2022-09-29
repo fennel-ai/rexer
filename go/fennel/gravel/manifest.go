@@ -112,6 +112,10 @@ func InitManifest(dirname string, tableType TableType, numShards uint64) (*Manif
 
 	for i := 0; i < int(curShards) && scanner.Scan(); i++ {
 		tableFiles := strings.Split(scanner.Text(), ",")
+		if len(tableFiles) == 1 && tableFiles[0] == "" {
+			// the shard contains no file
+			continue
+		}
 		tableFiles, maxID, err := validateAndSortTableFiles(tableFiles, uint64(i))
 		if err != nil {
 			return nil, err

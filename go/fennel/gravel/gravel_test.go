@@ -78,29 +78,50 @@ func TestGravelTooLargeBatch(t *testing.T) {
 
 }
 
-func TestFull(t *testing.T) {
+func TestFullLevel1(t *testing.T) {
+	testCore(t, 1)
+}
+
+func TestFullLevel2(t *testing.T) {
 	t.Skip("Skipping test in pull request since it more or less depends on the performance of the running environment")
+	testCore(t, 2)
+}
+
+func TestFullLevel3(t *testing.T) {
+	t.Skip("Skipping test in pull request since it more or less depends on the performance of the running environment")
+	testCore(t, 3)
+}
+
+func testCore(t *testing.T, level int) {
 	dirname := t.TempDir()
-	heavyTest := true
 
 	var itemCnt int
 	compactionWaitSecs := 25
 	opt := DefaultOptions()
 	opt.Dirname = dirname
-	if heavyTest {
+	batchSize := 1000
+	if level == 3 {
 		opt.MaxMemtableSize = 1024 * 1024 * 10
 		itemCnt = 10_000_000
 		opt.NumShards = 16
-	} else {
+	} else if level == 2 {
 		opt.MaxMemtableSize = 1024 * 1024
 		itemCnt = 1_000_000
 		opt.NumShards = 2
+	} else if level == 1 {
+		// intentionally weird configuration
+		opt.MaxMemtableSize = 200
+		opt.NumShards = 64
+		itemCnt = 10
+		batchSize = 1
+		compactionWaitSecs = 0
+	} else {
+		panic("level must be in 1,2,3")
 	}
 
 	g, err := Open(opt)
 	assert.NoError(t, err)
 
-	batchSize := 1000
 	key := make([]byte, 8)
 
 	t1 := time.Now()
@@ -123,7 +144,7 @@ func TestFull(t *testing.T) {
 	}
 	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
 
-	if heavyTest {
+	if level >= 3 {
 		fmt.Println("sleeping 10 secs, wait for compaction work to start")
 		time.Sleep(10 * time.Second) // wait for compaction
 	}
@@ -151,12 +172,23 @@ func TestFull(t *testing.T) {
 		err = b.Commit()
 		assert.NoError(t, err)
 	}
+	err = g.flush()
+	assert.NoError(t, err)
 	fmt.Println("time_ms insert all data to DB:", time.Since(t1).Milliseconds())
 
 	fmt.Printf("sleeping another %d secs, wait for more compaction work to be done\n", compactionWaitSecs)
 	time.Sleep(time.Duration(compactionWaitSecs) * time.Second) // wait for compaction
 
-	assert.Less(t, g.tm.GetStats()[StatsNumTables], opt.NumShards*minimumFilesToTriggerCompaction+1, "too many tables, seems the compaction doesn't work")
+	fmt.Println("Closing databased")
+	// close and repoen database
+	err = g.Close()
+	assert.NoError(t, err)
+	opt.NumShards = 1
+	g, err = Open(opt)
+	assert.NoError(t, err)
+	fmt.Println("Reopened databased")
+
+	assert.Less(t, g.tm.GetStats()[StatsNumTables], g.tm.NumShards()*minimumFilesToTriggerCompaction+1, "too many tables, seems the compaction doesn't work")
 
 	t1 = time.Now()
 	for i := 0; i < itemCnt; i++ {
