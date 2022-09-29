@@ -25,7 +25,7 @@ const (
 	// The tailer_batch value is tuned to be large enough to process the binlog
 	// quickly, but no so large that we get badger errors for transaction being
 	// too large.
-	DefaultTailerBatch       = 20_000
+	DefaultTailerBatch       = 100_000
 	DefaultPollTimeout = 10 * time.Second
 )
 
