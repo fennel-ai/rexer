@@ -222,7 +222,7 @@ const parseConfig = (): inputType => {
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
         counterCleanupConf: config.getObject(nameof<inputType>("counterCleanupConf")),
         enableNitrous: config.getObject(nameof<inputType>("enableNitrous")),
-        nitrousBinLogPartitions: config.requireNumber(nameof<inputType>("nitrousBinLogPartitions")),
+        nitrousBinLogPartitions: config.getNumber(nameof<inputType>("nitrousBinLogPartitions")),
 
         sagemakerConf: config.getObject(nameof<inputType>("sagemakerConf")),
 
@@ -489,7 +489,7 @@ const setupResources = async () => {
                 } as Record<string, string>),
                 nitrousConfig: pulumi.output({
                     "addr": input.enableNitrous ? `${nitrous.name}.${nitrous.namespace}:${nitrous.servicePort}` : "",
-                    "binlogPartitions": input.nitrousBinLogPartitions ? `${input.nitrousBinLogPartitions}`: "",
+                    "binlogPartitions": input.nitrousBinLogPartitions ? `${input.nitrousBinLogPartitions}` : "",
                 } as Record<string, string>),
                 airbyteConfig: pulumi.output({
                     "endpoint": airbyteServerEndpoint,
@@ -745,7 +745,7 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     console.info("setting up config");
 
-    if (args.enableNitrous !== undefined && args.enableNitrous && (args.nitrousBinLogPartitions === undefined || args.nitrousBinLogPartitions <= 0 )) {
+    if (args.enableNitrous !== undefined && args.enableNitrous && (args.nitrousBinLogPartitions === undefined || args.nitrousBinLogPartitions <= 0)) {
         console.log('Nitrous is enabled, but nitrous binlog partitions is either not set or set to <= 0');
         process.exit(1);
     }
@@ -818,7 +818,7 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     }
 
     if (args.nitrousBinLogPartitions !== undefined) {
-        await stack.setConfig(nameof<inputType>("nitrousBinLogPartitions"), {value: `${args.nitrousBinLogPartitions}`})
+        await stack.setConfig(nameof<inputType>("nitrousBinLogPartitions"), { value: `${args.nitrousBinLogPartitions}` })
     }
 
     if (args.sagemakerConf !== undefined) {

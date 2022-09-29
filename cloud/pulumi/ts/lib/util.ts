@@ -25,7 +25,7 @@ export enum Scope {
 }
 
 export enum Plan {
-    BASIC = 0,
+    PERSONAL = 0,
     STARTUP = 1,
     ENTERPRISE = 2,
 }

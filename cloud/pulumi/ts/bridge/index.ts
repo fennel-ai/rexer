@@ -39,6 +39,7 @@ export type inputType = {
     resourceConf?: util.ResourceConf,
     pprofHeapAllocThresholdMegaBytes?: number,
     tlsCertK8sSecretName: string | pulumi.Output<string>,
+    envVars?: pulumi.Input<k8s.types.input.core.v1.EnvVar>[],
 }
 
 export type outputType = {
@@ -255,7 +256,7 @@ export const setup = async (input: inputType) => {
                                     protocol: "TCP",
                                 },
                             ],
-                            env: envVars,
+                            env: input.envVars != undefined ? envVars.concat(input.envVars) : envVars,
                             resources: {
                                 requests: {
                                     "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
