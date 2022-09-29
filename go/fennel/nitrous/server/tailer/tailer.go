@@ -51,7 +51,7 @@ type Tailer struct {
 }
 
 // Returns a new Tailer that can be used to tail the binlog.
-func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, store hangar.Hangar, processor EventsProcessor,
+func NewTailer(n nitrous.Nitrous, topic string, toppars kafka.TopicPartitions, store hangar.Hangar, processor EventsProcessor,
 	pollTimeout time.Duration, batchSize int) (*Tailer, error) {
 	// Given the topic partitions, decode what offsets to start reading from.
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
@@ -75,7 +75,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 				if len(event.Partitions) > 0 {
 					// fetch the last committed offsets for the topic partitions assigned to the consumer
 					var err error
-					toppars, err := decodeOffsets([]kafka.TopicPartition{toppar}, store)
+					toppars, err := decodeOffsets(toppars, store)
 					if err != nil {
 						zap.L().Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
 					}

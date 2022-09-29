@@ -319,7 +319,7 @@ export const setup = async (input: inputType) => {
                                     "--plane-id",
                                     `${input.planeId}`,
                                     "--gravel_dir",
-                                    "/oxide/gravel",
+                                    "/oxide/gravel_singleshard",
                                     "--badger_block_cache_mb",
                                     `${input.blockCacheMB}`,
                                     "--ristretto_max_cost",

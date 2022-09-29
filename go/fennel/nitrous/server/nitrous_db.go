@@ -65,7 +65,7 @@ type NitrousDB struct {
 	aggregateTailer *tailer.Tailer
 	binlogTailers   []*tailer.Tailer
 	// sync map to avoid concurrent access in errgroup - this is usually flagged by go test -race
-	shards           *sync.Map
+	shards           hangar.Hangar
 	tables           *sync.Map
 	binlogPartitions uint32
 }
@@ -102,7 +102,6 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	ndb := &NitrousDB{
 		nos:              n,
 		tables:           new(sync.Map),
-		shards:           new(sync.Map),
 		binlogPartitions: n.BinlogPartitions,
 	}
 	// Initialize a binlog tailer per topic partition.
@@ -115,20 +114,20 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	// if the assigned partitions are empty, assume all binlog partitions
 	//
 	// else, filter out the topic partitions which are assigned to this nitrous instance
-	requiredToppar := make(kafka.TopicPartitions, 0, len(n.Partitions))
-	if len(n.Partitions) == 0 {
-		requiredToppar = toppars
-	} else {
-		for _, par := range n.Partitions {
-			for _, toppar := range toppars {
-				if toppar.Partition == par {
-					requiredToppar = append(requiredToppar, toppar)
-				}
-			}
-		}
-	}
+	//requiredToppar := make(kafka.TopicPartitions, 0, len(n.Partitions))
+	//if len(n.Partitions) == 0 {
+	//	requiredToppar = toppars
+	//} else {
+	//	for _, par := range n.Partitions {
+	//		for _, toppar := range toppars {
+	//			if toppar.Partition == par {
+	//				requiredToppar = append(requiredToppar, toppar)
+	//			}
+	//		}
+	//	}
+	//}
 
-	for _, toppar := range requiredToppar {
+	//for _, toppar := range requiredToppar {
 		// Instantiate gravel instance per tailer
 		//
 		// We set the `MaxTableSize` for each gravel instance taking total system memory into consideration.
@@ -141,18 +140,17 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 		//
 		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
 		// memory to be cost efficient
-		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName(fmt.Sprintf("binlog-%d", toppar.Partition)).WithNumShards(16).WithCompactionWorkerNum(2)
-		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default())
-		if err != nil {
-			return nil, err
-		}
-		t, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppar, gravelDb, ndb.Process, tailer.DefaultPollTimeout, tailer.DefaultTailerBatch)
-		if err != nil {
-			return nil, fmt.Errorf("failed to setup tailer for partition %v: %w", toppar.Partition, err)
-		}
-		tailers = append(tailers, t)
-		ndb.shards.Store(toppar.Partition, gravelDb)
+	gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("binlog").WithNumShards(16 * 32).WithCompactionWorkerNum(2 * 16)
+	gravelDb, err := gravelDB.NewHangar(n.PlaneID, n.DbDir, &gravelOpts, encoders.Default())
+	if err != nil {
+		return nil, err
 	}
+	t, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppars, gravelDb, ndb.Process, tailer.DefaultPollTimeout, tailer.DefaultTailerBatch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup tailer for partitions %v: %w", toppars, err)
+	}
+	tailers = append(tailers, t)
+	ndb.shards = gravelDb
 	ndb.binlogTailers = tailers
 
 	// Create gravel for aggregate definitions, we don't expect a lot of data to be here, so we use a small ~10MB
@@ -180,7 +178,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	if len(aggrConfToppars) > 1 {
 		return nil, fmt.Errorf("expected aggregate conf topic partitions to be 1, found: %d", len(aggrConfToppars))
 	}
-	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars[0], aggregatesDb, ndb.ProcessAggregates, 1*time.Second /*pollTimeout*/, 100 /*batchSize*/)
+	ndb.aggregateTailer, err = tailer.NewTailer(n, libnitrous.AGGR_CONF_KAFKA_TOPIC, aggrConfToppars, aggregatesDb, ndb.ProcessAggregates, 1*time.Second /*pollTimeout*/, 100 /*batchSize*/)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aggregate conf tailer: %v", err)
 	}
@@ -468,53 +466,53 @@ func (ndb *NitrousDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftyp
 	// custom hash function we have used here), not sure if we should test the reads through this code path.
 
 	// figure out the shards where the groups keys will be situated
-	shardToGkIdx := make(map[int32][]int, 0)
-	for i, gk := range groupkeys {
-		// get shard
-		shard := int32(nitrous.HashedPartition(gk, ndb.binlogPartitions))
-		if _, ok := shardToGkIdx[shard]; !ok {
-			shardToGkIdx[shard] = make([]int, 0)
-		}
-		shardToGkIdx[shard] = append(shardToGkIdx[shard], i)
-	}
+	//shardToGkIdx := make(map[int32][]int, 0)
+	//for i, gk := range groupkeys {
+	//	// get shard
+	//	shard := int32(nitrous.HashedPartition(gk, ndb.binlogPartitions))
+	//	if _, ok := shardToGkIdx[shard]; !ok {
+	//		shardToGkIdx[shard] = make([]int, 0)
+	//	}
+	//	shardToGkIdx[shard] = append(shardToGkIdx[shard], i)
+	//}
 	// TODO(mohit): Consider using Arena
-	ret := make([]value.Value, len(groupkeys))
-	egrp, _ := errgroup.WithContext(ctx)
-	for s, is := range shardToGkIdx {
-		shard := s
-		indices := is
-		egrp.Go(func() error {
-			s, ok := ndb.shards.Load(shard)
-			if !ok {
-				return fmt.Errorf("failed to load gravel instance for shard: %d", shard)
-			}
-			if s, ok = s.(hangar.Hangar); !ok {
-				return fmt.Errorf("instance loaded from the shards is not a hangar instance: %v", s)
-			}
-			// TODO(mohit): Consider using Arena
-			keys := make([]string, len(indices))
-			args := make([]value.Dict, len(indices))
-			for i, id := range indices {
-				keys[i] = groupkeys[id]
-				args[i] = kwargs[id]
-			}
-			vals, err := v.(store.Table).Get(ctx, keys, args, s.(hangar.Hangar))
-			if err != nil {
-				return err
-			}
-			if len(vals) != len(keys) {
-				return fmt.Errorf("did not get expected vals: %v v/s %v, part: %v", len(vals), len(keys), shard)
-			}
-			for i, id := range indices {
-				ret[id] = vals[i]
-			}
-			return nil
-		})
+	//ret := make([]value.Value, len(groupkeys))
+	//egrp, _ := errgroup.WithContext(ctx)
+	//for s, is := range shardToGkIdx {
+	//	shard := s
+	//	indices := is
+	//	egrp.Go(func() error {
+	//s, ok := ndb.shards.Load(shard)
+	//if !ok {
+	//	return fmt.Errorf("failed to load gravel instance for shard: %d", shard)
+	//}
+	//if s, ok = s.(hangar.Hangar); !ok {
+	//	return fmt.Errorf("instance loaded from the shards is not a hangar instance: %v", s)
+	//}
+	// TODO(mohit): Consider using Arena
+	//keys := make([]string, len(indices))
+	//args := make([]value.Dict, len(indices))
+	//for i, id := range indices {
+	//	keys[i] = groupkeys[id]
+	//	args[i] = kwargs[id]
+	//}
+	vals, err := v.(store.Table).Get(ctx, groupkeys, kwargs, ndb.shards)
+	if err != nil {
+		return vals, err
 	}
-	if err := egrp.Wait(); err != nil {
-		return ret, fmt.Errorf("failed to get values from sharded gravel: %v", err)
-	}
-	return ret, nil
+	//if len(vals) != len(keys) {
+	//	return fmt.Errorf("did not get expected vals: %v v/s %v, part: %v", len(vals), len(keys), shard)
+	//}
+	//for i, id := range indices {
+	//	ret[id] = vals[i]
+	//}
+	//return nil
+		//})
+	//}
+	//if err := egrp.Wait(); err != nil {
+	//	return ret, fmt.Errorf("failed to get values from sharded gravel: %v", err)
+	//}
+	return vals, nil
 }
 
 func (ndb *NitrousDB) GetLag() (int, error) {

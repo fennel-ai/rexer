@@ -41,7 +41,7 @@ func TestTailer(t *testing.T) {
 
 	notifs := atomic.NewInt32(0)
 	p1 := countingProcessor{t, notifs}
-	tlr, err := NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, kafka.TopicPartition{}, db, p1.Process, DefaultPollTimeout, DefaultTailerBatch)
+	tlr, err := NewTailer(n.Nitrous, nitrous.BINLOG_KAFKA_TOPIC, kafka.TopicPartitions{}, db, p1.Process, DefaultPollTimeout, DefaultTailerBatch)
 	assert.NoError(t, err)
 
 	err = producer.LogProto(context.Background(), &rpc.NitrousOp{}, nil)
