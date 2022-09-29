@@ -4,6 +4,7 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"fennel/lib/utils"
 	"fennel/lib/value"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
@@ -44,6 +45,7 @@ func benchmarkOneof(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
 	actual := make([]*NitrousOp, 10_000)
+	l := 0
 	for i := 0; i < 10_000; i++ {
 		v := value.Int(10)
 		pv, err := value.ToProtoValue(v)
@@ -63,8 +65,11 @@ func benchmarkOneof(b *testing.B) {
 		data, err := proto.Marshal(&op)
 		assert.NoError(b, err)
 		ops[i] = data
+		l += len(data)
 		actual[i] = &op
 	}
+
+	fmt.Printf("len: %s: %d\n", b.Name(), l)
 
 	// reset to not report setup time
 	b.ResetTimer()
@@ -79,6 +84,7 @@ func benchmarkSimple(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
 	actual := make([]*NitrousBinlogEvent, 10_000)
+	l := 0
 	for i := 0; i < 10_000; i++ {
 		v := value.Int(10)
 		pv, err := value.ToProtoValue(v)
@@ -95,8 +101,11 @@ func benchmarkSimple(b *testing.B) {
 		data, err := proto.Marshal(&op)
 		assert.NoError(b, err)
 		ops[i] = data
+		l += len(data)
 		actual[i] = &op
 	}
+
+	fmt.Printf("len: %s: %d\n", b.Name(), l)
 
 	// reset to not report setup time
 	b.ResetTimer()
@@ -111,6 +120,7 @@ func benchmarkCaptain(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
 	actual := make([]*NitrousBinlogEventCap, 10_000)
+	l := 0
 	for i := 0; i < 10_000; i++ {
 		msg, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
 		assert.NoError(b, err)
@@ -135,8 +145,11 @@ func benchmarkCaptain(b *testing.B) {
 		data, err := msg.Marshal()
 		assert.NoError(b, err)
 		ops[i] = data
+		l += len(data)
 		actual[i] = &cv
 	}
+
+	fmt.Printf("len: %s %d\n", b.Name(), l)
 
 	// reset to not report setup time
 	b.ResetTimer()
@@ -148,9 +161,15 @@ func benchmarkCaptain(b *testing.B) {
 }
 
 /*
-BenchmarkUnmarshal/oneof-10         	     325	   3619053 ns/op	 2400020 B/op	   60000 allocs/op
-BenchmarkUnmarshal/simple-10        	     420	   2850315 ns/op	 2320024 B/op	   50000 allocs/op
-BenchmarkUnmarshal/captain-simple-10        1258	    946407 ns/op	 1920006 B/op	   30000 allocs/op
+BenchmarkUnmarshal/oneof-10
+     315	   3764591 ns/op	 2400025 B/op	   60000 allocs/op
+len: BenchmarkUnmarshal/oneof: 269702
+BenchmarkUnmarshal/simple-10
+     405	   2959862 ns/op	 2320016 B/op	   50000 allocs/op
+len: BenchmarkUnmarshal/simple: 269702
+BenchmarkUnmarshal/captain-simple-10
+    1227	    984746 ns/op	 1920005 B/op	   30000 allocs/op
+len: BenchmarkUnmarshal/captain-simple 960000
 */
 func BenchmarkUnmarshal(b *testing.B) {
 	b.Run("oneof", benchmarkOneof)
