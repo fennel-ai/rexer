@@ -11,6 +11,35 @@ import (
 )
 
 
+func nitrousOpUnmarshal(ops [][]byte) error {
+	for _, op := range ops {
+		o := NitrousOp{}
+		if err := proto.Unmarshal(op, &o); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func nitrousSimpleOpUnmarshal(ops [][]byte) error {
+	for _, op := range ops {
+		o := NitrousBinlogEvent{}
+		if err := proto.Unmarshal(op, &o); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func captainUnmarshal(ops [][]byte) error {
+	for _, op := range ops {
+		if _, err := capnp.Unmarshal(op); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func benchmarkOneof(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
@@ -39,20 +68,10 @@ func benchmarkOneof(b *testing.B) {
 
 	// reset to not report setup time
 	b.ResetTimer()
-
-	b.StartTimer()
-	parsedOps := make([]*NitrousOp, 10_000)
-	for i := 0; i < 10_000; i++ {
-		op := NitrousOp{}
-		err := proto.Unmarshal(ops[i], &op)
-		assert.NoError(b, err)
-		parsedOps[i] = &op
-	}
-	b.StopTimer()
-
-	// assert
-	for i, d := range parsedOps {
-		assert.EqualValues(b, d.GetAggEvent().String(), actual[i].GetAggEvent().String())
+	for i := 0; i < b.N; i++ {
+		if err := nitrousOpUnmarshal(ops); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -81,20 +100,10 @@ func benchmarkSimple(b *testing.B) {
 
 	// reset to not report setup time
 	b.ResetTimer()
-
-	b.StartTimer()
-	parsedOps := make([]*NitrousBinlogEvent, 10_000)
-	for i := 0; i < 10_000; i++ {
-		op := &NitrousBinlogEvent{}
-		err := proto.Unmarshal(ops[i], op)
-		assert.NoError(b, err)
-		parsedOps[i] = op
-	}
-	b.StopTimer()
-
-	// assert
-	for i, d := range parsedOps {
-		assert.EqualValues(b, d.GetAggEvent().String(), actual[i].GetAggEvent().String())
+	for i := 0; i < b.N; i++ {
+		if err := nitrousSimpleOpUnmarshal(ops); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -131,28 +140,17 @@ func benchmarkCaptain(b *testing.B) {
 
 	// reset to not report setup time
 	b.ResetTimer()
-
-	b.StartTimer()
-	parsedOps := make([]*NitrousBinlogEventCap, 10_000)
-	for i := 0; i < 10_000; i++ {
-		msg, err := capnp.Unmarshal(ops[i])
-		assert.NoError(b, err)
-		x, err := ReadRootNitrousBinlogEventCap(msg)
-		assert.NoError(b, err)
-		parsedOps[i] = &x
-	}
-	b.StopTimer()
-
-	// assert
-	for i, d := range parsedOps {
-		assert.EqualValues(b, d.String(), actual[i].String())
+	for i := 0; i < b.N; i++ {
+		if err := captainUnmarshal(ops); err != nil {
+			panic(err)
+		}
 	}
 }
 
 /*
-BenchmarkUnmarshal/oneof-10         	1000000000	         0.003902 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshal/simple-10        	1000000000	         0.003139 ns/op	       0 B/op	       0 allocs/op
-BenchmarkUnmarshal/captain-simple-10         	1000000000	         0.002178 ns/op	       0 B/op	       0 allocs/op
+BenchmarkUnmarshal/oneof-10         	     325	   3619053 ns/op	 2400020 B/op	   60000 allocs/op
+BenchmarkUnmarshal/simple-10        	     420	   2850315 ns/op	 2320024 B/op	   50000 allocs/op
+BenchmarkUnmarshal/captain-simple-10        1258	    946407 ns/op	 1920006 B/op	   30000 allocs/op
 */
 func BenchmarkUnmarshal(b *testing.B) {
 	b.Run("oneof", benchmarkOneof)
