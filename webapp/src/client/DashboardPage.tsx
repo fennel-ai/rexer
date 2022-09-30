@@ -80,7 +80,7 @@ function DashboardPage() {
             <Collapse defaultActiveKey="qps">
                 <Collapse.Panel header="QPS" key="qps">
                     <Graph
-                        query='sum by (Namespace, path) (rate(http_requests_total{ContainerName=~"http-server|query-server", path=~"/query|/set_profile|/set_profile_multi|/log|/log_multi"}[2m]))'
+                        query='sum by (Namespace, path) (rate(http_requests_total{ContainerName=~"http-server|query-server", path=~"/query|/set_profile|/set_profile_multi|/log|/log_multi|/v1/actions|/v1/query"}[2m]))'
                         startTime={startTime}
                         endTime={endTime}
                         step={step}
