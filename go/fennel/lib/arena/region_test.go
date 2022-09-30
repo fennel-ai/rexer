@@ -27,8 +27,8 @@ func TestRegion(t *testing.T) {
 		defer r.Free()
 		wg := sync.WaitGroup{}
 		for w := 0; w < 20; w++ {
+			wg.Add(1)
 			go func() {
-				wg.Add(1)
 				defer wg.Done()
 				var as []A
 				var bs []B
