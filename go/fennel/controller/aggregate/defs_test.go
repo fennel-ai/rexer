@@ -87,6 +87,7 @@ func TestDuplicate(t *testing.T) {
 }
 
 func TestDeactivate(t *testing.T) {
+	t.Skip("rex-1721")
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
