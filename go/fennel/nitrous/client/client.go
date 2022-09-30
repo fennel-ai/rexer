@@ -2,10 +2,7 @@ package client
 
 import (
 	"context"
-	"fennel/nitrous"
 	"fmt"
-	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/keepalive"
 	"time"
 
 	"fennel/kafka"
@@ -14,6 +11,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/value"
+	"fennel/nitrous"
 	"fennel/nitrous/rpc"
 	"fennel/resource"
 
@@ -22,8 +20,10 @@ import (
 	"github.com/samber/mo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 var aggValueQueue = promauto.NewCounterVec(
@@ -126,16 +126,16 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 		if err != nil {
 			return fmt.Errorf("failed to convert value %s to proto: %w", v, err)
 		}
-		op := &rpc.NitrousOp{
-			TierId: uint32(nc.ID()),
-			Type:   rpc.OpType_AGG_EVENT,
-			Op: &rpc.NitrousOp_AggEvent{
-				AggEvent: &rpc.AggEvent{
-					AggId:     uint32(aggId),
-					Groupkey:  groupkey,
-					Value:     &pv,
-					Timestamp: uint32(timestamp),
-				},
+		op := rpc.NitrousOpFromVTPool()
+		defer op.ReturnToVTPool()
+		op.TierId = uint32(nc.ID())
+		op.Type = rpc.OpType_AGG_EVENT
+		op.Op = &rpc.NitrousOp_AggEvent{
+			AggEvent: &rpc.AggEvent{
+				AggId:     uint32(aggId),
+				Groupkey:  groupkey,
+				Value:     &pv,
+				Timestamp: uint32(timestamp),
 			},
 		}
 		// compute the hash and push to that specific partition
@@ -143,7 +143,11 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 		// we could have relied on Kafka key partitioner, but we need to perform a similar operation on the read path
 		// (i.e. nitrous need to know which partition/shard would contain information of a certain groupkey)
 		partition := nitrous.HashedPartition(groupkey, nc.binlogPartitions)
-		err = nc.binlog.LogProtoToPartition(ctx, op, int32(partition), nil)
+		d, err := op.MarshalVT()
+		if err != nil {
+			return fmt.Errorf("failed to marshal: %w", err)
+		}
+		err = nc.binlog.LogToPartition(ctx, d, int32(partition), nil)
 		if err != nil {
 			return fmt.Errorf("failed to log update to nitrous binlog: %w", err)
 		}
