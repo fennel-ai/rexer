@@ -107,7 +107,7 @@ func (r *Region) alloc(sz int) []byte {
 		used := r.used[i]
 		// if enough space is left in this page, allocate using it
 		if pagesize-used >= sz {
-			ret := r.pages[i][used : used+sz : sz]
+			ret := r.pages[i][used : used+sz : used+sz]
 			r.used[i] += sz
 			return ret
 		}
