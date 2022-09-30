@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
-
-	"fennel/hangar/db"
+	"fennel/gravel"
 	"fennel/hangar/encoders"
+	gravelDB "fennel/hangar/gravel"
 
 	"fennel/lib/aggregate"
 	"fennel/lib/counter"
@@ -25,7 +24,8 @@ import (
 
 func TestAggregateStore(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	opts := aggregate.Options{
@@ -57,11 +57,22 @@ func TestAggregateStore(t *testing.T) {
 	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(5)}, val)
+
+	keys, vgs, err = cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(7)}, db)
+	assert.NoError(t, err)
+	err = db.SetMany(ctx, keys, vgs)
+	assert.NoError(t, err)
+	// sleep for a bit to ensure all writes are flushed
+	time.Sleep(100 * time.Millisecond)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []value.Value{value.Int(12)}, val)
 }
 
 func TestProcess(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	opts := aggregate.Options{
@@ -166,7 +177,8 @@ func TestProcess(t *testing.T) {
 
 func BenchmarkGet(b *testing.B) {
 	n := test.NewTestNitrous(b)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(b.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(n.PlaneID, b.TempDir(), &gravelOpts, encoders.Default())
 	b.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(b, err)
 	opts := aggregate.Options{
