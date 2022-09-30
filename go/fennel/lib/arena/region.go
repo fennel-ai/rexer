@@ -40,7 +40,7 @@ import (
 
 var regionStats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "arena_region_stats",
-	Help: "Stats about performance of memory regions",
+	Help: "Aggregate stats about performance of memory regions",
 }, []string{"metric"})
 
 var regionSummaryStats = promauto.NewSummaryVec(prometheus.SummaryOpts{
@@ -101,12 +101,13 @@ func (r *Region) alloc(sz int) []byte {
 	}
 	r.lock.Lock()
 	defer r.lock.Unlock()
+	// because new pages are added at the end and older pages are nearly filled, we
 	// iterate in reverse to increase the chance of finding a free page quickly
 	for i := len(r.pages) - 1; i >= 0; i-- {
 		used := r.used[i]
 		// if enough space is left in this page, allocate using it
 		if pagesize-used >= sz {
-			ret := r.pages[i][used : used+sz]
+			ret := r.pages[i][used : used+sz : sz]
 			r.used[i] += sz
 			return ret
 		}
@@ -116,7 +117,7 @@ func (r *Region) alloc(sz int) []byte {
 		regionStats.WithLabelValues("alloc_new_page").Add(float64(samplerate))
 	}
 	pg := pagepool.Get().([]byte)
-	ret := pg[:sz]
+	ret := pg[:sz:sz]
 	r.pages = append(r.pages, pg)
 	r.used = append(r.used, sz)
 	return ret
