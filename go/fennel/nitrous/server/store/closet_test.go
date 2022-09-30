@@ -2,12 +2,14 @@ package store
 
 import (
 	"context"
-	"fennel/hangar/db"
-	"fennel/hangar/encoders"
 	"fmt"
-	"github.com/dgraph-io/badger/v3"
 	"testing"
 	"time"
+
+	"github.com/dgraph-io/badger/v3"
+
+	"fennel/hangar/db"
+	"fennel/hangar/encoders"
 
 	"fennel/lib/aggregate"
 	"fennel/lib/counter"
@@ -55,16 +57,6 @@ func TestAggregateStore(t *testing.T) {
 	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(5)}, val)
-
-	keys, vgs, err = cs.update(ctx, []uint32{uint32(time.Now().Unix())}, []string{"mygk"}, []value.Value{value.Int(7)}, db)
-	assert.NoError(t, err)
-	err = db.SetMany(ctx, keys, vgs)
-	assert.NoError(t, err)
-	// sleep for a bit to ensure all writes are flushed
-	time.Sleep(100 * time.Millisecond)
-	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, []value.Value{value.Int(12)}, val)
 }
 
 func TestProcess(t *testing.T) {
@@ -304,8 +296,10 @@ func TestKeyGroupsToUpdate(t *testing.T) {
 	}
 	kgs, err := cs.getKeyGroupsToUpdate("mygk", buckets)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(kgs))
+
+	// we will have 2 key groups, each with 2 fields (one for the idx and another for summary)
+	assert.Equal(t, 2, len(kgs))
 	for _, kg := range kgs {
-		assert.Equal(t, 1, len(kg.Fields.MustGet()))
+		assert.Equal(t, 2, len(kg.Fields.MustGet()))
 	}
 }

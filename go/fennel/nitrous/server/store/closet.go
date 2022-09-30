@@ -26,9 +26,6 @@ import (
 // The second-level key stores the first-level keys as fields, where each field
 // stores the aggregated value in the smallest time bucket (as determined by
 // the bucketizer).
-// The third-level key stores the second-level keys as fields, where each field
-// stores the pre-aggregated values for fields in the corresponding second-level
-// key.
 //
 // The hangar key for second-level keys is:
 // (tierId | codec | groupkey | width | mod | aggId | second-level index),
@@ -45,9 +42,9 @@ import (
 // temporal.TimeBucketizer.NumBucketsHint) divided by level size.
 // (e.g. if num buckets = 100 and level size 25, then k = 100 / 25 = 4).
 //
-// The hangar key for third-level keys data is:
-// (tierId | codec | groupkey | width | aggId | third-level index),
-// and the hangar field is (second-level index).
+// Also the summary for all the first-level indices under a second-level index are stored with the hangar field
+// = size of the level. Since the first level index is computed as the modulo of the size of the first level, this
+// prevents any accidental collisions
 type Closet struct {
 	tierId ftypes.RealmID
 	aggId  ftypes.AggId
@@ -81,41 +78,6 @@ func unsafeGetBytes(s string) []byte {
 
 func (c *Closet) getKeyLenHint(gk string) int {
 	return len(gk) + 60 /* 6 varint fields */
-}
-
-func (c *Closet) encodeThirdLevelKey(keybuf []byte, groupkey string, width uint32, thirdLevelIdx int) (int, error) {
-	curr := 0
-	n, err := binary.PutUvarint(keybuf[curr:], uint64(c.tierId))
-	if err != nil {
-		return 0, fmt.Errorf("error encoding tierId (%d): %w", c.tierId, err)
-	}
-	curr += n
-	n, err = binary.PutVarint(keybuf[curr:], int64(c.codec))
-	if err != nil {
-		return 0, fmt.Errorf("error encoding codec (%d): %w", c.codec, err)
-	}
-	curr += n
-	n, err = binary.PutString(keybuf[curr:], groupkey)
-	if err != nil {
-		return 0, fmt.Errorf("error encoding groupkey (%s): %w", groupkey, err)
-	}
-	curr += n
-	n, err = binary.PutUvarint(keybuf[curr:], uint64(width))
-	if err != nil {
-		return 0, fmt.Errorf("error encoding width (%d): %w", width, err)
-	}
-	curr += n
-	n, err = binary.PutUvarint(keybuf[curr:], uint64(c.aggId))
-	if err != nil {
-		return 0, fmt.Errorf("error encoding agg Id (%d): %w", c.aggId, err)
-	}
-	curr += n
-	n, err = binary.PutUvarint(keybuf[curr:], uint64(thirdLevelIdx))
-	if err != nil {
-		return 0, fmt.Errorf("error encoding index (%d): %w", thirdLevelIdx, err)
-	}
-	curr += n
-	return curr, nil
 }
 
 // Encode (tierId | codec | groupkey | width | mod | aggId | second-level index) as hangar key.
@@ -153,11 +115,11 @@ func (c *Closet) encodeSecondLevelKey(keybuf []byte, groupkey string, width uint
 	// Keys with the same (secondLevelIdx mod numSecondLevel) are accessed together
 	// when doing a read.
 	// The in-between second-level indices are only used for reading the summary field.
-	// To get better locality, the summary fields are all moved together to a
-	// separate part of the key space.
 	// TODO: add a check to ensure that number of buckets is perfectly divisible
 	// by the second level size.
-	numSecondLevel := (c.bucketizer.NumBucketsHint() / c.levelSize)
+
+	// TODO(mohit): Consider removing this if we are considering moving AggId down to the keyspace
+	numSecondLevel := c.bucketizer.NumBucketsHint() / c.levelSize
 	modLevel := secondLevelIdx % numSecondLevel
 	n, err = binary.PutUvarint(keybuf[curr:], uint64(modLevel))
 	if err != nil {
@@ -177,6 +139,16 @@ func (c *Closet) encodeSecondLevelKey(keybuf []byte, groupkey string, width uint
 	return curr, nil
 }
 
+func (c *Closet) getSummaryField(buf []byte) ([]byte, int, error) {
+	// we put the summary field with index = levelSize (since we %levelSize, this will not collide with existing data)
+	n, err := binary.PutUvarint(buf, uint64(c.levelSize))
+	if err != nil {
+		return nil, n, fmt.Errorf("failed to encode summary index: %w", err)
+	}
+	field := buf[:n:n]
+	return field, n, nil
+}
+
 // Given the groupkey and the buckets that have new values, get the keygroups
 // that need to be updated.
 func (c *Closet) getKeyGroupsToUpdate(groupkey string, buckets []temporal.TimeBucket) ([]hangar.KeyGroup, error) {
@@ -186,7 +158,7 @@ func (c *Closet) getKeyGroupsToUpdate(groupkey string, buckets []temporal.TimeBu
 	// Make enough space for 2 key/field writes per bucket.
 	// Note: We don't allocate this byte slice using arena since the keys and
 	// fields in the returned KeyGroups point to locations in this byte slice.
-	buf := make([]byte, (keyLen+fieldLen)*2*len(buckets))
+	buf := make([]byte, (keyLen+fieldLen)*len(buckets))
 	// Encoded keys are stored in kgs, but the key prefix points to locations in
 	// the keybuf slice.
 	kgs := make([]hangar.KeyGroup, 0, len(buckets)*2)
@@ -209,32 +181,19 @@ func (c *Closet) getKeyGroupsToUpdate(groupkey string, buckets []temporal.TimeBu
 		}
 		field := buf[curr : curr+n : curr+n]
 		curr += n
+
+		// Additionally add summary field to be updated; we denote summary field with a `-1` idx
+		summaryField, n, err := c.getSummaryField(buf[curr:])
+		if err != nil {
+			return nil, fmt.Errorf("error encoding summary index -1: %w", err)
+		}
+		curr += n
+
 		kgs = append(kgs, hangar.KeyGroup{
 			Prefix: hangar.Key{
 				Data: key,
 			},
-			Fields: mo.Some(hangar.Fields{field}),
-		})
-
-		// Encode key for summary data.
-		n, err = c.encodeThirdLevelKey(buf[curr:], groupkey, b.Width, secondLevelIdx/c.levelSize)
-		if err != nil {
-			return nil, fmt.Errorf("error encoding key: %w", err)
-		}
-		summaryKey := buf[curr : curr+n : curr+n]
-		curr += n
-		// Encode field for pre-aggregated summary values.
-		n, err = binary.PutUvarint(buf[curr:], uint64(secondLevelIdx%c.levelSize))
-		if err != nil {
-			return nil, fmt.Errorf("error encoding summary field: %w", err)
-		}
-		preAggField := buf[curr : curr+n : curr+n]
-		curr += n
-		kgs = append(kgs, hangar.KeyGroup{
-			Prefix: hangar.Key{
-				Data: summaryKey,
-			},
-			Fields: mo.Some(hangar.Fields{preAggField}),
+			Fields: mo.Some(hangar.Fields{field, summaryField}),
 		})
 
 		buf = buf[curr:]
@@ -272,24 +231,24 @@ func (c *Closet) getKeyGroupsToRead(groupkey string, r temporal.TimeBucketRange)
 		if (next%c.levelSize) == 0 && next+c.levelSize <= last {
 			// Include the pre-computed field for this second-level index.
 			// Encode key for summary data.
-			n, err := c.encodeThirdLevelKey(buf[curr:], groupkey, r.Width, secondLevelIdx/c.levelSize)
+			n, err := c.encodeSecondLevelKey(buf[curr:], groupkey, r.Width, secondLevelIdx)
 			if err != nil {
 				return nil, fmt.Errorf("error encoding summary key: %w", err)
 			}
 			summaryKey := buf[curr : curr+n : curr+n]
 			curr += n
-			// Encode field for pre-aggregated summary values.
-			n, err = binary.PutUvarint(buf[curr:], uint64(secondLevelIdx%c.levelSize))
+
+			// Additionally add summary field to be updated; we denote summary field with a `-1` idx
+			summaryField, n, err := c.getSummaryField(buf[curr:])
 			if err != nil {
-				return nil, fmt.Errorf("error encoding summary field: %w", err)
+				return nil, fmt.Errorf("error encoding summary index -1: %w", err)
 			}
-			preAggField := buf[curr : curr+n : curr+n]
 			curr += n
 			kgs = append(kgs, hangar.KeyGroup{
 				Prefix: hangar.Key{
 					Data: summaryKey,
 				},
-				Fields: mo.Some(hangar.Fields{preAggField}),
+				Fields: mo.Some(hangar.Fields{summaryField}),
 			})
 			next += c.levelSize
 		} else {
