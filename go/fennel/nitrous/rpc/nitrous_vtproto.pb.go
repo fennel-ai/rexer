@@ -42,21 +42,6 @@ func (this *ReqLog) EqualVT(that *ReqLog) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *NitrousBinlogEvent) EqualVT(that *NitrousBinlogEvent) bool {
-	if this == nil {
-		return that == nil || fmt.Sprintf("%v", that) == ""
-	} else if that == nil {
-		return fmt.Sprintf("%v", this) == ""
-	}
-	if this.TierId != that.TierId {
-		return false
-	}
-	if !this.AggEvent.EqualVT(that.AggEvent) {
-		return false
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
 func (this *NitrousOp) EqualVT(that *NitrousOp) bool {
 	if this == nil {
 		return that == nil || fmt.Sprintf("%v", that) == ""
@@ -100,7 +85,13 @@ func (this *CreateAggregate) EqualVT(that *CreateAggregate) bool {
 	if this.AggId != that.AggId {
 		return false
 	}
-	if !this.Options.EqualVT(that.Options) {
+	if equal, ok := interface{}(this.Options).(interface {
+		EqualVT(*aggregate.AggOptions) bool
+	}); ok {
+		if !equal.EqualVT(that.Options) {
+			return false
+		}
+	} else if !proto.Equal(this.Options, that.Options) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -133,7 +124,11 @@ func (this *AggEvent) EqualVT(that *AggEvent) bool {
 	if this.Timestamp != that.Timestamp {
 		return false
 	}
-	if !this.Value.EqualVT(that.Value) {
+	if equal, ok := interface{}(this.Value).(interface{ EqualVT(*value.PValue) bool }); ok {
+		if !equal.EqualVT(that.Value) {
+			return false
+		}
+	} else if !proto.Equal(this.Value, that.Value) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -166,7 +161,11 @@ func (this *ProfileUpdate) EqualVT(that *ProfileUpdate) bool {
 	if !this.Key.EqualVT(that.Key) {
 		return false
 	}
-	if !this.Value.EqualVT(that.Value) {
+	if equal, ok := interface{}(this.Value).(interface{ EqualVT(*value.PValue) bool }); ok {
+		if !equal.EqualVT(that.Value) {
+			return false
+		}
+	} else if !proto.Equal(this.Value, that.Value) {
 		return false
 	}
 	if this.Timestamp != that.Timestamp {
@@ -223,7 +222,11 @@ func (this *AggregateValuesRequest) EqualVT(that *AggregateValuesRequest) bool {
 		return false
 	}
 	for i := range this.Kwargs {
-		if !this.Kwargs[i].EqualVT(that.Kwargs[i]) {
+		if equal, ok := interface{}(this.Kwargs[i]).(interface{ EqualVT(*value.PVDict) bool }); ok {
+			if !equal.EqualVT(that.Kwargs[i]) {
+				return false
+			}
+		} else if !proto.Equal(this.Kwargs[i], that.Kwargs[i]) {
 			return false
 		}
 	}
@@ -240,7 +243,11 @@ func (this *AggregateValuesResponse) EqualVT(that *AggregateValuesResponse) bool
 		return false
 	}
 	for i := range this.Results {
-		if !this.Results[i].EqualVT(that.Results[i]) {
+		if equal, ok := interface{}(this.Results[i]).(interface{ EqualVT(*value.PValue) bool }); ok {
+			if !equal.EqualVT(that.Results[i]) {
+				return false
+			}
+		} else if !proto.Equal(this.Results[i], that.Results[i]) {
 			return false
 		}
 	}
@@ -284,7 +291,11 @@ func (this *ProfilesResponse) EqualVT(that *ProfilesResponse) bool {
 		return false
 	}
 	for i := range this.Results {
-		if !this.Results[i].EqualVT(that.Results[i]) {
+		if equal, ok := interface{}(this.Results[i]).(interface{ EqualVT(*value.PValue) bool }); ok {
+			if !equal.EqualVT(that.Results[i]) {
+				return false
+			}
+		} else if !proto.Equal(this.Results[i], that.Results[i]) {
 			return false
 		}
 	}
@@ -539,54 +550,6 @@ func (m *ReqLog) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *NitrousBinlogEvent) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *NitrousBinlogEvent) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *NitrousBinlogEvent) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if m.AggEvent != nil {
-		size, err := m.AggEvent.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.TierId != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.TierId))
-		i--
-		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *NitrousOp) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -749,12 +712,24 @@ func (m *CreateAggregate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Options != nil {
-		size, err := m.Options.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+		if marshalto, ok := interface{}(m.Options).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Options)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = encodeVarint(dAtA, i, uint64(len(encoded)))
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -835,12 +810,24 @@ func (m *AggEvent) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Value != nil {
-		size, err := m.Value.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+		if marshalto, ok := interface{}(m.Value).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Value)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = encodeVarint(dAtA, i, uint64(len(encoded)))
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -954,12 +941,24 @@ func (m *ProfileUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		dAtA[i] = 0x18
 	}
 	if m.Value != nil {
-		size, err := m.Value.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+		if marshalto, ok := interface{}(m.Value).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.Value)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = encodeVarint(dAtA, i, uint64(len(encoded)))
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -1079,12 +1078,24 @@ func (m *AggregateValuesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error
 	}
 	if len(m.Kwargs) > 0 {
 		for iNdEx := len(m.Kwargs) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Kwargs[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
+			if marshalto, ok := interface{}(m.Kwargs[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Kwargs[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = encodeVarint(dAtA, i, uint64(len(encoded)))
 			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0x2a
 		}
@@ -1170,12 +1181,24 @@ func (m *AggregateValuesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, erro
 	}
 	if len(m.Results) > 0 {
 		for iNdEx := len(m.Results) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Results[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
+			if marshalto, ok := interface{}(m.Results[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Results[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = encodeVarint(dAtA, i, uint64(len(encoded)))
 			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -1265,12 +1288,24 @@ func (m *ProfilesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	if len(m.Results) > 0 {
 		for iNdEx := len(m.Results) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Results[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
+			if marshalto, ok := interface{}(m.Results[iNdEx]).(interface {
+				MarshalToSizedBufferVT([]byte) (int, error)
+			}); ok {
+				size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarint(dAtA, i, uint64(size))
+			} else {
+				encoded, err := proto.Marshal(m.Results[iNdEx])
+				if err != nil {
+					return 0, err
+				}
+				i -= len(encoded)
+				copy(dAtA[i:], encoded)
+				i = encodeVarint(dAtA, i, uint64(len(encoded)))
 			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -1288,25 +1323,6 @@ func encodeVarint(dAtA []byte, offset int, v uint64) int {
 	}
 	dAtA[offset] = uint8(v)
 	return base
-}
-
-var vtprotoPool_NitrousBinlogEvent = sync.Pool{
-	New: func() interface{} {
-		return &NitrousBinlogEvent{}
-	},
-}
-
-func (m *NitrousBinlogEvent) ResetVT() {
-	m.Reset()
-}
-func (m *NitrousBinlogEvent) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_NitrousBinlogEvent.Put(m)
-	}
-}
-func NitrousBinlogEventFromVTPool() *NitrousBinlogEvent {
-	return vtprotoPool_NitrousBinlogEvent.Get().(*NitrousBinlogEvent)
 }
 
 var vtprotoPool_NitrousOp = sync.Pool{
@@ -1339,25 +1355,6 @@ func (m *ReqLog) SizeVT() (n int) {
 	}
 	if m.Timestamp != 0 {
 		n += 1 + sov(uint64(m.Timestamp))
-	}
-	if m.unknownFields != nil {
-		n += len(m.unknownFields)
-	}
-	return n
-}
-
-func (m *NitrousBinlogEvent) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.TierId != 0 {
-		n += 1 + sov(uint64(m.TierId))
-	}
-	if m.AggEvent != nil {
-		l = m.AggEvent.SizeVT()
-		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
@@ -1444,7 +1441,13 @@ func (m *CreateAggregate) SizeVT() (n int) {
 		n += 1 + sov(uint64(m.AggId))
 	}
 	if m.Options != nil {
-		l = m.Options.SizeVT()
+		if size, ok := interface{}(m.Options).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Options)
+		}
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
@@ -1485,7 +1488,13 @@ func (m *AggEvent) SizeVT() (n int) {
 		n += 1 + sov(uint64(m.Timestamp))
 	}
 	if m.Value != nil {
-		l = m.Value.SizeVT()
+		if size, ok := interface{}(m.Value).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Value)
+		}
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
@@ -1529,7 +1538,13 @@ func (m *ProfileUpdate) SizeVT() (n int) {
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.Value != nil {
-		l = m.Value.SizeVT()
+		if size, ok := interface{}(m.Value).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.Value)
+		}
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.Timestamp != 0 {
@@ -1591,7 +1606,13 @@ func (m *AggregateValuesRequest) SizeVT() (n int) {
 	}
 	if len(m.Kwargs) > 0 {
 		for _, e := range m.Kwargs {
-			l = e.SizeVT()
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -1609,7 +1630,13 @@ func (m *AggregateValuesResponse) SizeVT() (n int) {
 	_ = l
 	if len(m.Results) > 0 {
 		for _, e := range m.Results {
-			l = e.SizeVT()
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -1658,7 +1685,13 @@ func (m *ProfilesResponse) SizeVT() (n int) {
 	_ = l
 	if len(m.Results) > 0 {
 		for _, e := range m.Results {
-			l = e.SizeVT()
+			if size, ok := interface{}(e).(interface {
+				SizeVT() int
+			}); ok {
+				l = size.SizeVT()
+			} else {
+				l = proto.Size(e)
+			}
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -1758,112 +1791,6 @@ func (m *ReqLog) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *NitrousBinlogEvent) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: NitrousBinlogEvent: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NitrousBinlogEvent: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TierId", wireType)
-			}
-			m.TierId = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TierId |= uint32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AggEvent", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.AggEvent == nil {
-				m.AggEvent = &AggEvent{}
-			}
-			if err := m.AggEvent.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -2219,8 +2146,16 @@ func (m *CreateAggregate) UnmarshalVT(dAtA []byte) error {
 			if m.Options == nil {
 				m.Options = &aggregate.AggOptions{}
 			}
-			if err := m.Options.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if unmarshal, ok := interface{}(m.Options).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Options); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:
@@ -2446,8 +2381,16 @@ func (m *AggEvent) UnmarshalVT(dAtA []byte) error {
 			if m.Value == nil {
 				m.Value = &value.PValue{}
 			}
-			if err := m.Value.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if unmarshal, ok := interface{}(m.Value).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Value); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:
@@ -2716,8 +2659,16 @@ func (m *ProfileUpdate) UnmarshalVT(dAtA []byte) error {
 			if m.Value == nil {
 				m.Value = &value.PValue{}
 			}
-			if err := m.Value.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if unmarshal, ok := interface{}(m.Value).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Value); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		case 3:
@@ -3030,8 +2981,16 @@ func (m *AggregateValuesRequest) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Kwargs = append(m.Kwargs, &value.PVDict{})
-			if err := m.Kwargs[len(m.Kwargs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if unmarshal, ok := interface{}(m.Kwargs[len(m.Kwargs)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Kwargs[len(m.Kwargs)-1]); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:
@@ -3115,8 +3074,16 @@ func (m *AggregateValuesResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Results = append(m.Results, &value.PValue{})
-			if err := m.Results[len(m.Results)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if unmarshal, ok := interface{}(m.Results[len(m.Results)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Results[len(m.Results)-1]); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		case 2:
@@ -3348,8 +3315,16 @@ func (m *ProfilesResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Results = append(m.Results, &value.PValue{})
-			if err := m.Results[len(m.Results)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
+			if unmarshal, ok := interface{}(m.Results[len(m.Results)-1]).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Results[len(m.Results)-1]); err != nil {
+					return err
+				}
 			}
 			iNdEx = postIndex
 		default:

@@ -26,8 +26,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// TODO(mohit): include codec to make vtprotobuf work with gRPC
-
 var (
 	GetAggregatesLatency = promauto.NewSummary(prometheus.SummaryOpts{
 		Name: "nitrous_get_aggregates_latency_ms",

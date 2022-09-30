@@ -18,7 +18,6 @@ import (
 	"github.com/samber/mo"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -152,12 +151,12 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 	zap.L().Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
 	ops := make([]*rpc.NitrousOp, len(rawops))
 	for i, rawop := range rawops {
-		var op rpc.NitrousOp
-		err := proto.Unmarshal(rawop, &op)
+		op := rpc.NitrousOpFromVTPool()
+		err := op.UnmarshalVT(rawop)
 		if err != nil {
-			zap.L().Error("Failed to unmarshal op", zap.Error(err))
+			return fmt.Errorf("failed to unmarshal rawop: %w", err)
 		}
-		ops[i] = &op
+		ops[i] = op
 	}
 	ctx = hangar.NewWriteContext(ctx)
 	keys, vgs, err := t.processor(ctx, ops, t.store)
