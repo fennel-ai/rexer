@@ -15,9 +15,9 @@ import (
 	"fennel/nitrous/test"
 	"fennel/test/nitrous"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestPush(t *testing.T) {
