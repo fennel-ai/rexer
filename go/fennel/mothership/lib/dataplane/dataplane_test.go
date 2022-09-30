@@ -20,15 +20,10 @@ func TestDataplane(t *testing.T) {
 	assert.NoError(t, err)
 
 	dp := DataPlane{
-		AwsRole:               "role",
-		Region:                "region",
-		PulumiStack:           "pulumi",
-		VpcID:                 "vpc",
-		EksInstanceID:         1,
-		KafkaInstanceID:       2,
-		DBInstanceID:          3,
-		MemoryDBInstanceID:    4,
-		ElasticacheInstanceID: 5,
+		AwsRole:     "role",
+		Region:      "region",
+		PulumiStack: "pulumi",
+		VpcID:       "vpc",
 	}
 
 	assert.Positive(t, db.Create(&dp).RowsAffected)
@@ -38,11 +33,6 @@ func TestDataplane(t *testing.T) {
 	assert.Equal(t, "region", dp.Region)
 	assert.Equal(t, "pulumi", dp.PulumiStack)
 	assert.Equal(t, "vpc", dp.VpcID)
-	assert.Equal(t, uint(1), dp.EksInstanceID)
-	assert.Equal(t, uint(2), dp.KafkaInstanceID)
-	assert.Equal(t, uint(3), dp.DBInstanceID)
-	assert.Equal(t, uint(4), dp.MemoryDBInstanceID)
-	assert.Equal(t, uint(5), dp.ElasticacheInstanceID)
 	assert.Positive(t, dp.CreatedAt)
 	assert.Positive(t, dp.UpdatedAt)
 	assert.Zero(t, dp.DeletedAt)

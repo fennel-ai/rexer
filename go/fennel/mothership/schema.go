@@ -162,4 +162,11 @@ var Schema = db.Schema{
 	25: `ALTER TABLE data_plane
                 ADD COLUMN metrics_server_address VARCHAR(255) UNIQUE;
         `,
+	26: `ALTER TABLE data_plane
+                DROP COLUMN eks_instance_id,
+                DROP COLUMN kafka_instance_id,
+                DROP COLUMN db_instance_id,
+                DROP COLUMN memory_db_instance_id,
+                DROP COLUMN elasticache_instance_id;
+        `,
 }
