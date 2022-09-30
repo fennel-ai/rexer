@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 	"fmt"
 	"os"
 	"path"
@@ -31,6 +32,8 @@ type Table interface {
 func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable) ([]string, error) {
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.build")
 	defer t.Stop()
+	parallel.Book("nitrous", parallel.OneCPU)
+	defer parallel.Release("nitrous", parallel.OneCPU)
 	// if the directory doesn't exist, create it
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
@@ -107,6 +110,8 @@ func PickTablesToCompact(tables []Table) []Table {
 // tables slice should strictly follow the rule that newer table comes later
 // if compacting to the final(oldest) file in the shard, deletion markers will be removed
 func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableType, compactToFinal bool) (string, error) {
+	parallel.Book("nitrous", parallel.OneCPU)
+	defer parallel.Release("nitrous", parallel.OneCPU)
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.compaction")
 	defer t.Stop()
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fennel/lib/utils/parallel"
 	"fmt"
 	"log"
 	"net"
@@ -70,6 +71,7 @@ var backupTimestamp = promauto.NewGauge(prometheus.GaugeOpts{
 func main() {
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	parallel.InitQuota("nitrous", 0.3*parallel.AllCPUs)
 
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
@@ -107,7 +109,7 @@ func main() {
 			log.Printf("Main procedure sleeping waiting for the next time to create backup...")
 			time.Sleep(time.Minute)
 			now := time.Now().Unix()
-			if now > lastBackupTimeSecs + int64(flags.BackupFrequency.Seconds()) {
+			if now > lastBackupTimeSecs+int64(flags.BackupFrequency.Seconds()) {
 				log.Printf("Going to create backup, stopping tailers...")
 				svr.Stop()
 				log.Printf("Creating the backup")

@@ -2,6 +2,7 @@ package tailer
 
 import (
 	"context"
+	"fennel/lib/utils/parallel"
 	"fmt"
 	"time"
 
@@ -24,7 +25,7 @@ const (
 	// The tailer_batch value is tuned to be large enough to process the binlog
 	// quickly, but no so large that we get badger errors for transaction being
 	// too large.
-	DefaultTailerBatch       = 20_000
+	DefaultTailerBatch = 20_000
 	DefaultPollTimeout = 10 * time.Second
 )
 
@@ -38,16 +39,16 @@ var (
 type EventsProcessor func(ctx context.Context, ops []*rpc.NitrousOp, store hangar.Reader) (keys []hangar.Key, vgs []hangar.ValGroup, err error)
 
 type Tailer struct {
-	topic 		string
+	topic       string
 	processor   EventsProcessor
 	nitrous     nitrous.Nitrous
 	binlog      fkafka.FConsumer
 	stopCh      chan chan struct{}
 	pollTimeout time.Duration
-	batchSize  	int
+	batchSize   int
 	running     *atomic.Bool
-	store 		hangar.Hangar
-	logger 		*zap.Logger
+	store       hangar.Hangar
+	logger      *zap.Logger
 }
 
 // Returns a new Tailer that can be used to tail the binlog.
@@ -56,8 +57,8 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 	logger := zap.L().Named(fmt.Sprintf("tailer-%s-%d", topic, toppar.Partition))
 	// Given the topic partitions, decode what offsets to start reading from.
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
-		Scope:        resource.NewPlaneScope(n.PlaneID),
-		Topic:        topic,
+		Scope: resource.NewPlaneScope(n.PlaneID),
+		Topic: topic,
 		// Even though the nitrous instances which will come up, will be responsible for disjoint partition subset,
 		// it is possible that the consumer group name is different for both, as the disjointed behavior is an eventual
 		// property i.e. during the time when the new nitrous instance is catching up the binlog for the partitions
@@ -105,7 +106,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 		return nil, fmt.Errorf("failed to initialize kafka consumer: %w", err)
 	}
 	t := Tailer{
-		topic: 		 topic,
+		topic:       topic,
 		processor:   processor,
 		nitrous:     n,
 		binlog:      consumer,
@@ -113,8 +114,8 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 		pollTimeout: pollTimeout,
 		batchSize:   batchSize,
 		running:     atomic.NewBool(false),
-		store: 		 store,
-		logger: 	 logger,
+		store:       store,
+		logger:      logger,
 	}
 	return &t, nil
 }
@@ -154,7 +155,10 @@ func (t *Tailer) Stop() {
 }
 
 func (t *Tailer) processBatch(rawops [][]byte) error {
+	parallel.Book("nitrous", 1.5*parallel.OneCPU)
+	defer parallel.Release("nitrous", 1.5*parallel.OneCPU)
 	defer numProcessed.Add(float64(len(rawops)))
+
 	ctx, m := timer.Start(context.Background(), t.nitrous.PlaneID, "tailer.processBatch")
 	defer m.Stop()
 	t.logger.Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
