@@ -22,6 +22,10 @@ function OnboardPage({user}: {user: User}): JSX.Element {
     const [tier, setTier] = useState<Tier>();
 
     const updateStatus = (newStatus: number, tier?: Tier) => {
+        if (newStatus === ONBOARD_STATUS_DONE) {
+            window.location.href = "/";
+            return;
+        }
         setOnboardStatus(newStatus);
         if (tier) {
             setTier(tier);
@@ -38,7 +42,7 @@ function OnboardPage({user}: {user: User}): JSX.Element {
         case ONBOARD_STATUS_DONE:
             window.location.href = "/";
     }
-    return (<div>Not implemented</div>);
+    return (<div />);
 }
 
 export default OnboardPage;
