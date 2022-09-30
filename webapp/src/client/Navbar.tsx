@@ -51,7 +51,7 @@ function Navbar({ activeTab, tiers, user }: Props) {
                         <TierDropdown tiers={tiers} />
                     </div>
                     <div className={styles.divider} />
-                    <div>
+                    <div className={styles.menuContainer}>
                         <Menu
                             mode="horizontal"
                             defaultSelectedKeys={activeTab ? [activeTab] : []}
