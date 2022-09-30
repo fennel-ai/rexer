@@ -3,7 +3,7 @@ module fennel
 go 1.18
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha.7
+	capnproto.org/go/capnp/v3 v3.0.0-alpha.3
 	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/Unleash/unleash-client-go/v3 v3.5.0
@@ -26,8 +26,6 @@ require (
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/milvus-io/milvus-sdk-go/v2 v2.0.0
-	github.com/pierrec/lz4/v4 v4.1.17
-	github.com/planetscale/vtprotobuf v0.3.0
 	github.com/prometheus/client_golang v1.12.1
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.2.0
@@ -119,7 +117,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/gin-contrib/sessions v0.0.5
 	github.com/golang/glog v1.0.0 // indirect
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.3
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
