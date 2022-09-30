@@ -13,8 +13,8 @@ import (
 
 
 func nitrousOpUnmarshal(ops [][]byte) error {
+	o := NitrousOp{}
 	for _, op := range ops {
-		o := NitrousOp{}
 		if err := proto.Unmarshal(op, &o); err != nil {
 			return err
 		}
@@ -22,10 +22,30 @@ func nitrousOpUnmarshal(ops [][]byte) error {
 	return nil
 }
 
-func nitrousSimpleOpUnmarshal(ops [][]byte) error {
+func nitrousOpVitnessUnmarshal(ops [][]byte) error {
+	o := NitrousOpFromVTPool()
 	for _, op := range ops {
-		o := NitrousBinlogEvent{}
+		if err := o.UnmarshalVT(op); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func nitrousSimpleOpUnmarshal(ops [][]byte) error {
+	o := NitrousBinlogEvent{}
+	for _, op := range ops {
 		if err := proto.Unmarshal(op, &o); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func nitrousVitessProto(ops [][]byte) error {
+	o := NitrousBinlogEventFromVTPool()
+	for _, op := range ops {
+		if err := o.UnmarshalVT(op); err != nil {
 			return err
 		}
 	}
@@ -67,12 +87,12 @@ func captainUnmarshalCompressed(ops [][]byte) error {
 func benchmarkOneof(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
-	actual := make([]*NitrousOp, 10_000)
 	l := 0
 	for i := 0; i < 10_000; i++ {
 		v := value.Int(10)
 		pv, err := value.ToProtoValue(v)
 		assert.NoError(b, err)
+		// we can potentially reuse this? reset at the end and set fields explicitly
 		op := NitrousOp{
 			TierId: uint32(i),
 			Type:   OpType_AGG_EVENT,
@@ -89,7 +109,6 @@ func benchmarkOneof(b *testing.B) {
 		assert.NoError(b, err)
 		ops[i] = data
 		l += len(data)
-		actual[i] = &op
 	}
 
 	b.Logf("data: %d", l)
@@ -103,10 +122,45 @@ func benchmarkOneof(b *testing.B) {
 	}
 }
 
+func benchmarkVitessOneof(b *testing.B) {
+	b.ReportAllocs()
+	ops := make([][]byte, 10_000)
+	l := 0
+	for i := 0; i < 10_000; i++ {
+		v := value.Int(10)
+		pv, err := value.ToProtoValue(v)
+		assert.NoError(b, err)
+		op := NitrousOpFromVTPool()
+		op.TierId = uint32(i)
+		op.Type = OpType_AGG_EVENT
+		op.Op = &NitrousOp_AggEvent{
+			AggEvent: &AggEvent{
+				AggId:     uint32(21),
+				Groupkey:  utils.RandString(10),
+				Value:     &pv,
+				Timestamp: uint32(i * 100),
+			},
+		}
+		data, err := op.MarshalVT()
+		assert.NoError(b, err)
+		ops[i] = data
+		l += len(data)
+		op.ReturnToVTPool()
+	}
+
+	b.Logf("data: %d", l)
+	// reset to not report setup time
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := nitrousOpVitnessUnmarshal(ops); err != nil {
+			panic(err)
+		}
+	}
+}
+
 func benchmarkSimple(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
-	actual := make([]*NitrousBinlogEvent, 10_000)
 	l := 0
 	for i := 0; i < 10_000; i++ {
 		v := value.Int(10)
@@ -125,7 +179,6 @@ func benchmarkSimple(b *testing.B) {
 		assert.NoError(b, err)
 		ops[i] = data
 		l += len(data)
-		actual[i] = &op
 	}
 
 	b.Logf("data: %d", l)
@@ -138,10 +191,42 @@ func benchmarkSimple(b *testing.B) {
 	}
 }
 
+func benchmarkVitessProto(b *testing.B) {
+	b.ReportAllocs()
+	ops := make([][]byte, 10_000)
+	l := 0
+	for i := 0; i < 10_000; i++ {
+		v := value.Int(10)
+		pv, err := value.ToProtoValue(v)
+		assert.NoError(b, err)
+		op := NitrousBinlogEventFromVTPool()
+		op.TierId = uint32(i)
+		op.AggEvent = &AggEvent{
+			AggId:     uint32(21),
+			Groupkey:  utils.RandString(10),
+			Value:     &pv,
+			Timestamp: uint32(i * 100),
+		}
+		data, err := op.MarshalVT()
+		assert.NoError(b, err)
+		ops[i] = data
+		l += len(data)
+		op.ReturnToVTPool()
+	}
+
+	b.Logf("data: %d", l)
+	// reset to not report setup time
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := nitrousVitessProto(ops); err != nil {
+			panic(err)
+		}
+	}
+}
+
 func benchmarkCaptain(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
-	actual := make([]*NitrousBinlogEventCap, 10_000)
 	l := 0
 	for i := 0; i < 10_000; i++ {
 		msg, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
@@ -168,7 +253,6 @@ func benchmarkCaptain(b *testing.B) {
 		assert.NoError(b, err)
 		ops[i] = data
 		l += len(data)
-		actual[i] = &cv
 	}
 
 	b.Logf("data: %d", l)
@@ -185,7 +269,6 @@ func benchmarkCaptain(b *testing.B) {
 func benchmarkCaptainCompression(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
-	actual := make([]*NitrousBinlogEventCap, 10_000)
 	var compressor lz4.Compressor
 	l := 0
 	for i := 0; i < 10_000; i++ {
@@ -218,7 +301,6 @@ func benchmarkCaptainCompression(b *testing.B) {
 		}
 		ops[i] = d[:n]
 		l += n
-		actual[i] = &cv
 	}
 
 	b.Logf("data: %d", l)
@@ -236,7 +318,6 @@ func benchmarkCaptainCompression(b *testing.B) {
 func benchmarkCaptainPacked(b *testing.B) {
 	b.ReportAllocs()
 	ops := make([][]byte, 10_000)
-	actual := make([]*NitrousBinlogEventCap, 10_000)
 	l := 0
 	for i := 0; i < 10_000; i++ {
 		msg, seg, err := capnp.NewMessage(capnp.SingleSegment(nil))
@@ -263,7 +344,6 @@ func benchmarkCaptainPacked(b *testing.B) {
 		assert.NoError(b, err)
 		ops[i] = data
 		l += len(data)
-		actual[i] = &cv
 	}
 
 	b.Logf("data: %d", l)
@@ -278,35 +358,48 @@ func benchmarkCaptainPacked(b *testing.B) {
 }
 
 /*
-BenchmarkUnmarshal/oneof-10         	     326	   3624104 ns/op	 2400027 B/op	   60000 allocs/op
+BenchmarkUnmarshal/oneof-10         	     298	   3928531 ns/op	 1760079 B/op	   50001 allocs/op
 --- BENCH: BenchmarkUnmarshal/oneof-10
-    unmarshal_bench_test.go:95: data: 269702
-    unmarshal_bench_test.go:95: data: 269702
-    unmarshal_bench_test.go:95: data: 269702
-BenchmarkUnmarshal/simple-10        	     420	   2857430 ns/op	 2320017 B/op	   50000 allocs/op
+    unmarshal_bench_test.go:113: data: 269702
+    unmarshal_bench_test.go:113: data: 269702
+    unmarshal_bench_test.go:113: data: 269702
+BenchmarkUnmarshal/vitess-oneof-10  	    2461	    485232 ns/op	  240344 B/op	   20004 allocs/op
+--- BENCH: BenchmarkUnmarshal/vitess-oneof-10
+    unmarshal_bench_test.go:150: data: 269702
+    unmarshal_bench_test.go:150: data: 269702
+    unmarshal_bench_test.go:150: data: 269702
+BenchmarkUnmarshal/simple-10        	     406	   2885267 ns/op	 1680077 B/op	   40001 allocs/op
 --- BENCH: BenchmarkUnmarshal/simple-10
-    unmarshal_bench_test.go:131: data: 269702
-    unmarshal_bench_test.go:131: data: 269702
-    unmarshal_bench_test.go:131: data: 269702
-BenchmarkUnmarshal/captain-simple-10         	    1262	    971727 ns/op	 1920009 B/op	   30000 allocs/op
+    unmarshal_bench_test.go:183: data: 269702
+    unmarshal_bench_test.go:183: data: 269702
+    unmarshal_bench_test.go:183: data: 269702
+BenchmarkUnmarshal/vitess-simple-10 	    2490	    478252 ns/op	  240337 B/op	   20003 allocs/op
+--- BENCH: BenchmarkUnmarshal/vitess-simple-10
+    unmarshal_bench_test.go:216: data: 269702
+    unmarshal_bench_test.go:216: data: 269702
+    unmarshal_bench_test.go:216: data: 269702
+BenchmarkUnmarshal/captain-simple-10         	    1274	    949922 ns/op	 1920007 B/op	   30000 allocs/op
 --- BENCH: BenchmarkUnmarshal/captain-simple-10
-    unmarshal_bench_test.go:174: data: 960000
-    unmarshal_bench_test.go:174: data: 960000
-    unmarshal_bench_test.go:174: data: 960000
-BenchmarkUnmarshal/captain-simple-compression-10         	     129	   8350849 ns/op	96640642 B/op	   40006 allocs/op
+    unmarshal_bench_test.go:257: data: 960000
+    unmarshal_bench_test.go:257: data: 960000
+    unmarshal_bench_test.go:257: data: 960000
+BenchmarkUnmarshal/captain-simple-compression-10         	     128	   8923026 ns/op	96640495 B/op	   40005 allocs/op
 --- BENCH: BenchmarkUnmarshal/captain-simple-compression-10
-    unmarshal_bench_test.go:224: data: 869325
-    unmarshal_bench_test.go:224: data: 869321
-    unmarshal_bench_test.go:224: data: 869325
-BenchmarkUnmarshal/captain-packed-10                     	     427	   2795395 ns/op	 4400030 B/op	   80000 allocs/op
+    unmarshal_bench_test.go:305: data: 869325
+    unmarshal_bench_test.go:305: data: 869325
+    unmarshal_bench_test.go:305: data: 869323
+BenchmarkUnmarshal/captain-packed-10                     	     414	   2810581 ns/op	 4400031 B/op	   80000 allocs/op
 --- BENCH: BenchmarkUnmarshal/captain-packed-10
-    unmarshal_bench_test.go:269: data: 398852
-    unmarshal_bench_test.go:269: data: 398852
-    unmarshal_bench_test.go:269: data: 398852
+    unmarshal_bench_test.go:348: data: 398852
+    unmarshal_bench_test.go:348: data: 398852
+    unmarshal_bench_test.go:348: data: 398852
 */
 func BenchmarkUnmarshal(b *testing.B) {
 	b.Run("oneof", benchmarkOneof)
+	b.Run("vitess-oneof", benchmarkVitessOneof)
 	b.Run("simple", benchmarkSimple)
+	b.Run("vitess-simple", benchmarkVitessProto)
+
 	b.Run("captain-simple", benchmarkCaptain)
 	b.Run("captain-simple-compression", benchmarkCaptainCompression)
 	b.Run("captain-packed", benchmarkCaptainPacked)

@@ -31,10 +31,7 @@ fi
 /usr/local/bin/protoc -I=. --python_out=../../rexer-pyclient-alpha/rexerclient/gen ftypes.proto ast.proto
 
 # Generate go bindings
-/usr/local/bin/protoc -I=. --go_out=../go/ ./*.proto
-
-# Generate grpc go bindings
-/usr/local/bin/protoc -I=. --go-grpc_out=../go/ ./*.proto
+/usr/local/bin/protoc -I=. --go_out=../go/ --go-vtproto_out=../go/ --go-vtproto_opt=pool=fennel/nitrous/rpc.NitrousBinlogEvent --go-vtproto_opt=pool=fennel/nitrous/rpc.NitrousOp ./*.proto
 
 prepare_libs=`cat <<EOF
 import sys
