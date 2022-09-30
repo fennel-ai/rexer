@@ -56,7 +56,8 @@ func TestInitRestore(t *testing.T) {
 
 		// Before the aggregate is created, we should get an error on trying to
 		// read its value.
-		_, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
+		ret := make([]value.Value, 1)
+		err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs}, ret)
 		assert.Error(t, err)
 
 		// Define the aggregate.
@@ -81,10 +82,10 @@ func TestInitRestore(t *testing.T) {
 
 		// After the aggregate is created, we should get the zero value before any
 		// event is logged  for the aggregate.
-		resp, err := ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
+		err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs}, ret)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, len(resp))
-		assert.Equal(t, value.Int(0), resp[0])
+		assert.Equal(t, 1, len(ret))
+		assert.Equal(t, value.Int(0), ret[0])
 
 		// Create some aggregate events.
 		ev, err := value.ToProtoValue(value.Int(42))
@@ -109,11 +110,11 @@ func TestInitRestore(t *testing.T) {
 		wait(ndb)
 
 		// Read the aggregate value - it should be 42.
-		resp, err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
+		err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs}, ret)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, len(resp))
+		assert.Equal(t, 1, len(ret))
 		assert.NoError(t, err)
-		assert.Equal(t, value.Int(42), resp[0])
+		assert.Equal(t, value.Int(42), ret[0])
 	}()
 
 	// Try restoring the DB with the same configuration
@@ -126,11 +127,12 @@ func TestInitRestore(t *testing.T) {
 
 	// wait for the tailers to restore the data from topics
 	wait(ndb)
-	resp, err := ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
+	ret := make([]value.Value, 1)
+	err = ndb.Get(ctx, tierId, aggId, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs}, ret)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(resp))
+	assert.Equal(t, 1, len(ret))
 	assert.NoError(t, err)
-	assert.Equal(t, value.Int(42), resp[0])
+	assert.Equal(t, value.Int(42), ret[0])
 }
 
 func TestCreateDuplicate(t *testing.T) {
@@ -236,7 +238,8 @@ func TestDeleteAggregate(t *testing.T) {
 		wait(ndb)
 
 		// Fetch aggregate value. This should return the zero value for the aggregate.
-		vals, err := ndb.Get(ctx, tierId, 1, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
+		vals := make([]value.Value, 1)
+		err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs}, vals)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(vals))
 		assert.EqualValues(t, 0, vals[0].(value.Int))
@@ -260,7 +263,7 @@ func TestDeleteAggregate(t *testing.T) {
 		wait(ndb)
 
 		// Fetching the aggregate should now fail.
-		_, err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs})
+		err = ndb.Get(ctx, tierId, 1, rpc.AggCodec_V2, []string{"mygk"}, []value.Dict{kwargs}, vals)
 		assert.Error(t, err)
 	}()
 

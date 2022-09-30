@@ -26,11 +26,12 @@ func (tdb *TestDB) setLag(lag int) {
 	tdb.lag = lag
 }
 
-func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, groupkeys []string, kwargs []value.Dict) ([]value.Value, error) {
+func (tdb *TestDB) Get(ctx context.Context, tierId ftypes.RealmID, aggId ftypes.AggId, codec rpc.AggCodec, groupkeys []string, kwargs []value.Dict, ret []value.Value) error {
 	if tdb.next == nil {
-		return nil, fmt.Errorf("no values")
+		return fmt.Errorf("no values")
 	}
-	return tdb.next, nil
+	copy(ret, tdb.next)
+	return nil
 }
 
 func (tdb *TestDB) GetLag() (int, error) {

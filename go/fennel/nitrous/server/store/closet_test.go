@@ -41,7 +41,8 @@ func TestAggregateStore(t *testing.T) {
 	kwargs := value.NewDict(nil)
 	kwargs.Set("duration", value.Int(24*3600))
 
-	val, err := cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	val := make([]value.Value, 1)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, val)
 
@@ -51,7 +52,7 @@ func TestAggregateStore(t *testing.T) {
 	assert.NoError(t, err)
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
-	val, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(5)}, val)
 
@@ -61,7 +62,7 @@ func TestAggregateStore(t *testing.T) {
 	assert.NoError(t, err)
 	// sleep for a bit to ensure all writes are flushed
 	time.Sleep(100 * time.Millisecond)
-	val, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, val)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(12)}, val)
 }
@@ -112,20 +113,21 @@ func TestProcess(t *testing.T) {
 	}
 
 	// max is 0.
-	vals, err := cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	vals := make([]value.Value, 1)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Double(0)}, vals)
 
 	// max is the inserted value.
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(42))
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
 	// max should remain as 42.
 	ck.Add(10 * time.Hour)
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(29))
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
@@ -141,10 +143,10 @@ func TestProcess(t *testing.T) {
 	cs2, err := NewCloset(tierId, aggId2, rpc.AggCodec_V2, mr2, b, 25)
 	assert.NoError(t, err)
 	pushEvent(cs2, tierId, aggId2, "mygk", value.Int(531))
-	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(531)}, vals)
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(42)}, vals)
 
@@ -152,20 +154,20 @@ func TestProcess(t *testing.T) {
 	// agg2 should remain unchanged.
 	ck.Add(16 * time.Hour)
 	pushEvent(cs, tierId, aggId, "mygk", value.Int(-10))
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(29)}, vals)
-	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(531)}, vals)
 
 	// "29" will expire and max should now be -10.
 	// agg2 value should also expire and now return 0.
 	ck.Add(10 * time.Hour)
-	vals, err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(-10)}, vals)
-	vals, err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db)
+	err = cs2.Get(ctx, []string{"mygk"}, []value.Dict{kwargs}, db, vals)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []value.Value{value.Int(0)}, vals)
 }
@@ -210,7 +212,8 @@ func BenchmarkGet(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := cs.Get(ctx, gks, kwargs, db)
+		vals := make([]value.Value, len(gks))
+		err := cs.Get(ctx, gks, kwargs, db, vals)
 		assert.NoError(b, err)
 	}
 }
