@@ -138,7 +138,7 @@ func (r *Region) Free() {
 		// if it contained a pointer to another data structure. In such cases, failure to
 		// free up memory can result in memory leaks.
 		slice.Fill(pg, 0)
-		pagepool.Put(pg)
+		pagepool.Put(&pg)
 	}
 }
 
