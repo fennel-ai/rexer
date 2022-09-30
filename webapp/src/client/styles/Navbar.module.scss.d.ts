@@ -9,6 +9,7 @@ interface CssExports {
   'leftNav': string;
   'logo': string;
   'menu': string;
+  'menuContainer': string;
   'rightNav': string;
 }
 export const cssExports: CssExports;
