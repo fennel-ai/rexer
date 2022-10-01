@@ -645,7 +645,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-ng-arm",
-                    instanceTypes: ["m6gd.8xlarge"],
+                    instanceTypes: ["c6gd.8xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -695,8 +695,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     limit: "32000m"
                 },
                 memory: {
-                    request: "110Gi",
-                    limit: "125Gi",
+                    request: "55Gi",
+                    limit: "60Gi",
                 }
             },
             binlog: {
