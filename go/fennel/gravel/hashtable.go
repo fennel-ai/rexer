@@ -78,7 +78,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"syscall"
 
 	"go.uber.org/zap"
@@ -441,12 +440,22 @@ func getRecords(data map[string]Value, numBuckets uint32) []record {
 			value:    v,
 		})
 	}
-	// sort entries within each bucket by their fingerprint so that we
-	// can do early termination in the get path
+	// Sort entries within each bucket by their fingerprint so that we
+	// can do early termination in the get path. We use manual insertion sort
+	// instead of standard slice.Sort to keep the overhead low and save CPU
 	for _, entries := range bucketEntries {
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].fp < entries[j].fp
-		})
+		for i := 1; i < len(entries); i++ {
+			fp := entries[i].fp
+			for j := i; j >= 0; j-- {
+				if j >= 1 && entries[j-1].fp > fp {
+					continue
+				}
+				e := entries[i]
+				copy(entries[j+1:], entries[j:i])
+				entries[j] = e
+				break
+			}
+		}
 	}
 	i := 0
 	records := make([]record, len(data))
