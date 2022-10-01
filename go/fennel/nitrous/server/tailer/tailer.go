@@ -145,6 +145,12 @@ func (t *Tailer) Stop() {
 	t.stopCh <- ack
 	<-ack
 	t.running.Store(false)
+
+	// stop compaction on the underlying storage as well
+	if err := t.store.StopCompaction(); err != nil {
+		// this should never happen
+		panic(fmt.Errorf("failed to stop compaction for the underlying hangar: %v", err))
+	}
 }
 
 func (t *Tailer) processBatch(rawops [][]byte) error {
@@ -198,6 +204,10 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 // stop the tailer, call Stop().
 func (t *Tailer) Tail() {
 	t.running.Store(true)
+	if err := t.store.StartCompaction(); err != nil {
+		// this should never happen
+		panic(fmt.Errorf("failed to start compaction for underlying hangar: %v", err))
+	}
 	for {
 		select {
 		case ack := <-t.stopCh:

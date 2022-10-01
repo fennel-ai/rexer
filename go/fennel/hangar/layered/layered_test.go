@@ -130,6 +130,21 @@ type mockStore struct {
 	sync.Mutex
 }
 
+func (m *mockStore) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *mockStore) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *mockStore) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m *mockStore) PlaneID() ftypes.RealmID {
 	return m.planeID
 }

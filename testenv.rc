@@ -36,6 +36,8 @@ export JOB_NAME_BY_AGG="topk=TopK,cf=CF"
 export OFFLINE_AGG_BUCKET="t-103-offline-aggregate-output"
 export AWS_REGION="us-west-2"
 
+export BACKUP_BUCKET="nitrous-integration-test-backup"
+
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103
 

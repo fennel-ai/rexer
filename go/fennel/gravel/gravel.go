@@ -167,6 +167,16 @@ func isExpired(expires, now Timestamp) bool {
 	return expires > 0 && expires < now
 }
 
+func (g *Gravel) StartCompaction() error {
+	g.tm.StartCompactionWorkers()
+	return nil
+}
+
+func (g *Gravel) StopCompaction() error {
+	g.tm.StopCompactionWorkers()
+	return nil
+}
+
 func (g *Gravel) Teardown() error {
 	if err := g.Close(); err != nil {
 		return err
@@ -183,6 +193,12 @@ func (g *Gravel) Close() error {
 func (g *Gravel) Backup() error {
 	return g.tm.Close()
 }
+
+func (g *Gravel) Flush() error {
+	return g.flush()
+}
+
+// TODO(mohit): Expose Flush as a public method for testing!
 
 // NOTE: the caller of flush is expected to hold commitlock
 func (g *Gravel) flush() error {

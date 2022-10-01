@@ -31,6 +31,21 @@ type pebbleDB struct {
 	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 }
 
+func (p *pebbleDB) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (p *pebbleDB) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (p *pebbleDB) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ hangar.Hangar = (*pebbleDB)(nil)
 
 func NewHangar(planeID ftypes.RealmID, dirname string, opts *pebble.Options, enc hangar.Encoder) (*pebbleDB, error) {

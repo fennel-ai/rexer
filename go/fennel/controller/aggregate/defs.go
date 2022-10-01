@@ -113,7 +113,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 				return err
 			}
 			// Forward online aggregate definition to nitrous.
-			if !agg.IsOffline() && !agg.IsAutoML() {
+			if !agg.IsOffline() && !agg.IsAutoML() && !agg.IsForever() {
 				// Note: we retrieve the aggregate back from the db since agg.Id
 				// is not initialized yet.
 				agg, err = modelAgg.Retrieve(ctx, tier, agg.Name)
@@ -146,7 +146,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			}
 			// Forward online aggregates to nitrous if the client has been initialized.
 			// We do this even if the aggregate has been previously defined.
-			if !agg.IsOffline() {
+			if !agg.IsOffline() && !agg.IsAutoML() && !agg.IsForever() {
 				// Note: we send agg2.Id since agg.Id is not initialized yet.
 				go createOnNitrous(ctx, tier, agg2.Id, agg.Options)
 			}

@@ -71,8 +71,10 @@ type NitrousConf = {
     storageCapacityGB: number
     blockCacheMB: number,
     kvCacheMB: number,
+    forceLoadBackup?: boolean,
     binlog: nitrous.binlogConfig,
     mskBinlog?: nitrous.binlogConfig,
+    backupConf?: nitrous.backupConf,
 }
 
 type NewAccount = {
@@ -353,6 +355,7 @@ const setupResources = async () => {
             planeId: input.planeId,
             region: input.region,
             roleArn: roleArn,
+            nodeInstanceRole: eksOutput.instanceRole,
             kubeconfig: eksOutput.kubeconfig,
             otlpEndpoint: telemetryOutput.otelCollectorEndpoint,
 
@@ -367,6 +370,8 @@ const setupResources = async () => {
             blockCacheMB: input.nitrousConf.blockCacheMB,
             kvCacheMB: input.nitrousConf.kvCacheMB,
 
+            forceLoadBackup: input.nitrousConf.forceLoadBackup,
+
             kafka: {
                 username: mskOutput.mskUsername,
                 password: mskOutput.mskPassword,
@@ -380,6 +385,9 @@ const setupResources = async () => {
                 partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
                 max_message_bytes: input.nitrousConf.binlog.max_message_bytes,
             },
+
+            backupConf: input.nitrousConf.backupConf,
+
             protect: input.protectResources,
         })
     }

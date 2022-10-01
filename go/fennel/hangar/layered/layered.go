@@ -56,6 +56,21 @@ type layered struct {
 	filler  *backfiller
 }
 
+func (l *layered) StartCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *layered) StopCompaction() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *layered) Flush() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 var (
 	cacheHits = promauto.NewCounter(
 		prometheus.CounterOpts{
@@ -70,10 +85,6 @@ var (
 		},
 	)
 )
-
-func (l *layered) Restore(source io.Reader) error {
-	panic("implement me")
-}
 
 func (l *layered) stopFill() {
 	l.filler.stop()
