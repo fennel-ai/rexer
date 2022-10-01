@@ -79,6 +79,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"unsafe"
 
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
@@ -164,7 +165,8 @@ func (ht *hashTable) GetAll(m map[string]Value) error {
 			return incompleteFile
 		}
 		sofar += n
-		curKey := string(data[sofar : sofar+int(keyLen)])
+		keybuf := data[sofar : sofar+int(keyLen)]
+		curKey := *(*string)(unsafe.Pointer(&keybuf))
 		sofar += int(keyLen)
 		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false, false)
 		if err != nil {
