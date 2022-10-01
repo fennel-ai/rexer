@@ -687,6 +687,20 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     },
                     expansionPriority: 1,
                 },
+                // Nitrous backup node group.
+                {
+                    name: "p-5-nitrous-backup-ng-arm",
+                    instanceTypes: ["c6gd.8xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-5-nitrous-backup-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
                 {
                     name: "p-5-common-ng-arm-xlarge",
                     instanceTypes: ["t4g.xlarge"],
@@ -752,6 +766,15 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             nodeLabels: {
                 "node-group": "p-5-nitrous-ng",
+            },
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-5-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "15m",
+                remoteCopiesToKeep: 2,
             },
         },
 
