@@ -85,13 +85,7 @@ func (this *CreateAggregate) EqualVT(that *CreateAggregate) bool {
 	if this.AggId != that.AggId {
 		return false
 	}
-	if equal, ok := interface{}(this.Options).(interface {
-		EqualVT(*aggregate.AggOptions) bool
-	}); ok {
-		if !equal.EqualVT(that.Options) {
-			return false
-		}
-	} else if !proto.Equal(this.Options, that.Options) {
+	if !this.Options.EqualVT(that.Options) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -124,11 +118,7 @@ func (this *AggEvent) EqualVT(that *AggEvent) bool {
 	if this.Timestamp != that.Timestamp {
 		return false
 	}
-	if equal, ok := interface{}(this.Value).(interface{ EqualVT(*value.PValue) bool }); ok {
-		if !equal.EqualVT(that.Value) {
-			return false
-		}
-	} else if !proto.Equal(this.Value, that.Value) {
+	if !this.Value.EqualVT(that.Value) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -161,11 +151,7 @@ func (this *ProfileUpdate) EqualVT(that *ProfileUpdate) bool {
 	if !this.Key.EqualVT(that.Key) {
 		return false
 	}
-	if equal, ok := interface{}(this.Value).(interface{ EqualVT(*value.PValue) bool }); ok {
-		if !equal.EqualVT(that.Value) {
-			return false
-		}
-	} else if !proto.Equal(this.Value, that.Value) {
+	if !this.Value.EqualVT(that.Value) {
 		return false
 	}
 	if this.Timestamp != that.Timestamp {
@@ -222,11 +208,7 @@ func (this *AggregateValuesRequest) EqualVT(that *AggregateValuesRequest) bool {
 		return false
 	}
 	for i := range this.Kwargs {
-		if equal, ok := interface{}(this.Kwargs[i]).(interface{ EqualVT(*value.PVDict) bool }); ok {
-			if !equal.EqualVT(that.Kwargs[i]) {
-				return false
-			}
-		} else if !proto.Equal(this.Kwargs[i], that.Kwargs[i]) {
+		if !this.Kwargs[i].EqualVT(that.Kwargs[i]) {
 			return false
 		}
 	}
@@ -243,11 +225,7 @@ func (this *AggregateValuesResponse) EqualVT(that *AggregateValuesResponse) bool
 		return false
 	}
 	for i := range this.Results {
-		if equal, ok := interface{}(this.Results[i]).(interface{ EqualVT(*value.PValue) bool }); ok {
-			if !equal.EqualVT(that.Results[i]) {
-				return false
-			}
-		} else if !proto.Equal(this.Results[i], that.Results[i]) {
+		if !this.Results[i].EqualVT(that.Results[i]) {
 			return false
 		}
 	}
@@ -291,11 +269,7 @@ func (this *ProfilesResponse) EqualVT(that *ProfilesResponse) bool {
 		return false
 	}
 	for i := range this.Results {
-		if equal, ok := interface{}(this.Results[i]).(interface{ EqualVT(*value.PValue) bool }); ok {
-			if !equal.EqualVT(that.Results[i]) {
-				return false
-			}
-		} else if !proto.Equal(this.Results[i], that.Results[i]) {
+		if !this.Results[i].EqualVT(that.Results[i]) {
 			return false
 		}
 	}
@@ -712,24 +686,12 @@ func (m *CreateAggregate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Options != nil {
-		if marshalto, ok := interface{}(m.Options).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Options)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		size, err := m.Options.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -810,24 +772,12 @@ func (m *AggEvent) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Value != nil {
-		if marshalto, ok := interface{}(m.Value).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Value)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		size, err := m.Value.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -941,24 +891,12 @@ func (m *ProfileUpdate) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		dAtA[i] = 0x18
 	}
 	if m.Value != nil {
-		if marshalto, ok := interface{}(m.Value).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Value)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		size, err := m.Value.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -1078,24 +1016,12 @@ func (m *AggregateValuesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error
 	}
 	if len(m.Kwargs) > 0 {
 		for iNdEx := len(m.Kwargs) - 1; iNdEx >= 0; iNdEx-- {
-			if marshalto, ok := interface{}(m.Kwargs[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.Kwargs[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = encodeVarint(dAtA, i, uint64(len(encoded)))
+			size, err := m.Kwargs[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0x2a
 		}
@@ -1181,24 +1107,12 @@ func (m *AggregateValuesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, erro
 	}
 	if len(m.Results) > 0 {
 		for iNdEx := len(m.Results) - 1; iNdEx >= 0; iNdEx-- {
-			if marshalto, ok := interface{}(m.Results[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.Results[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = encodeVarint(dAtA, i, uint64(len(encoded)))
+			size, err := m.Results[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -1288,24 +1202,12 @@ func (m *ProfilesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	if len(m.Results) > 0 {
 		for iNdEx := len(m.Results) - 1; iNdEx >= 0; iNdEx-- {
-			if marshalto, ok := interface{}(m.Results[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := marshalto.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.Results[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = encodeVarint(dAtA, i, uint64(len(encoded)))
+			size, err := m.Results[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0xa
 		}
@@ -1441,13 +1343,7 @@ func (m *CreateAggregate) SizeVT() (n int) {
 		n += 1 + sov(uint64(m.AggId))
 	}
 	if m.Options != nil {
-		if size, ok := interface{}(m.Options).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Options)
-		}
+		l = m.Options.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
@@ -1488,13 +1384,7 @@ func (m *AggEvent) SizeVT() (n int) {
 		n += 1 + sov(uint64(m.Timestamp))
 	}
 	if m.Value != nil {
-		if size, ok := interface{}(m.Value).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Value)
-		}
+		l = m.Value.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
@@ -1538,13 +1428,7 @@ func (m *ProfileUpdate) SizeVT() (n int) {
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.Value != nil {
-		if size, ok := interface{}(m.Value).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Value)
-		}
+		l = m.Value.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.Timestamp != 0 {
@@ -1606,13 +1490,7 @@ func (m *AggregateValuesRequest) SizeVT() (n int) {
 	}
 	if len(m.Kwargs) > 0 {
 		for _, e := range m.Kwargs {
-			if size, ok := interface{}(e).(interface {
-				SizeVT() int
-			}); ok {
-				l = size.SizeVT()
-			} else {
-				l = proto.Size(e)
-			}
+			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -1630,13 +1508,7 @@ func (m *AggregateValuesResponse) SizeVT() (n int) {
 	_ = l
 	if len(m.Results) > 0 {
 		for _, e := range m.Results {
-			if size, ok := interface{}(e).(interface {
-				SizeVT() int
-			}); ok {
-				l = size.SizeVT()
-			} else {
-				l = proto.Size(e)
-			}
+			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -1685,13 +1557,7 @@ func (m *ProfilesResponse) SizeVT() (n int) {
 	_ = l
 	if len(m.Results) > 0 {
 		for _, e := range m.Results {
-			if size, ok := interface{}(e).(interface {
-				SizeVT() int
-			}); ok {
-				l = size.SizeVT()
-			} else {
-				l = proto.Size(e)
-			}
+			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -2146,16 +2012,8 @@ func (m *CreateAggregate) UnmarshalVT(dAtA []byte) error {
 			if m.Options == nil {
 				m.Options = &aggregate.AggOptions{}
 			}
-			if unmarshal, ok := interface{}(m.Options).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Options); err != nil {
-					return err
-				}
+			if err := m.Options.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -2381,16 +2239,8 @@ func (m *AggEvent) UnmarshalVT(dAtA []byte) error {
 			if m.Value == nil {
 				m.Value = &value.PValue{}
 			}
-			if unmarshal, ok := interface{}(m.Value).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Value); err != nil {
-					return err
-				}
+			if err := m.Value.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -2659,16 +2509,8 @@ func (m *ProfileUpdate) UnmarshalVT(dAtA []byte) error {
 			if m.Value == nil {
 				m.Value = &value.PValue{}
 			}
-			if unmarshal, ok := interface{}(m.Value).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Value); err != nil {
-					return err
-				}
+			if err := m.Value.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 3:
@@ -2981,16 +2823,8 @@ func (m *AggregateValuesRequest) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Kwargs = append(m.Kwargs, &value.PVDict{})
-			if unmarshal, ok := interface{}(m.Kwargs[len(m.Kwargs)-1]).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Kwargs[len(m.Kwargs)-1]); err != nil {
-					return err
-				}
+			if err := m.Kwargs[len(m.Kwargs)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -3074,16 +2908,8 @@ func (m *AggregateValuesResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Results = append(m.Results, &value.PValue{})
-			if unmarshal, ok := interface{}(m.Results[len(m.Results)-1]).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Results[len(m.Results)-1]); err != nil {
-					return err
-				}
+			if err := m.Results[len(m.Results)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 2:
@@ -3315,16 +3141,8 @@ func (m *ProfilesResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Results = append(m.Results, &value.PValue{})
-			if unmarshal, ok := interface{}(m.Results[len(m.Results)-1]).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Results[len(m.Results)-1]); err != nil {
-					return err
-				}
+			if err := m.Results[len(m.Results)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
