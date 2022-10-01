@@ -2,12 +2,13 @@ package gravel
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"os"
 	"path"
 	"sort"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -33,9 +34,10 @@ type TableManager struct {
 	wg                  sync.WaitGroup
 	stopCh              chan struct{}
 	compactionRunning   bool
+	logger 				*zap.Logger
 }
 
-func InitTableManager(dirname string, tableType TableType, numShards uint64, compactionWorkerNum int) (*TableManager, error) {
+func InitTableManager(dirname string, tableType TableType, numShards uint64, compactionWorkerNum int, logger *zap.Logger) (*TableManager, error) {
 	if err := numShardsValid(numShards); err != nil {
 		return nil, err
 	}
@@ -56,6 +58,7 @@ func InitTableManager(dirname string, tableType TableType, numShards uint64, com
 		lock:              sync.RWMutex{},
 		wg:                sync.WaitGroup{},
 		compactionRunning: false,
+		logger: 		   logger,
 	}
 
 	for i := uint64(0); i < manifest.numShards; i++ {
@@ -76,7 +79,7 @@ func InitTableManager(dirname string, tableType TableType, numShards uint64, com
 func (t *TableManager) reloadShardTablesFromManifest(shardId uint64) error {
 	tableFiles, err := t.manifest.GetTableFiles(shardId)
 	if err != nil {
-		zap.L().Error("failed to read manifest after the compaction", zap.Error(err))
+		t.logger.Error("failed to read manifest after the compaction", zap.Error(err))
 		return err
 	}
 
@@ -88,11 +91,11 @@ func (t *TableManager) reloadShardTablesFromManifest(shardId uint64) error {
 		if !exist {
 			table, err = OpenTable(t.manifest.tableType, path.Join(t.manifest.dirname, tableFile))
 			if err != nil {
-				zap.L().Error("failed to open table", zap.Error(err))
+				t.logger.Error("failed to open table", zap.Error(err))
 				ret = err
 				continue
 			}
-			zap.L().Info("opened table", zap.String("tableFile", tableFile), zap.Error(err))
+			t.logger.Info("opened table", zap.String("tableFile", tableFile), zap.Error(err))
 		}
 		tablesByFileName[tableFile] = table
 		tables = append(tables, table)
@@ -102,11 +105,11 @@ func (t *TableManager) reloadShardTablesFromManifest(shardId uint64) error {
 		if _, ok := tablesByFileName[tableFile]; !ok {
 			err = table.Close()
 			if err != nil {
-				zap.L().Error("failed to close deleted table", zap.Error(err))
+				t.logger.Error("failed to close deleted table", zap.Error(err))
 				ret = err
 				continue
 			}
-			zap.L().Info("closed table", zap.String("tableFile", tableFile), zap.Error(err))
+			t.logger.Info("closed table", zap.String("tableFile", tableFile), zap.Error(err))
 		}
 	}
 
@@ -147,7 +150,7 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	pickedShard := shardInfo[len(shardInfo)-1] // the shard with most tables
 
 	if pickedShard.numFiles < minimumFilesToTriggerCompaction {
-		zap.L().Info("no compaction work to do for worker", zap.Int("worker_id", workerIdx))
+		t.logger.Info("no compaction work to do for worker", zap.Int("worker_id", workerIdx))
 		return false
 	}
 
@@ -160,15 +163,15 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	}
 	t.lock.RUnlock()
 	if tablesToCompact == nil {
-		zap.L().Info("no compaction work to do for worker", zap.Int("worker_id", workerIdx))
+		t.logger.Info("no compaction work to do for worker", zap.Int("worker_id", workerIdx))
 		return false
 	}
 
 	// actual compact work
-	zap.L().Info("Going to compact for shard", zap.Int("worker_id", workerIdx), zap.Uint64("shardId", pickedShard.shardId), zap.Bool("compact_to_final", compactToFinal))
+	t.logger.Info("Going to compact for shard", zap.Int("worker_id", workerIdx), zap.Uint64("shardId", pickedShard.shardId), zap.Bool("compact_to_final", compactToFinal))
 	newTableFile, err := CompactTables(t.manifest.dirname, tablesToCompact, pickedShard.shardId, t.manifest.tableType, compactToFinal)
 	if err != nil {
-		zap.L().Error("failed to compact", zap.Int("worker_id", workerIdx), zap.Error(err))
+		t.logger.Error("failed to compact", zap.Int("worker_id", workerIdx), zap.Error(err))
 	}
 
 	// update manifest
@@ -180,13 +183,13 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	}
 	err = t.manifest.Replace(pickedShard.shardId, tableFilesToCompact, newTableFile)
 	if err != nil {
-		zap.L().Error("failed refresh manifest after compaction", zap.Int("worker_id", workerIdx), zap.Error(err))
+		t.logger.Error("failed refresh manifest after compaction", zap.Int("worker_id", workerIdx), zap.Error(err))
 	}
 
 	// now sync the manifest with the current open tables by opening new ones and closing removed ones
 	err = t.reloadShardTablesFromManifest(pickedShard.shardId)
 	if err != nil {
-		zap.L().Error("failed to reload tables after compaction", zap.Int("worker_id", workerIdx), zap.Error(err))
+		t.logger.Error("failed to reload tables after compaction", zap.Int("worker_id", workerIdx), zap.Error(err))
 	}
 	return true
 }
@@ -201,7 +204,7 @@ func (t *TableManager) StartCompactionWorkers() {
 
 	f := func(workerIdx int) {
 		defer t.wg.Done()
-		zap.L().Info("compaction worker started", zap.Int("worker_id", workerIdx))
+		t.logger.Info("compaction worker started", zap.Int("worker_id", workerIdx))
 		timer := time.NewTimer(0)
 		for {
 			select {
@@ -215,7 +218,7 @@ func (t *TableManager) StartCompactionWorkers() {
 				}
 			case _, ok := <-t.stopCh:
 				if !ok {
-					zap.L().Info("compaction worker stopped", zap.Int("worker_id", workerIdx))
+					t.logger.Info("compaction worker stopped", zap.Int("worker_id", workerIdx))
 					return
 				}
 			}
