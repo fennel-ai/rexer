@@ -21,6 +21,7 @@ import (
 type BackupManager struct {
 	planeID ftypes.RealmID
 	store   BackupStore
+	backupsToKeep   int
 }
 
 type uploadedManifestItem struct {
@@ -32,13 +33,12 @@ type uploadedManifestItem struct {
 
 const manifestPrefix string = "manifest_"
 
-func NewBackupManager(plainID ftypes.RealmID, store BackupStore) (*BackupManager, error) {
-	return &BackupManager{planeID: plainID, store: store}, nil
+func NewBackupManager(plainID ftypes.RealmID, store BackupStore, backupsToKeep int) (*BackupManager, error) {
+	return &BackupManager{planeID: plainID, store: store, backupsToKeep: backupsToKeep}, nil
 }
 
-// TODO(mohit): Rename this -> we have `versionsToKeep` as the argument, the func name should match
-func (bm *BackupManager) BackupCleanup(ctx context.Context, versionsToKeep []string) error {
-	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.BackupCleanup")
+func (bm *BackupManager) PurgeAllExceptVersions(ctx context.Context, versionsToKeep []string) error {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.PurgeAllExceptVersions")
 	defer t.Stop()
 	// The function clean up all the files that are not belong to the backups we want to keep
 	if len(versionsToKeep) == 0 {
@@ -268,7 +268,7 @@ func DirIsEmpty(dir string) (bool, error) {
 
 	_, err = fdir.Readdirnames(1)
 	if err == io.EOF {
-		return true, err
+		return true, nil
 	}
 	return false, err
 }
@@ -366,4 +366,23 @@ func (bm *BackupManager) RestoreLatest(ctx context.Context, dbDir string) error 
 	}
 	zap.L().Info("Successfully restored the latest backup", zap.String("version", backupToRecover))
 	return nil
+}
+
+func (bm *BackupManager) PurgeOldBackups(ctx context.Context) {
+	ctx, t := timer.Start(ctx, bm.planeID, "backupmanager.PurgeOldBackups")
+	defer t.Stop()
+	backupList, err := bm.ListBackups(ctx)
+	if err != nil {
+		zap.L().Error("Failed to list backup while purging old backups", zap.Error(err))
+		return
+	}
+	sort.Strings(backupList)
+	zap.L().Info("Backups to keep", zap.Strings("list_of_versions", backupList))
+	if len(backupList) < bm.backupsToKeep {
+		return
+	}
+	err = bm.PurgeAllExceptVersions(ctx, backupList[len(backupList)-bm.backupsToKeep:])
+	if err != nil {
+		zap.L().Info("Failed to purge old backups", zap.Error(err))
+	}
 }

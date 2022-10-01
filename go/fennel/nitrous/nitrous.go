@@ -2,15 +2,15 @@ package nitrous
 
 import (
 	"context"
-	"fennel/lib/instancemetadata"
-	"fennel/lib/timer"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"sort"
-	"strings"
+	"path/filepath"
 	"time"
+
+	"fennel/lib/instancemetadata"
+	"fennel/lib/timer"
 
 	libkafka "fennel/kafka"
 	"fennel/lib/ftypes"
@@ -49,9 +49,9 @@ type NitrousArgs struct {
 	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
 	BackupNode   bool   `arg:"--backup-node,env:BACKUP_NODE" json:"backup_node,omitempty"`
 	BackupBucket string `arg:"--backup-bucket,env:BACKUP_BUCKET" json:"backup_bucket,omitempty"`
-	RemoteBackupsToKeep uint32 `arg:"--remote-backups-to-keep,env:REMOTE_BACKUPS_TO_KEEP" json:"remote_backups_to_keep,omitempty"`
+	RemoteBackupsToKeep uint32 `arg:"--remote-backups-to-keep,env:REMOTE_BACKUPS_TO_KEEP" default:"2" json:"remote_backups_to_keep,omitempty"`
 	BackupFrequency time.Duration `arg:"--backup-frequency,env:BACKUP_FREQUENCY" json:"backup_frequency,omitempty"`
-	LocalCopyStalenessDuration time.Duration `arg:"--local-copy-staleness-duration,env:LOCAL_COPY_STALENESS_DURATION" json:"local_copy_staleness_duration,omitempty"`
+	ForceLoadFromBackup bool `arg:"--force-load-from-backup,env:FORCE_LOAD_FROM_BACKUP" json:"force_load_from_backup,omitempty"`
 	ShardName    string `arg:"--shard-name,env:SHARD_NAME" default:"default" json:"shard_name,omitempty"`
 }
 
@@ -61,8 +61,6 @@ func (args NitrousArgs) Valid() error {
 }
 
 type KafkaConsumerFactory func(libkafka.ConsumerConfig) (libkafka.FConsumer, error)
-
-const dataDirPrefix string = "badgerdb-data-"
 
 type Nitrous struct {
 	PlaneID              ftypes.RealmID
@@ -75,149 +73,72 @@ type Nitrous struct {
 	backupManager        *backup.BackupManager
 }
 
-func writeFlag(flagFileName string, value string) error {
-	// store a piece of information into a file
-	fFlag, err := os.Create(flagFileName)
-	if err != nil {
-		return err
-	}
-	_, err = fFlag.WriteString(value)
-	if err != nil {
-		return err
-	}
-	err = fFlag.Close()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func readFlag(flagFileName string) string {
-	content, err := ioutil.ReadFile(flagFileName)
-	if err != nil {
-		return ""
-	}
-	return string(content)
-}
-
-func purgeOldData(rootDir string, dirToKeep string) {
+func purgeOldData(dir string) {
 	// Remove other DB directories and only keep the one that is actively being used
-	items, err := ioutil.ReadDir(rootDir)
+	items, err := ioutil.ReadDir(dir)
 	if err != nil {
 		// not super critical, and shouldn't block the server starts
-		zap.L().Error("Failed to open the root dir when trying to purge other copies of data", zap.String("dir", rootDir), zap.Error(err))
+		zap.L().Error("Failed to open the dir when trying to purge data", zap.String("dir", dir), zap.Error(err))
 		return
 	}
 	for _, item := range items {
-		if item.IsDir() {
-			if strings.HasPrefix(item.Name(), dataDirPrefix) {
-				// interesting folder
-				if strings.HasSuffix(dirToKeep, item.Name()) {
-					continue // keep this folder
-				}
-				// now going to erase this folder
-				fullName := rootDir + "/" + item.Name()
-				err := os.RemoveAll(fullName)
-				if err == nil {
-					zap.L().Info("Successfully purged previous directory", zap.String("directory", fullName))
-				} else {
-					zap.L().Error("Failed to purge previous directory", zap.String("directory", fullName), zap.Error(err))
-				}
-			}
+		// now going to erase this folder
+		fullName := filepath.Join(dir, item.Name())
+		err := os.RemoveAll(fullName)
+		if err == nil {
+			zap.L().Info("Successfully purged previous directory", zap.String("dirItem", fullName))
+		} else {
+			zap.L().Error("Failed to purge previous directory", zap.String("dirItem", fullName), zap.Error(err))
 		}
 	}
 }
 
-func getDirChangeTime(dir string) int64 {
-	fileInfo, err := os.Stat(dir)
-	if err != nil {
-		zap.L().Error("Failed to get the change time of the directory", zap.String("dir", dir), zap.Error(err))
-		return 0
-	}
-	return fileInfo.ModTime().Unix()
-}
-
-func purgeOldBackups(ctx context.Context, bm *backup.BackupManager, backupsToKeep int) {
-	// TODO(mohit): Consider purging backups based on the timestamp as well.
-	backupList, err := bm.ListBackups(ctx)
-	if err != nil {
-		zap.L().Error("Failed to list backup while purging old backups", zap.Error(err))
-		return
-	}
-	sort.Strings(backupList)
-	zap.L().Info("Backups to keep", zap.Strings("list_of_versions", backupList))
-	if len(backupList) < backupsToKeep {
-		return
-	}
-	err = bm.BackupCleanup(ctx, backupList[len(backupList)-backupsToKeep:])
-	if err != nil {
-		zap.L().Info("Failed to purge old backups", zap.Error(err))
-	}
-}
-
-func (n *Nitrous) Backup(args NitrousArgs) error {
+func (n *Nitrous) Backup() error {
 	ctx := context.Background()
 	ctx, t := timer.Start(ctx, n.PlaneID, "nitrous.Backup")
 	defer t.Stop()
-	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
-	currentDBDir := readFlag(currentDirFlag)
-	return n.backupManager.BackupPath(ctx, currentDBDir, time.Now().Format(time.RFC3339))
+	return n.backupManager.BackupPath(ctx, n.DbDir, time.Now().Format(time.RFC3339))
 }
 
-func dbDir(bm *backup.BackupManager, args NitrousArgs) (string, error) {
+func (n *Nitrous) PurgeOldBackups() {
 	ctx := context.Background()
-	currentDirFlag := args.GravelDir + "/current_data_folder.txt"
+	ctx, t := timer.Start(ctx, n.PlaneID, "nitrous.PurgeOldBackups")
+	defer t.Stop()
 
-	newRestoreDir := fmt.Sprintf("%s/%s%d", args.GravelDir, dataDirPrefix, time.Now().Unix())
-	err := os.MkdirAll(newRestoreDir, os.ModePerm)
+	n.backupManager.PurgeOldBackups(ctx)
+}
+
+// restoreBackupOrReuseData looks for the mentioned DB directory locally, if the directory is empty, it tries to
+// restore a backup. Otherwise continues using the local data
+func restoreBackupOrReuseData(bm *backup.BackupManager, args NitrousArgs) error {
+	ctx := context.Background()
+	dbDir := args.GravelDir
+	err := os.MkdirAll(dbDir, os.ModePerm)
 	if err != nil {
-		return "", fmt.Errorf("failed to create new directory for restoring DB: %s, err: %v", newRestoreDir, err)
+		return fmt.Errorf("failed to create new directory for DB: %s, err: %v", dbDir, err)
 	}
 
-	// TODO(mohit): This is not ideal..
-	// Here we compare the time with the last restore or when the db was created -> it still possible that a lot of data
-	// was written to the db post creation which is not considered here..
-	//
-	// This might result in very large restores (potentially full size restores), we should try to minimize this
-
-	// Initialize layered storage.
-	currentDBDir := readFlag(currentDirFlag)
-	lastWriteTsSecs := getDirChangeTime(currentDBDir)
-	var DBDirPrecedence []string
-
-	if lastWriteTsSecs + int64(args.LocalCopyStalenessDuration.Seconds()) >= time.Now().Unix() {
-		// pull from the last DB
-		zap.L().Info("Found previous last write timestamp, going to reload the previous DB first", zap.Int64("timestamp", lastWriteTsSecs))
-		DBDirPrecedence = append(DBDirPrecedence, currentDBDir, newRestoreDir, newRestoreDir)
-	} else {
-		zap.L().Info("Found previous last write timestamp, going to use backup DB first", zap.Int64("timestamp", lastWriteTsSecs))
-		DBDirPrecedence = append(DBDirPrecedence, newRestoreDir, currentDBDir, newRestoreDir)
+	// check if the local files exist, if so load from it always
+	dirEmpty, err := backup.DirIsEmpty(dbDir)
+	if err != nil {
+		// this should never happen
+		return fmt.Errorf("failed to check if the directory: %s is empty, %w", dbDir, err)
 	}
 
-	for idx, dbDir := range DBDirPrecedence {
-		dirEmpty, _ := backup.DirIsEmpty(dbDir)
-		if idx != 2 && dirEmpty {
-			// we don't try to restore in the 3rd try, which means we are supposed create an empty database
-			err = bm.RestoreLatest(ctx, dbDir)
-			if err != nil {
-				zap.L().Error("Failed to restore from backup", zap.Error(err))
-				continue
-			}
-		}
+	// if nitrous is forced to load from the backup, load from it always
+	if dirEmpty || args.ForceLoadFromBackup {
+		// clean up the directory
+		purgeOldData(dbDir)
 
-		// opened successfully
-		err = writeFlag(currentDirFlag, dbDir)
+		// now restore to it
+		err := bm.RestoreLatest(ctx, dbDir)
 		if err != nil {
-			return "", fmt.Errorf("failed to write to the flag file: %s, err: %v", currentDirFlag, err)
+			return fmt.Errorf("failed to restore latest backup to directory: %s, err: %w", dbDir, err)
 		}
-		currentDBDir = dbDir
-		break
+	} else {
+		zap.L().Info("reusing the existing data in the directory", zap.String("dir", dbDir))
 	}
-	purgeOldData(args.GravelDir, currentDBDir)
-	if args.BackupNode {
-		purgeOldBackups(ctx, bm, int(args.RemoteBackupsToKeep))
-	}
-	return currentDBDir, nil
+	return nil
 }
 
 func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
@@ -284,13 +205,13 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		return Nitrous{}, err
 	}
 
-	bm, err := backup.NewBackupManager(args.PlaneID, s3Store)
+	bm, err := backup.NewBackupManager(args.PlaneID, s3Store, int(args.RemoteBackupsToKeep))
 	if err != nil {
 		zap.L().Error("failed to create backup manager", zap.Error(err))
 		return Nitrous{}, err
 	}
 
-	dir, err := dbDir(bm, args)
+	err = restoreBackupOrReuseData(bm, args)
 	if err != nil {
 		return Nitrous{}, fmt.Errorf("failed to create db after all the tries: %v", err)
 	}
@@ -302,7 +223,7 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		Clock:                clock.New(),
 		Partitions: 		  args.Partitions,
 		BinlogPartitions: 	  args.BinPartitions,
-		DbDir: 				  dir,
+		DbDir: 				  args.GravelDir,
 		backupManager:        bm,
 	}, nil
 }

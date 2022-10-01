@@ -2,6 +2,13 @@ package backup_test
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"os"
+	"testing"
+
+	"github.com/samber/mo"
+
 	"fennel/gravel"
 	"fennel/hangar"
 	"fennel/hangar/encoders"
@@ -9,11 +16,6 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/utils"
 	"fennel/nitrous/backup"
-	"fmt"
-	"github.com/samber/mo"
-	"math/rand"
-	"os"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -53,7 +55,7 @@ func TestBackupRestore(t *testing.T) {
 	numBackups := 6
 
 	fs, _ := backup.NewLocalStore(fsDir, planeId)
-	dm, _ := backup.NewBackupManager(planeId, fs)
+	dm, _ := backup.NewBackupManager(planeId, fs, 1)
 
 	// this is to validate later that the data was successfully backed up
 	keyGroupByIt := make(map[int][][]hangar.KeyGroup, 6)
@@ -123,7 +125,7 @@ func TestBackupRestore(t *testing.T) {
 
 	{
 		fmt.Printf("Deleting backups: 1, 3, 5\n")
-		err := dm.BackupCleanup(ctx, []string{"backup_name_1", "backup_name_3", "backup_name_5"})
+		err := dm.PurgeAllExceptVersions(ctx, []string{"backup_name_1", "backup_name_3", "backup_name_5"})
 		assert.NoError(t, err)
 	}
 

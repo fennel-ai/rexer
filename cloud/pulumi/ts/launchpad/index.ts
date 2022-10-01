@@ -499,6 +499,13 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     },
                     expansionPriority: 1,
                 },
+                // Nitrous backup node group
+                //
+                // TODO(mohit): See if it is possible to scale up the existing nitrous node group whenever the backup
+                // pod requires a node to be up and running.
+                // It seems like the cluster autoscaler does not work well with pods being in pending state due to
+                // lack of persistent volume claims, especially with local SSDs (since they don't have a CSI driver)
+                // - https://github.com/kubernetes/autoscaler/issues/1658
                 {
                     name: "p-3-nitrous-backup-ng-arm",
                     instanceTypes: ["c6gd.large"],
@@ -535,13 +542,14 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 "node-group": "p-3-nitrous-ng",
             },
 
+            forceLoadBackup: true,
+
             // backup configurations
             backupConf: {
                 nodeLabelsForBackup: {
                     "node-group": "p-3-nitrous-backup-ng",
                 },
                 backupFrequencyDuration: "5m",
-                localCopyStalenessDuration: "30m",
                 remoteCopiesToKeep: 2,
             },
         },
@@ -669,8 +677,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-5-nitrous-ng-arm",
                     instanceTypes: ["c6gd.8xlarge"],
-                    minSize: 2,
-                    maxSize: 2,
+                    minSize: 1,
+                    maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
@@ -745,14 +753,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             nodeLabels: {
                 "node-group": "p-5-nitrous-ng",
             },
-            backupConf: {
-                nodeLabelsForBackup: {
-                    "node-group": "p-5-nitrous-ng",
-                },
-                backupFrequencyDuration: "10m",
-                localCopyStalenessDuration: "20m",
-                remoteCopiesToKeep: 2,
-            }
         },
 
         // set up MSK cluster

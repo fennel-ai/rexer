@@ -53,6 +53,7 @@ func reportDiskMetrics(path string, stop chan struct{}) {
 		}
 	}()
 }
+
 var backupStatusTotal = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "backup_status_total",
@@ -110,7 +111,7 @@ func main() {
 				log.Printf("Going to create backup, stopping tailers...")
 				svr.Stop()
 				log.Printf("Creating the backup")
-				err := n.Backup(flags.NitrousArgs)
+				err := n.Backup()
 				if err != nil {
 					zap.L().Error("Failed to create backup", zap.Error(err))
 					backupStatusTotal.WithLabelValues("FAIL").Inc()
@@ -121,6 +122,9 @@ func main() {
 				log.Printf("Backup is done, restarting tailers...")
 				svr.Start()
 				lastBackupTimeSecs = now
+
+				// cleanup old backups if there are any
+				n.PurgeOldBackups()
 			}
 		}
 	} else {

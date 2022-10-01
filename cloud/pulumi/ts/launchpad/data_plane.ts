@@ -71,6 +71,7 @@ type NitrousConf = {
     storageCapacityGB: number
     blockCacheMB: number,
     kvCacheMB: number,
+    forceLoadBackup?: boolean,
     binlog: nitrous.binlogConfig,
     mskBinlog?: nitrous.binlogConfig,
     backupConf?: nitrous.backupConf,
@@ -368,6 +369,8 @@ const setupResources = async () => {
             storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],
             blockCacheMB: input.nitrousConf.blockCacheMB,
             kvCacheMB: input.nitrousConf.kvCacheMB,
+
+            forceLoadBackup: input.nitrousConf.forceLoadBackup,
 
             kafka: {
                 username: mskOutput.mskUsername,
