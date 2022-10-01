@@ -38,7 +38,7 @@ fi
 # /usr/local/bin/protoc -I=. --go-grpc_out=../go/ ./*.proto
 
 # Generate vitess compiled go bindings for NitrousOp
-/usr/local/bin/protoc -I=. --go_out=../go/ --go-vtproto_out=../go/ --go-vtproto_opt=pool=fennel/nitrous/rpc.NitrousOp ./nitrous.proto
+/usr/local/bin/protoc -I=. --go_out=../go/ --go-vtproto_out=../go/ --go-vtproto_opt=pool=fennel/nitrous/rpc.NitrousOp ./*.proto
 
 prepare_libs=`cat <<EOF
 import sys
