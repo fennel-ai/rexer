@@ -49,6 +49,7 @@ type Gravel struct {
 	stats               Stats
 	closeCh             chan struct{}
 	periodicFlushTicker *time.Ticker
+	logger 				*zap.Logger
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
@@ -56,8 +57,9 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		// testTable is only for testing, not for prod use cases
 		return nil, fmt.Errorf("invalid table type: %d", testTable)
 	}
+	logger := zap.L().Named(opts.Name)
 	// manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
-	tableManager, err := InitTableManager(opts.Dirname, opts.TableType, opts.NumShards, opts.CompactionWorkerNum)
+	tableManager, err := InitTableManager(opts.Dirname, opts.TableType, opts.NumShards, opts.CompactionWorkerNum, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not init manifest: %w", err)
 	}
@@ -71,6 +73,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		stats:               Stats{},
 		closeCh:             make(chan struct{}, 1),
 		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
+		logger:				 logger,
 	}
 	go ret.periodicallyFlush()
 	go ret.reportStats()
@@ -217,7 +220,7 @@ func (g *Gravel) periodicallyFlush() {
 				g.commitlock.Lock()
 				defer g.commitlock.Unlock()
 				if err := g.flush(); err != nil {
-					zap.L().Warn("periodic flush failed", zap.Error(err))
+					g.logger.Warn("periodic flush failed", zap.Error(err))
 				}
 			}()
 		case <-g.closeCh:

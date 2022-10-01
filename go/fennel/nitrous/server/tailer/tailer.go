@@ -47,11 +47,13 @@ type Tailer struct {
 	batchSize  	int
 	running     *atomic.Bool
 	store 		hangar.Hangar
+	logger 		*zap.Logger
 }
 
 // Returns a new Tailer that can be used to tail the binlog.
 func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, store hangar.Hangar, processor EventsProcessor,
 	pollTimeout time.Duration, batchSize int) (*Tailer, error) {
+	logger := zap.L().Named(fmt.Sprintf("tailer-%s-%d", topic, toppar.Partition))
 	// Given the topic partitions, decode what offsets to start reading from.
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope:        resource.NewPlaneScope(n.PlaneID),
@@ -68,7 +70,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
 		RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
-			zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
+			logger.Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
 			switch event := e.(type) {
 			case kafka.AssignedPartitions:
 				if len(event.Partitions) > 0 {
@@ -76,12 +78,12 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 					var err error
 					toppars, err := decodeOffsets([]kafka.TopicPartition{toppar}, store)
 					if err != nil {
-						zap.L().Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
+						logger.Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
 					}
-					zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
+					logger.Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
 					err = c.Assign(toppars)
 					if err != nil {
-						zap.L().Fatal("Failed to assign partitions", zap.Error(err))
+						logger.Fatal("Failed to assign partitions", zap.Error(err))
 					}
 				}
 			}
@@ -112,6 +114,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 		batchSize:   batchSize,
 		running:     atomic.NewBool(false),
 		store: 		 store,
+		logger: 	 logger,
 	}
 	return &t, nil
 }
@@ -148,7 +151,7 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 	defer numProcessed.Add(float64(len(rawops)))
 	ctx, m := timer.Start(context.Background(), t.nitrous.PlaneID, "tailer.processBatch")
 	defer m.Stop()
-	zap.L().Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
+	t.logger.Debug("Got new messages from binlog", zap.Int("count", len(rawops)))
 	ops := make([]*rpc.NitrousOp, len(rawops))
 	for i, rawop := range rawops {
 		op := rpc.NitrousOpFromVTPool()
@@ -182,7 +185,7 @@ func (t *Tailer) processBatch(rawops [][]byte) error {
 	// Commit the offsets to the kafka binlog.
 	// This is not strictly required for correctly processing the binlog, but
 	// needed to compute the lag.
-	zap.L().Debug("Committing offsets to binlog", zap.Any("offsets", offs))
+	t.logger.Debug("Committing offsets to binlog", zap.Any("offsets", offs))
 	_, err = t.binlog.CommitOffsets(offs)
 	if err != nil {
 		return fmt.Errorf("failed to commit binlog offsets to broker: %w", err)
@@ -202,24 +205,24 @@ func (t *Tailer) Tail() {
 			return
 		default:
 			ctx := context.Background()
-			zap.L().Debug("Waiting for new messages", zap.String("tailer", t.topic))
+			t.logger.Debug("Waiting for new messages", zap.String("tailer", t.topic))
 			rawops, err := t.binlog.ReadBatch(ctx, t.batchSize, t.pollTimeout)
 			if kerr, ok := err.(kafka.Error); ok && (kerr.IsFatal() || kerr.Code() == kafka.ErrUnknownTopicOrPart) {
-				zap.L().Fatal("Permanent error when reading from kafka", zap.Error(err))
+				t.logger.Fatal("Permanent error when reading from kafka", zap.Error(err))
 			} else if err != nil {
-				zap.L().Warn("Failed to read from binlog", zap.Error(err))
+				t.logger.Warn("Failed to read from binlog", zap.Error(err))
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
 			} else if len(rawops) == 0 {
-				zap.L().Debug("No new messages from binlog")
+				t.logger.Debug("No new messages from binlog")
 				// Insert a brief sleep to avoid busy loop.
 				time.Sleep(t.pollTimeout)
 				continue
 			}
 			err = t.processBatch(rawops)
 			if err != nil {
-				zap.L().Error("Failed to process batch", zap.Error(err))
+				t.logger.Error("Failed to process batch", zap.Error(err))
 			}
 		}
 	}
