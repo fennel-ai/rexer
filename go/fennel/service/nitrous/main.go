@@ -71,7 +71,7 @@ var backupTimestamp = promauto.NewGauge(prometheus.GaugeOpts{
 func main() {
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	parallel.InitQuota("nitrous", 0.3*parallel.AllCPUs)
+	parallel.InitQuota("nitrous", parallel.AllCPUs)
 
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)

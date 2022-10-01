@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fennel/lib/arena"
+	"fennel/lib/utils/parallel"
 	"fmt"
 	"google.golang.org/grpc/keepalive"
 	"io"
@@ -133,6 +134,9 @@ func (s *Server) processRequest(ctx context.Context, req *AggregateValuesRequest
 		GetAggregatesLatency.Observe(float64(time.Since(start).Milliseconds()))
 		<-s.rateLimiter
 	}()
+
+	parallel.AcquireHighPriority("nitrous", 1.5*parallel.OneCPU) // considering there being multiple shards, assign more than OneCPU grabbing
+	defer parallel.Release("nitrous", 1.5*parallel.OneCPU)
 	tierId := ftypes.RealmID(req.TierId)
 	aggId := ftypes.AggId(req.AggId)
 	codec := req.Codec
