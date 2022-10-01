@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	capnproto.org/go/capnp/v3 v3.0.0-alpha.3
-	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/Unleash/unleash-client-go/v3 v3.5.0
 	github.com/alexflint/go-arg v1.4.2
@@ -12,6 +11,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/cockroachdb/pebble v0.0.0-20220906142723-ade651d00072
 	github.com/confluentinc/confluent-kafka-go v1.8.2
+	github.com/dennwc/varint v1.0.0
 	github.com/detailyang/fastrand-go v0.0.0-20191106153122-53093851e761
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/gin-contrib/gzip v0.0.6

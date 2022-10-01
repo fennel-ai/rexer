@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"unsafe"
+
+	"github.com/dennwc/varint"
 )
 
 func PutBytes(b []byte, in []byte) (int, error) {
@@ -61,6 +63,16 @@ func ReadUvarint(b []byte) (uint64, int, error) {
 		return 0, 0, fmt.Errorf("invalid uvarint: value too large (read %d bytes)", -sz)
 	}
 	return n, sz, nil
+}
+
+func ReadUvarintUnrolled(b []byte) (uint64, int, error) {
+	val, n := varint.Uvarint(b)
+	if n == 0 {
+		return 0, 0, fmt.Errorf("invalid uvarint: %v", b)
+	} else if n < 0 {
+		return 0, 0, fmt.Errorf("value overflow: %v", b)
+	}
+	return val, n, nil
 }
 
 func ReadVarint(b []byte) (int64, int, error) {
