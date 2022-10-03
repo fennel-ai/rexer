@@ -81,7 +81,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"go.uber.org/zap"
@@ -89,13 +91,14 @@ import (
 )
 
 const (
-	magicHeader         uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
-	magicTailer         uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
-	v1codec_xxhash      uint8  = 1
-	numRecordsPerBucket uint32 = 9
-	fileHeaderSize      int    = 64
-	bucketSizeBytes     int    = 32 // half of a cache line
-	maxBucketFpCount    int    = 13
+	magicHeader                  uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
+	magicTailer                  uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
+	v1codec_xxhash               uint8  = 1
+	numRecordsPerBucket          uint32 = 9
+	fileHeaderSize               int    = 64
+	bucketSizeBytes              int    = 32 // half of a cache line
+	maxBucketFpCount             int    = 13
+	expiryPercentileSamplingSize int    = 10000
 )
 
 var incompleteFile = fmt.Errorf("expected end of file")
@@ -113,6 +116,9 @@ type header struct {
 	codec       uint8
 	encrypted   bool
 	compression uint8
+	expiryP25   Timestamp
+	expiryP50   Timestamp
+	expiryP75   Timestamp
 }
 
 // record denotes a k-v pair that exists within the table, for internal use only when building the table
@@ -144,7 +150,8 @@ type hashTable struct {
 }
 
 func (ht *hashTable) ShouldGCExpired() bool {
-	return false
+	now := time.Now().Unix()
+	return int64(ht.head.expiryP50) < now
 }
 
 func (ht *hashTable) IndexSize() uint64 {
@@ -475,8 +482,23 @@ func buildHashTable(filepath string, data map[string]Value) error {
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
 	records := getRecords(data, numBuckets)
+
+	var expTimeSampled []Timestamp = nil
+
+	expTimeSampled = make([]Timestamp, 0, expiryPercentileSamplingSize)
+	sampledIdx := 0
 	for _, r := range records {
 		v := r.value
+		if sampledIdx < expiryPercentileSamplingSize {
+			if !v.deleted {
+				if v.expires > 0 {
+					expTimeSampled[sampledIdx] = v.expires
+				} else {
+					expTimeSampled[sampledIdx] = math2.MaxUint32
+				}
+				sampledIdx += 1
+			}
+		}
 		if v.expires > 0 {
 			if minExpiry > v.expires {
 				minExpiry = v.expires
@@ -486,6 +508,8 @@ func buildHashTable(filepath string, data map[string]Value) error {
 			}
 		}
 	}
+	sort.Slice(expTimeSampled, func(i, j int) bool { return expTimeSampled[i] < expTimeSampled[j] })
+
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
 	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
 	if err != nil {
@@ -539,6 +563,9 @@ func buildHashTable(filepath string, data map[string]Value) error {
 		indexsize:   indexsize,
 		minExpiry:   minExpiry,
 		maxExpiry:   maxExpiry,
+		expiryP25:   expTimeSampled[len(expTimeSampled)/4],
+		expiryP50:   expTimeSampled[len(expTimeSampled)/2],
+		expiryP75:   expTimeSampled[(len(expTimeSampled)*3)/4],
 	}
 	if err = writeHeader(writer, head); err != nil {
 		return err
@@ -568,6 +595,9 @@ func writeHeader(writer *bufio.Writer, head header) error {
 	binary.LittleEndian.PutUint32(buf[23:], head.indexsize)
 	binary.LittleEndian.PutUint32(buf[27:], uint32(head.minExpiry))
 	binary.LittleEndian.PutUint32(buf[31:], uint32(head.maxExpiry))
+	binary.LittleEndian.PutUint32(buf[35:], uint32(head.expiryP25))
+	binary.LittleEndian.PutUint32(buf[39:], uint32(head.expiryP50))
+	binary.LittleEndian.PutUint32(buf[43:], uint32(head.expiryP75))
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
@@ -597,6 +627,9 @@ func readHeader(buf []byte) (header, error) {
 	head.indexsize = binary.LittleEndian.Uint32(buf[23:])
 	head.minExpiry = Timestamp(binary.LittleEndian.Uint32(buf[27:]))
 	head.maxExpiry = Timestamp(binary.LittleEndian.Uint32(buf[31:]))
+	head.expiryP25 = Timestamp(binary.LittleEndian.Uint32(buf[35:]))
+	head.expiryP50 = Timestamp(binary.LittleEndian.Uint32(buf[39:]))
+	head.expiryP75 = Timestamp(binary.LittleEndian.Uint32(buf[43:]))
 	return head, nil
 }
 
@@ -787,6 +820,9 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 		data:       data,
 		size:       uint64(size),
 	}
+	tableInfo := fmt.Sprintf("numRecords:%d,totalSize:%d,indexSize:%d,minExp:%d,maxExp:%d,expP25:%d,expP50:%d,expP75:%d",
+		header.numRecords, size, header.indexsize, header.minExpiry, header.maxExpiry, header.expiryP25, header.expiryP50, header.expiryP75)
+	zap.L().Info("opened hash table", zap.String("filename", fullFileName), zap.String("info", tableInfo))
 	runtime.SetFinalizer(tableObj, (*hashTable).Close)
 	return tableObj, nil
 }

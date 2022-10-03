@@ -14,14 +14,14 @@ type Memtable struct {
 	len        uint64
 }
 
-func NewMemTable(numShards uint64) Memtable {
+func NewMemTable(numShards uint64) *Memtable {
 	maps := make([]map[string]Value, numShards)
 	locks := make([]sync.RWMutex, numShards)
 	for i := 0; i < int(numShards); i++ {
 		maps[i] = make(map[string]Value)
 		locks[i] = sync.RWMutex{}
 	}
-	return Memtable{
+	return &Memtable{
 		numShards:  numShards,
 		writelock:  &sync.RWMutex{},
 		shardLocks: locks,

@@ -66,8 +66,24 @@ func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable)
 
 func PickTablesToCompact(tables []Table) []Table {
 	// merge strategy:
+	// 0. If the oldest consecutive tables have a lot of expired records, force compact them
 	// 1. Merge as many consecutive files as possible, but less than maxCompactionBatch and total size less than tableSizeLimit
 	// 2. If there are multiple choices, choose the one with the smallest total size
+
+	totalSize := uint64(0)
+	expTables := make([]Table, 0, len(tables))
+	for _, table := range tables {
+		if table.ShouldGCExpired() && totalSize+table.Size() < maxCompactBatch*2 {
+			expTables = append(expTables, table)
+		} else {
+			break
+		}
+	}
+
+	if len(expTables) > 1 {
+		return expTables
+	}
+
 	type entry struct {
 		startIdx  int
 		totalSize uint64
@@ -141,12 +157,6 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 		}
 	}
 	switch type_ {
-	/*
-		case BDiskHashTable:
-			return buildBDiskHashTable(dirname, numShards, mt)
-		case testTable:
-			return buildEmptyTable(dirname, numShards, mt)
-	*/
 	case HashTable:
 		err = buildHashTable(filepath, m)
 	default:

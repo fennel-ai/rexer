@@ -42,7 +42,7 @@ var tablesQueriedReporter = promauto.NewSummaryVec(prometheus.SummaryOpts{
 }, []string{"realm_id"})
 
 type Gravel struct {
-	memtable            Memtable
+	memtable            *Memtable
 	tm                  *TableManager
 	commitlock          sync.Mutex
 	opts                Options
