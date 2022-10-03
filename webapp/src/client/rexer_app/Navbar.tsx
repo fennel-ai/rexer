@@ -4,7 +4,7 @@ import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-d
 import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
-import Logo from "./assets/logo_color.module.svg";
+import Logo from "../assets/logo_color.module.svg";
 
 export interface Tier {
     id: string,

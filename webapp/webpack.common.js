@@ -4,7 +4,7 @@ const path = require("path");
 module.exports = {
     mode: "development",
     entry: {
-        clientapp: path.resolve(__dirname, "src/client/index.tsx"),
+        clientapp: path.resolve(__dirname, "src/client/rexer_app/index.tsx"),
         signon: path.resolve(__dirname, "src/client/signon/index.tsx"),
     },
     output: {
