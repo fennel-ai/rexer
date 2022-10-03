@@ -82,8 +82,8 @@ func Open(opts Options) (ret *Gravel, failure error) {
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
 	tablesQueried := 0
-	shard := Shard(key, g.tm.NumShards())
 	hash := Hash(key)
+	shard := Shard(hash, g.tm.NumShards())
 	sample := shouldSample()
 
 	maybeInc(sample, &g.stats.Gets)

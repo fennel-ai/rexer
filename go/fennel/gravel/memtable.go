@@ -64,7 +64,8 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 	mt.writelock.Lock()
 	defer mt.writelock.Unlock()
 	for _, e := range entries {
-		shard := Shard(e.key, mt.numShards)
+		hash := Hash(e.key)
+		shard := Shard(hash, mt.numShards)
 		map_ := mt.maps[shard]
 		mt.shardLocks[shard].Lock()
 		// keys/values of entries are owned by gravel (because we clone this data)
