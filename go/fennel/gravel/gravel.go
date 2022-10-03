@@ -49,7 +49,7 @@ type Gravel struct {
 	stats               Stats
 	closeCh             chan struct{}
 	periodicFlushTicker *time.Ticker
-	logger 				*zap.Logger
+	logger              *zap.Logger
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
@@ -73,7 +73,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		stats:               Stats{},
 		closeCh:             make(chan struct{}, 1),
 		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
-		logger:				 logger,
+		logger:              logger,
 	}
 	go ret.periodicallyFlush()
 	go ret.reportStats()
@@ -185,6 +185,9 @@ func (g *Gravel) Teardown() error {
 }
 
 func (g *Gravel) Close() error {
+	if err := g.Flush(); err != nil {
+		return err
+	}
 	// notify that the db has been closed
 	g.closeCh <- struct{}{}
 	return g.tm.Close()
