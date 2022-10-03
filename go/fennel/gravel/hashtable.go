@@ -492,9 +492,9 @@ func buildHashTable(filepath string, data map[string]Value) error {
 		if sampledIdx < expiryPercentileSamplingSize {
 			if !v.deleted {
 				if v.expires > 0 {
-					expTimeSampled[sampledIdx] = v.expires
+					expTimeSampled = append(expTimeSampled, v.expires)
 				} else {
-					expTimeSampled[sampledIdx] = math2.MaxUint32
+					expTimeSampled = append(expTimeSampled, math2.MaxUint32)
 				}
 				sampledIdx += 1
 			}

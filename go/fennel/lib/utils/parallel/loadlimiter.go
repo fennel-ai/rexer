@@ -3,7 +3,6 @@ package parallel
 import (
 	"container/list"
 	"context"
-	"fmt"
 	"runtime"
 	"sync"
 )
@@ -136,7 +135,7 @@ var semMap = make(map[string]*customSem)
 func Acquire(ctx context.Context, name string, units float64) {
 	sem := semMap[name]
 	if sem == nil {
-		panic(fmt.Sprintf("missing call of InitQuota for [%s]", name))
+		return
 	}
 	_ = sem.acquire(ctx, int64(units))
 }
@@ -144,7 +143,7 @@ func Acquire(ctx context.Context, name string, units float64) {
 func AcquireHighPriority(name string, units float64) {
 	sem := semMap[name]
 	if sem == nil {
-		panic(fmt.Sprintf("missing call of InitQuota for [%s]", name))
+		return
 	}
 	sem.forceAcquire(int64(units))
 }
@@ -152,7 +151,7 @@ func AcquireHighPriority(name string, units float64) {
 func Release(name string, units float64) {
 	sem := semMap[name]
 	if sem == nil {
-		panic(fmt.Sprintf("missing call of InitQuota for [%s]", name))
+		return
 	}
 	sem.release(int64(units))
 }
