@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fennel/mothership"
 	"fennel/service/common"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/alexflint/go-arg"
@@ -19,10 +22,11 @@ import (
 )
 
 const (
-	WebAppRoot        = "../../webapp"
-	StaticJSMount     = "/assets"
-	StaticImagesMount = "/images"
-	AppJSBundle       = "console/app.js"
+	WebAppRoot         = "../../webapp"
+	StaticJSMount      = "/assets"
+	StaticImagesMount  = "/images"
+	FeatureAppJSBundle = "featureapp.js"
+	SignOnJSBundle     = "signon.js"
 )
 
 type server struct {
@@ -30,7 +34,7 @@ type server struct {
 	mothership mothership.Mothership
 	args       serverArgs
 	db         *gorm.DB
-	// wpManifest map[string]string // output of webpack manifest
+	wpManifest map[string]string // output of webpack manifest
 }
 
 type serverArgs struct {
@@ -62,11 +66,17 @@ func NewServer() (server, error) {
 		return server{}, err
 	}
 
+	wpManifest, err := readWebpackManifest()
+	if err != nil {
+		return server{}, err
+	}
+
 	s := server{
 		Engine:     gin.Default(),
 		mothership: m,
 		args:       args,
 		db:         db,
+		wpManifest: wpManifest,
 	}
 
 	if err := s.SetTrustedProxies(nil); err != nil {
@@ -103,10 +113,43 @@ func (s *server) setupRouter() {
 
 func (s *server) Home(c *gin.Context) {
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
-		"title": title("home"),
+		"title":                title("home"),
+		"featureAppBundlePath": s.featureAppBundlePath(),
 	})
+}
+
+func (s *server) featureAppBundlePath() string {
+	wpManifest := s.wpManifest
+	if s.isDev() {
+		wpManifest, _ = readWebpackManifest()
+	}
+
+	return StaticJSMount + "/" + wpManifest[FeatureAppJSBundle]
+}
+
+func (s *server) isDev() bool {
+	return s.args.GINMode == "debug"
 }
 
 func title(name string) string {
 	return fmt.Sprintf("Fennel | %s", name)
+}
+
+func readWebpackManifest() (manifest map[string]string, err error) {
+	bytes, err := os.ReadFile(WebAppRoot + "/dist/manifest.json")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(bytes, &manifest)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := manifest[FeatureAppJSBundle]; !ok {
+		return nil, errors.New("no featureapp js bundle in manifest")
+	}
+	if _, ok := manifest[SignOnJSBundle]; !ok {
+		return nil, errors.New("no signon js bundle in manifest")
+	}
+
+	return manifest, nil
 }

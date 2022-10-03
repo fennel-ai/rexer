@@ -9,7 +9,7 @@ import Navbar, { type Tier } from "./Navbar";
 import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
 import DashboardPage from "./DashboardPage";
-import OnboardPage from "./onboard/OnboardPage";
+import OnboardPage from "../onboard/OnboardPage";
 import TierManagementPage from "./TierManagementPage";
 
 interface User {
