@@ -100,7 +100,7 @@ func NewServer() (server, error) {
 	if err := s.SetTrustedProxies(nil); err != nil {
 		return server{}, err
 	}
-	s.setupMiddlewares(args)
+	s.setupMiddlewares()
 	s.setupRouter()
 
 	seed := args.RandSeed
@@ -133,10 +133,10 @@ func readWebpackManifest() (manifest map[string]string, err error) {
 	return manifest, nil
 }
 
-func (s *server) setupMiddlewares(args serverArgs) {
+func (s *server) setupMiddlewares() {
 	s.Use(gzip.Gzip(gzip.DefaultCompression))
 
-	store := cookie.NewStore([]byte(args.SessionKey))
+	store := cookie.NewStore([]byte(s.args.SessionKey))
 	s.Use(sessions.Sessions("mysession", store))
 
 	s.Use(WithFlashMessage)
