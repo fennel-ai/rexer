@@ -2,10 +2,10 @@ const { WebpackManifestPlugin } = require('webpack-manifest-plugin');
 const path = require("path");
 
 module.exports = {
-    mode: "development",
     entry: {
         clientapp: path.resolve(__dirname, "src/client/rexer_app/index.tsx"),
         signon: path.resolve(__dirname, "src/client/signon/index.tsx"),
+        featureapp: path.resolve(__dirname, "src/client/feature_app/index.tsx"),
     },
     output: {
         path: path.resolve(__dirname, "dist"),
