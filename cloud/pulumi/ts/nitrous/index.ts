@@ -435,7 +435,11 @@ export const setup = async (input: inputType) => {
                                     },
                                     {
                                         name: "GOMEMLIMIT",
-                                        value: memlimit + "B",
+                                        value: "24GiB",
+                                    },
+                                    {
+                                        name: "GOGC",
+                                        value: "50",
                                     },
                                     {
                                         name: "OTEL_SERVICE_NAME",
