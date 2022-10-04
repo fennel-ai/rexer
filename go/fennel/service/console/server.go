@@ -19,6 +19,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
+	jsonL "fennel/mothership/lib/json"
+	userL "fennel/mothership/lib/user"
 )
 
 const (
@@ -108,13 +111,24 @@ func (s *server) setupRouter() {
 	s.Static(StaticImagesMount, WebAppRoot+"/images")
 	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
-	s.GET("/", s.Home)
+	s.GET("/", s.Feature)
 }
 
-func (s *server) Home(c *gin.Context) {
+func fakeUser() userL.User {
+	// TODO(xiao) use real user from auth
+	return userL.User{
+		Email:         "xiao@fennel.ai",
+		FirstName:     "Xiao",
+		LastName:      "Jiang",
+		OnboardStatus: userL.OnboardStatusDone,
+	}
+}
+
+func (s *server) Feature(c *gin.Context) {
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("home"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
+		"user":                 jsonL.User2J(fakeUser()),
 	})
 }
 
