@@ -25,7 +25,7 @@ package gravel
 	the offset in the data section where the actual data lives. If 32 bytes are sufficient
 	for all fingerprints, we will directly jump to data section if any fingerprint matches.
 	If 32 bytes aren't sufficient, it contains the offset within L2 section where
-	the rest of the fingerprints are stored (this happens for <1% of keys only)
+	the rest of the fingerprints are stored (this happens for <8% of keys only)
 
 	Header block stores summary of the table. Here is its structure:
 		4 bytes MagicHeader
@@ -483,9 +483,7 @@ func buildHashTable(filepath string, data map[string]Value) error {
 	maxExpiry := Timestamp(0)
 	records := getRecords(data, numBuckets)
 
-	var expTimeSampled []Timestamp = nil
-
-	expTimeSampled = make([]Timestamp, 0, expiryPercentileSamplingSize)
+	expTimeSampled := make([]Timestamp, 0, expiryPercentileSamplingSize)
 	sampledIdx := 0
 	for _, r := range records {
 		v := r.value
