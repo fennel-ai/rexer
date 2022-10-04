@@ -2,7 +2,7 @@ import {
     BrowserRouter,
     Routes,
     Route,
-  } from "react-router-dom";
+} from "react-router-dom";
 
 import "./styles/App.less";
 import Navbar, { type Tier } from "./Navbar";
