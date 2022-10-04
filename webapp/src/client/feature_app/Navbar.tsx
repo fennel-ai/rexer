@@ -1,38 +1,24 @@
-import styles from "./styles/Navbar.module.scss";
-import Logo from "../assets/logo_color.module.svg";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 import { MenuProps, Dropdown, Menu, Space, Avatar } from "antd";
+
+import styles from "./styles/Navbar.module.scss";
+import Logo from "../assets/logo_color.module.svg";
+import { featureTabPath } from './route';
 
 export interface Tier {
     id: string,
 }
 
+interface User {
+    firstName: string,
+}
+
 interface Props {
     activeTab?: string,
+    user: User,
 }
 
-function menuItems(tierID: string | undefined): MenuProps["items"] {
-    if (!tierID) {
-        return [];
-    }
-    const items: MenuProps["items"] = [
-        {
-            label: (<a href="#">Feature</a>), // TODO(xiao): real href
-            key: "Feature",
-        },
-        {
-            label: (<a href="#">Aggregate</a>), // TODO(xiao): real href
-            key: "Aggregate",
-        },
-        {
-            label: (<a href="#">Stream</a>), // TODO(xiao): real href
-            key: "Stream",
-        },
-    ];
-    return items;
-}
-
-function Navbar({ activeTab }: Props) {
+function Navbar({ activeTab, user }: Props) {
     const tierID = "1001";
     const tiers = [{ id: "1001" }, { id: "1002" }]; // TODO(xiao): use real ones
 
@@ -64,17 +50,14 @@ function Navbar({ activeTab }: Props) {
 
                 <div className={styles.rightNav}>
                     <a target="_blank" rel="noreferrer" className={styles.documentation} href="https://app.gitbook.com/o/ezMhZP7ASmi43q12NHfL/s/5DToQ2XCuEpPMMLC0Rwr/">Documentation</a>
-                    <AvatarDropdown />
+                    <AvatarDropdown user={user} />
                 </div>
             </div>
         </nav>
     );
 }
 
-function AvatarDropdown() {
-    const user = {
-        firstName: "Xiao",
-    }; // TODO(xiao)
+function AvatarDropdown({ user }: { user: User }) {
     const onLogout = () => {
         // TODO(xiao);
     };
@@ -145,6 +128,27 @@ function TierDropdown({ tiers }: { tiers: Tier[] }) {
             </Space>
         </Dropdown>
     );
+}
+
+function menuItems(tierID: string | undefined): MenuProps["items"] {
+    if (!tierID) {
+        return [];
+    }
+    const items: MenuProps["items"] = [
+        {
+            label: (<a href={featureTabPath(tierID)}>Feature</a>),
+            key: "Feature",
+        },
+        {
+            label: (<a href="#">Aggregate</a>), // TODO(xiao): real href
+            key: "Aggregate",
+        },
+        {
+            label: (<a href="#">Stream</a>), // TODO(xiao): real href
+            key: "Stream",
+        },
+    ];
+    return items;
 }
 
 export default Navbar;

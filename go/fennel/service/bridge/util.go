@@ -12,17 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func userMap(user userL.User) string {
-	// TODO(xiao) maybe add json tags on the user model
-	bytes, _ := json.Marshal(map[string]interface{}{
-		"email":         user.Email,
-		"firstName":     user.FirstName,
-		"lastName":      user.LastName,
-		"onboardStatus": user.OnboardStatus,
-	})
-	return string(bytes)
-}
-
 func customerTiers(db *gorm.DB, customerID uint) string {
 	var tiers []tierL.Tier
 

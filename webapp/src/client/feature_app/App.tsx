@@ -1,10 +1,21 @@
 import "./styles/App.less";
 import Navbar from "./Navbar";
 
-function App() {
+interface User {
+    email: string,
+    firstName: string,
+    lastName: string,
+    onboardStatus: number,
+}
+
+interface Props {
+    user: User,
+}
+
+function App({ user }: Props) {
     return (
         <div>
-            <Navbar />
+            <Navbar user={user} />
             Hello World
         </div>
     );
