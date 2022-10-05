@@ -3,7 +3,7 @@ import { MenuProps, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
 import Logo from "../assets/logo_color.module.svg";
-import { featureTabPath } from './route';
+import { dashboardTabPath } from './route';
 
 export interface Tier {
     id: string,
@@ -136,16 +136,20 @@ function menuItems(tierID: string | undefined): MenuProps["items"] {
     }
     const items: MenuProps["items"] = [
         {
-            label: (<a href={featureTabPath(tierID)}>Feature</a>),
-            key: "Feature",
+            label: (<a href={dashboardTabPath(tierID)}>Dashboard</a>),
+            key: "dashboard",
         },
         {
-            label: (<a href="#">Aggregate</a>), // TODO(xiao): real href
-            key: "Aggregate",
+            label: (<a href="#">Aggregates</a>), // TODO(xiao): real href
+            key: "aggregates",
         },
         {
-            label: (<a href="#">Stream</a>), // TODO(xiao): real href
-            key: "Stream",
+            label: (<a href="#">Streams</a>), // TODO(xiao): real href
+            key: "streams",
+        },
+        {
+            label: (<a href="#">Workspaces</a>), // TODO(xiao): real href
+            key: "workspaces",
         },
     ];
     return items;
