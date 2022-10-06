@@ -1,0 +1,32 @@
+.prefixContainer {
+    display: flex;
+    align-items: center;
+}
+
+.selectedFilter {
+    margin: 5px;
+    padding: 3px;
+    border: 1px solid;
+}
+
+.inputContainer {
+    width: 100%;
+}
+
+.inputContainer input {
+    margin: 5px;
+    padding: 3px;
+    border: 0;
+    width: 100%;
+}
+
+.inputContainer input::selection {
+    border: 0;
+}
+
+.inputSuggestions {
+    position: absolute;
+    z-index: 100;
+    margin-left: 5px;
+    padding: 3px;
+}

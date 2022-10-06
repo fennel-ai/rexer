@@ -1,42 +1,23 @@
-import { List, Select } from "antd";
+import { List } from "antd";
+import { SearchOutlined, CloseOutlined } from "@ant-design/icons"
+import React from "react";
 
+import SearchBar from "./SearchBar";
 import pageStyles from "./styles/Page.module.scss";
+import styles from "./styles/DashboardPage.module.scss";
 
 function DashboardPage(): JSX.Element {
     return (
         <div className={pageStyles.container}>
             <div>
-                Dashboard
+                <h4 className={styles.title}>Dashboard</h4>
             </div>
-            <SearchBar />
+            <SearchBar
+                className={styles.search}
+                filterOptions={[{ type: "tag", value: "awesome" }, { type: "tag", value: "great" }, { type: "name", value: "foo" }, { type: "name", value: "bar" }]}
+            />
             <FeatureList />
         </div>
-    );
-}
-
-function SearchBar(): JSX.Element {
-    const handleChange = (value: string[]) => {
-        console.log(`selected ${value}`);
-    };
-    return (
-        <Select
-            mode="multiple"
-            allowClear
-            style={{ width: "100%" }}
-            placeholder="Please select"
-            defaultValue={["a"]}
-            onChange={handleChange}
-        >
-            <Select.Option key="a">
-                Tag: production
-            </Select.Option>
-            <Select.Option key="b">
-                Tag: xgboost
-            </Select.Option>
-            <Select.Option key="c">
-                Feature name: avg_user_rating
-            </Select.Option>
-        </Select>
     );
 }
 
@@ -49,6 +30,7 @@ function FeatureList(): JSX.Element {
     ];
     return (
         <List
+            className={styles.featureList}
             dataSource={data}
             renderItem={item => (
                 <List.Item>
