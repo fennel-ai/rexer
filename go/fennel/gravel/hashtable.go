@@ -54,15 +54,35 @@ package gravel
 	2nd level index stores any remaining fingerprints that could not fit within 64 bytes of L1 entry.
 	Each fingerprint is fixed 3 bytes.
 
-	Data section stores a flat list of all the entries like this:
-		key size (varint)
-		full key
-		1 byte deletion tombstone
-		4 bytes value size
-		Delta between expire time and min expire time of the table (varint)
-		full value
+	Data section stores a flat list of all the entries like below:
+    note that for records in each bucket, keys and metadata are grouped together
 
-	Note if deletion tombstone is true, we don't store the rest of the fields of the entry.
+		total size of keys varint
+
+		key size 1 (varint)
+		key 1
+        deletion tombstone 1
+		value size 1 (varint)
+		Delta between expire time and min expire time of the table (varint)
+
+		key size 2 (varint)
+		key 2
+        deletion tombstone 2
+		value size 2 (varint)
+		Delta between expire time and min expire time of the table (varint)
+		...
+		key size N (varint)
+		key N
+        deletion tombstone N
+		value size N (varint)
+		Delta between expire time and min expire time of the table (varint)
+
+		value1
+        value2
+		...
+        valueN
+
+	Note if deletion tombstone is true, we don't store the rest (exptime, value size, and actual value) of the fields of the entry.
 */
 
 import (
@@ -158,22 +178,65 @@ func (ht *hashTable) NumRecords() uint64 {
 
 func (ht *hashTable) GetAll(m map[string]Value) error {
 	data := ht.data
-	sofar := 0
-	for i := uint32(0); i < ht.head.numRecords; i++ {
-		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
+
+	pos := uint64(0)
+	recordCnt := 0
+	for {
+		keys := data[pos:]
+
+		vPos := 0
+		keysTotalLen, headLen, err := fbinary.ReadUvarint(keys)
 		if err != nil {
 			return incompleteFile
 		}
-		sofar += n
-		keybuf := data[sofar : sofar+int(keyLen)]
-		curKey := *(*string)(unsafe.Pointer(&keybuf))
-		sofar += int(keyLen)
-		v, n, err := readValue(data[sofar:], ht.head.minExpiry, false, false)
-		if err != nil {
-			return incompleteFile
+		values := keys[headLen+int(keysTotalLen):]
+
+		keys = keys[headLen:]
+		kPos := 0
+		for kPos < int(keysTotalLen) {
+			keyLen, n, err := fbinary.ReadUvarint(keys[kPos:])
+			if err != nil {
+				return incompleteFile
+			}
+			kPos += n
+			curKey := keys[kPos : kPos+int(keyLen)]
+			kPos += int(keyLen)
+			deleted := keys[kPos]
+			kPos++
+
+			var value Value
+			if deleted > 0 {
+				value = Value{data: []byte{}, expires: 0, deleted: true}
+			} else {
+				valLen, n, err := fbinary.ReadUvarint(keys[kPos:])
+				if err != nil {
+					return incompleteFile
+				}
+				kPos += n
+
+				expiry64, n, err := fbinary.ReadUvarint(keys[kPos:])
+				if err != nil {
+					return incompleteFile
+				}
+				kPos += n
+				expiry := Timestamp(expiry64)
+				if expiry > 0 {
+					expiry = ht.head.minExpiry + expiry - 1
+				}
+				value = Value{
+					data:    values[vPos : vPos+int(valLen)],
+					expires: expiry,
+					deleted: false,
+				}
+				vPos += int(valLen)
+			}
+			recordCnt++
+			m[*(*string)(unsafe.Pointer(&curKey))] = value
 		}
-		sofar += n
-		m[curKey] = v
+		pos += uint64(headLen + kPos + vPos)
+		if recordCnt >= int(ht.head.numRecords) {
+			break
+		}
 	}
 	return nil
 }
@@ -342,33 +405,66 @@ func (ht *hashTable) readData(start uint64, matchIndex int, matchCount int, numR
 		defer t.Stop()
 	}
 
-	data := ht.data[start:]
-	sofar := 0
+	keys := ht.data[start:]
+	kPos := 0
+	keysTotalLen, n, err := fbinary.ReadUvarint(keys[kPos:])
+	if err != nil {
+		return Value{}, incompleteFile
+	}
+	kPos += n
+	values := keys[kPos+int(keysTotalLen):]
+
+	valuePos := uint64(0)
 	for i := 0; i < numRecords; i++ {
-		keyLen, n, err := fbinary.ReadUvarint(data[sofar:])
+		keyLen, n, err := fbinary.ReadUvarint(keys[kPos:])
 		if err != nil {
 			return Value{}, incompleteFile
 		}
-		sofar += n
+		kPos += n
+		curKey := keys[kPos : kPos+int(keyLen)]
+		kPos += int(keyLen)
+		deleted := keys[kPos]
+		kPos++
+		valLen := uint64(0)
+		expiry := Timestamp(0)
+		if deleted > 0 {
+			// pass
+		} else {
+			valLen, n, err = fbinary.ReadUvarint(keys[kPos:])
+			if err != nil {
+				return Value{}, incompleteFile
+			}
+			kPos += n
+
+			expiry64, n, err := fbinary.ReadUvarint(keys[kPos:])
+			if err != nil {
+				return Value{}, incompleteFile
+			}
+			kPos += n
+			expiry = Timestamp(expiry64)
+			if expiry > 0 {
+				expiry = minExpiry + expiry - 1
+			}
+		}
+
 		if i >= matchIndex {
 			if i >= matchIndex+matchCount {
 				break
 			}
 			// fingerprint match, a potential hit
-			curKey := data[sofar : sofar+int(keyLen)]
-			sofar += int(keyLen)
 			if bytes.Equal(key, curKey) {
-				ret, _, err := readValue(data[sofar:], minExpiry, false, true)
-				return ret, err
+				if deleted > 0 {
+					return Value{data: []byte{}, expires: 0, deleted: true}, nil
+				} else {
+					return Value{
+						data:    clonebytes(values[valuePos : valuePos+valLen]),
+						expires: expiry,
+						deleted: false,
+					}, nil
+				}
 			}
-		} else {
-			sofar += int(keyLen)
 		}
-		_, m, err := readValue(data[sofar:], minExpiry, true, false)
-		if err != nil {
-			return Value{}, err
-		}
-		sofar += m
+		valuePos += valLen
 	}
 	return Value{}, ErrNotFound
 }
@@ -380,8 +476,8 @@ func writeData(writer *bufio.Writer, records []record, minExpiry Timestamp, numB
 		return 0, nil, nil
 	}
 	l2entries := make([]bucket, numBuckets)
+
 	bucketID := uint32(0) // bucket ID of the current bucket
-	offset := uint64(0)
 	for i, r := range records {
 		if i == 0 || r.bucketID == bucketID {
 			// bucket continues
@@ -390,22 +486,41 @@ func writeData(writer *bufio.Writer, records []record, minExpiry Timestamp, numB
 			// new bucket is opening now
 			bucketID = r.bucketID
 			l2entries[bucketID].bucketID = bucketID
-			l2entries[bucketID].dataStart = offset
 			l2entries[bucketID].firstRecord = i
 			l2entries[bucketID].lastRecord = i + 1
 		}
-		sz := uint32(0) // size of this particular record
-		n, err := writeKey(writer, r.key)
-		if err != nil {
-			return 0, nil, fmt.Errorf("error in writing a key: %w", err)
+	}
+
+	offset := uint64(0)
+	keyBuf := make([]byte, 0, 4096)
+	valueBuf := make([]byte, 0, 4096*numRecordsPerBucket) // just preallocate some arbitrary sizes
+	for i := range l2entries {
+		if l2entries[i].firstRecord == l2entries[i].lastRecord {
+			// indicates an empty bucket, don't encode anything
+			continue
 		}
-		sz += n
-		n, err = writeValue(writer, r.value, minExpiry)
-		if err != nil {
-			return 0, nil, fmt.Errorf("error in writing a value: %w", err)
+		l2entries[i].dataStart = offset
+
+		keyBuf = keyBuf[:0] // clear the buf
+		valueBuf = valueBuf[:0]
+		for rIdx := l2entries[i].firstRecord; rIdx < l2entries[i].lastRecord; rIdx++ {
+			writeRecord(&keyBuf, &valueBuf, &records[rIdx], minExpiry)
 		}
-		sz += n
-		offset += uint64(sz)
+
+		keysLenBuf := make([]byte, 0, 8)
+		writeUvarint(&keysLenBuf, uint64(len(keyBuf)))
+		if _, err := writer.Write(keysLenBuf); err != nil {
+			return offset, l2entries, fmt.Errorf("failed to write data segment: %w", err)
+		}
+		offset += uint64(len(keysLenBuf))
+		if _, err := writer.Write(keyBuf); err != nil {
+			return offset, l2entries, fmt.Errorf("failed to write data segment: %w", err)
+		}
+		offset += uint64(len(keyBuf))
+		if _, err := writer.Write(valueBuf); err != nil {
+			return offset, l2entries, fmt.Errorf("failed to write data segment: %w", err)
+		}
+		offset += uint64(len(valueBuf))
 	}
 	return offset, l2entries, nil
 }
@@ -606,96 +721,22 @@ func readHeader(buf []byte) (header, error) {
 	return head, nil
 }
 
-func writeKey(writer *bufio.Writer, k string) (uint32, error) {
-	n1, err := writeUvarint(writer, uint64(len(k)))
-	if err != nil {
-		return 0, err
+func writeRecord(keyBuf *[]byte, valueBuf *[]byte, r *record, minExpiry Timestamp) {
+	writeUvarint(keyBuf, uint64(len(r.key)))
+	*keyBuf = append(*keyBuf, r.key...)
+	if r.value.deleted {
+		*keyBuf = append(*keyBuf, 1)
+		return
 	}
-	n2, err := writer.WriteString(k)
-	if err != nil {
-		return 0, err
-	}
-	return n1 + uint32(n2), nil
-}
-
-// readValue reads a value and returns the number of bytes taken by this value
-// if onlysize is true, the caller is only interested in the size of this value
-// so this function can avoid expensive operations in those cases
-func readValue(data []byte, minExpiry Timestamp, onlysize bool, cloneValue bool) (Value, int, error) {
-	if len(data) == 0 {
-		return Value{}, 0, incompleteFile
-	}
-	if data[0] > 0 { // deleted
-		return Value{data: []byte{}, expires: 0, deleted: true}, 1, nil
-	}
-	cur := 1
-	expiry64, n, err := fbinary.ReadUvarint(data[cur:])
-	cur += n
-	if err != nil {
-		return Value{}, 0, err
-	}
-	expiry := Timestamp(expiry64)
-	if expiry > 0 {
-		expiry = minExpiry + expiry - 1
-	}
-	valLen, n, err := fbinary.ReadUvarint(data[cur:])
-	cur += n
-	if err != nil {
-		return Value{}, 0, incompleteFile
-	}
-	if onlysize {
-		return Value{}, cur + int(valLen), nil
-	}
-	value := data[cur : cur+int(valLen)]
-	if cloneValue {
-		value = clonebytes(value)
-	}
-	return Value{
-		data:    value,
-		expires: expiry,
-		deleted: false,
-	}, cur + int(valLen), nil
-}
-
-func writeValue(writer *bufio.Writer, v Value, minExpiry Timestamp) (uint32, error) {
-	// if value is deleted, it is represented by a single byte of deletion tombstone
-	if v.deleted {
-		if err := writer.WriteByte(1); err != nil {
-			return 0, err
-		}
-		return 1, nil
-	}
-	total := uint32(0)
-	err := writer.WriteByte(0)
-	if err != nil {
-		return 0, err
-	}
-	total += 1
-	// if item doesn't expire, its expiry is represented by a single byte of zero
-	// else we do varint encoding of (expiry - minExpiry + 1)
-	if v.expires == 0 {
-		if err := writer.WriteByte(0); err != nil {
-			return 0, err
-		}
-		total += 1
+	*keyBuf = append(*keyBuf, 0)
+	writeUvarint(keyBuf, uint64(len(r.value.data)))
+	if r.value.expires == 0 {
+		*keyBuf = append(*keyBuf, 0)
 	} else {
-		n, err := writeUvarint(writer, uint64(v.expires-minExpiry+1))
-		if err != nil {
-			return 0, err
-		}
-		total += n
+		writeUvarint(keyBuf, uint64(r.value.expires-minExpiry+1))
 	}
-	// finally write the length of the value and the actual value
-	n, err := writeUvarint(writer, uint64(len(v.data)))
-	if err != nil {
-		return 0, err
-	}
-	total += n
-	vl, err := writer.Write(v.data)
-	if err != nil {
-		return 0, err
-	}
-	return total + uint32(vl), nil
+
+	*valueBuf = append(*valueBuf, r.value.data...)
 }
 
 // take the arbitrary middle bits from the hash and trim to 16 bits
@@ -703,16 +744,15 @@ func getFingerprint(h uint64) fingerprint {
 	return fingerprint(h >> 29)
 }
 
-func writeUvarint(buf *bufio.Writer, x uint64) (uint32, error) {
+func writeUvarint(buf *[]byte, x uint64) uint32 {
 	i := uint32(0)
 	for x >= 0x80 {
-		if err := buf.WriteByte(byte(x) | 0x80); err != nil {
-			return 0, err
-		}
+		*buf = append(*buf, byte(x)|0x80)
 		x >>= 7
 		i += 1
 	}
-	return i + 1, buf.WriteByte(byte(x))
+	*buf = append(*buf, byte(x))
+	return i + 1
 }
 
 func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, error) {
