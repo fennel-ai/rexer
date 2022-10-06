@@ -16,7 +16,7 @@ function SignIn() {
                         <a href="/signup" className={styles.headerAlt}>Sign up instead?</a>
                     </div>
                     <SignInForm />
-                    <a href="/forgot_password">Forgot your password</a>
+                    <a href="/forgot_password" className={styles.forgot}>Forgot your password?</a>
                 </div>
             </div>
         </div>

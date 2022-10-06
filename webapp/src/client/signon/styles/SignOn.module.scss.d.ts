@@ -6,6 +6,7 @@ interface CssExports {
   'confirmEmailMessage': string;
   'container': string;
   'content': string;
+  'forgot': string;
   'formButton': string;
   'formItem': string;
   'header': string;
