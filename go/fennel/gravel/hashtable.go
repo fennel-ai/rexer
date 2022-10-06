@@ -507,6 +507,9 @@ func buildHashTable(filepath string, data map[string]Value) error {
 		}
 	}
 	sort.Slice(expTimeSampled, func(i, j int) bool { return expTimeSampled[i] < expTimeSampled[j] })
+	if len(expTimeSampled) == 0 {
+		expTimeSampled = append(expTimeSampled, math2.MaxUint32) // avoid crash due to empty sampling
+	}
 
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
 	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
