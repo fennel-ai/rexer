@@ -2,12 +2,13 @@ package store
 
 import (
 	"context"
-	"fennel/hangar/db"
-	"fennel/hangar/encoders"
 	"fmt"
-	"github.com/dgraph-io/badger/v3"
 	"testing"
 	"time"
+
+	"fennel/gravel"
+	"fennel/hangar/encoders"
+	gravelDB "fennel/hangar/gravel"
 
 	"fennel/lib/aggregate"
 	"fennel/lib/counter"
@@ -23,7 +24,8 @@ import (
 
 func TestAggregateStore(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	opts := aggregate.Options{
@@ -69,7 +71,8 @@ func TestAggregateStore(t *testing.T) {
 
 func TestProcess(t *testing.T) {
 	n := test.NewTestNitrous(t)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(t.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default())
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	opts := aggregate.Options{
@@ -174,7 +177,8 @@ func TestProcess(t *testing.T) {
 
 func BenchmarkGet(b *testing.B) {
 	n := test.NewTestNitrous(b)
-	db, err := db.NewHangar(n.PlaneID, badger.DefaultOptions(b.TempDir()), encoders.Default())
+	gravelOpts := gravel.DefaultOptions()
+	db, err := gravelDB.NewHangar(n.PlaneID, b.TempDir(), &gravelOpts, encoders.Default())
 	b.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(b, err)
 	opts := aggregate.Options{
@@ -304,8 +308,10 @@ func TestKeyGroupsToUpdate(t *testing.T) {
 	}
 	kgs, err := cs.getKeyGroupsToUpdate("mygk", buckets)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(kgs))
+
+	// we will have 2 key groups, each with 2 fields (one for the idx and another for summary)
+	assert.Equal(t, 2, len(kgs))
 	for _, kg := range kgs {
-		assert.Equal(t, 1, len(kg.Fields.MustGet()))
+		assert.Equal(t, 2, len(kg.Fields.MustGet()))
 	}
 }
