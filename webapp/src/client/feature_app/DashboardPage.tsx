@@ -1,11 +1,38 @@
 import { List } from "antd";
-import React from "react";
+import axios, { AxiosResponse } from "axios";
+import { useState, useEffect } from "react";
 
-import SearchBar from "./SearchBar";
+import SearchBar, { type FilterOption } from "./SearchBar";
 import pageStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
 
+interface Feature {
+    id: string,
+    name: string,
+    version: number,
+}
+
 function DashboardPage(): JSX.Element {
+    const [features, setFeatures] = useState<Feature[]>([]);
+
+    const queryFeatures = (filters: FilterOption[]) => {
+        axios.post("/features", {
+            filters,
+        }).then((response: AxiosResponse<{features: Feature[]}>) => {
+            setFeatures(response.data.features);
+        });
+    };
+
+    useEffect(() => queryFeatures([]), []);
+    const filterOptions = [
+        { type: "tag", value: "good" },
+        { type: "tag", value: "ok" },
+        { type: "name", value: "bad" },
+        { type: "name", value: "user_avg_rating" },
+        { type: "name", value: "movie_avg_rating" },
+        { type: "name", value: "user_likes_last_3days"},
+        { type: "name", value: "movie_likes_last_3days"},
+    ];
     return (
         <div className={pageStyles.container}>
             <div>
@@ -14,28 +41,22 @@ function DashboardPage(): JSX.Element {
             <SearchBar
                 className={styles.search}
                 placeholder="Search for a feature"
-                filterOptions={[{ type: "tag", value: "awesome" }, { type: "tag", value: "great" }, { type: "name", value: "foo" }, { type: "name", value: "bar" }]}
-                onFilterChange={(filters) => {console.log(filters)}}
+                filterOptions={filterOptions}
+                onFilterChange={queryFeatures}
             />
-            <FeatureList />
+            <FeatureList features={features} />
         </div>
     );
 }
 
-function FeatureList(): JSX.Element {
-    const data = [
-        "Feature 1",
-        "Feature 2",
-        "Feature 3",
-        "Feature 4",
-    ];
+function FeatureList({ features }: { features: Feature[] }): JSX.Element {
     return (
         <List
             className={styles.featureList}
-            dataSource={data}
-            renderItem={item => (
+            dataSource={features}
+            renderItem={feature => (
                 <List.Item>
-                    {item}
+                    {feature.name}
                 </List.Item>
             )}
         />

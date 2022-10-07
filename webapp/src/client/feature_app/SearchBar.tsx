@@ -4,7 +4,7 @@ import React, { useState } from "react";
 
 import styles from "./styles/SearchBar.module.scss";
 
-interface FilterOption {
+export interface FilterOption {
     type: string,
     value: string,
 }
