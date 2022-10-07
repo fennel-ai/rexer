@@ -10,23 +10,29 @@ interface FilterOption {
 }
 
 interface Props extends React.HTMLAttributes<HTMLDivElement> {
-    filterOptions: FilterOption[],
     placeholder?: string,
-    initialValue?: string,
+    filterOptions: FilterOption[],
+    onFilterChange: (filters: FilterOption[]) => void,
 }
 
 function SearchBar(props: Props): JSX.Element {
     const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>([]);
-    const [value, setValue] = useState<string | undefined>(props.initialValue);
+    const [value, setValue] = useState<string | undefined>();
     const [focused, setFocused] = useState<boolean>(false);
 
     const onSelectFilter = (f: FilterOption) => {
-        setSelectedFilters([...selectedFilters, f]);
+        const filters = [...selectedFilters, f];
+        setSelectedFilters(filters);
         setValue("");
+        props.onFilterChange(filters)
     }
-    const onUnselect = (unf: FilterOption) => setSelectedFilters(selectedFilters.filter(f => f.type !== unf.type || f.value !== unf.value));
+    const onUnselect = (unf: FilterOption) => {
+        const filters = selectedFilters.filter(f => f.type !== unf.type || f.value !== unf.value);
+        setSelectedFilters(filters);
+        props.onFilterChange(filters)
+    }
 
-    const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setValue(e.target.value);
     };
 
@@ -48,14 +54,12 @@ function SearchBar(props: Props): JSX.Element {
                         type="text"
                         value={value || ""}
                         placeholder={props.placeholder}
-                        onChange={onChange}
+                        onChange={onTextChange}
                         onBlur={() => setFocused(false)}
                         onFocus={() => setFocused(true)}
                         onKeyDown={e => {
                             if (e.key === "Backspace" && !value && selectedFilters.length > 0) {
-                                const filters = [...selectedFilters];
-                                filters.pop();
-                                setSelectedFilters(filters);
+                                onUnselect(selectedFilters[selectedFilters.length - 1]);
                             }
                         }}
                     />

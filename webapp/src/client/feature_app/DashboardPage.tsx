@@ -15,6 +15,7 @@ function DashboardPage(): JSX.Element {
                 className={styles.search}
                 placeholder="Search for a feature"
                 filterOptions={[{ type: "tag", value: "awesome" }, { type: "tag", value: "great" }, { type: "name", value: "foo" }, { type: "name", value: "bar" }]}
+                onFilterChange={(filters) => {console.log(filters)}}
             />
             <FeatureList />
         </div>
