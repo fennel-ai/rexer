@@ -51,6 +51,13 @@ function SearchBar(props: Props): JSX.Element {
                         onChange={onChange}
                         onBlur={() => setFocused(false)}
                         onFocus={() => setFocused(true)}
+                        onKeyDown={e => {
+                            if (e.key === "Backspace" && !value && selectedFilters.length > 0) {
+                                const filters = [...selectedFilters];
+                                filters.pop();
+                                setSelectedFilters(filters);
+                            }
+                        }}
                     />
                     <InputSuggestions
                         hidden={!focused}
@@ -76,7 +83,7 @@ interface InputSuggestionsProps {
 function InputSuggestions({ hidden, allFilters, text, selectedFilters, onSelectFilter }: InputSuggestionsProps): JSX.Element | null {
     let filters = allFilters.filter(f => !selectedFilters.some(sf => sf.type === f.type && sf.value === f.value));
     if (text) {
-        filters = filters.filter(f => f.value.startsWith(text));
+        filters = filters.filter(f => f.value.startsWith(text.trimStart()));
     }
 
     if (filters.length === 0) {
