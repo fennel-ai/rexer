@@ -1,0 +1,60 @@
+@use "../../styles/colors";
+
+.prefixContainer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.selectedFilter {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+
+    margin-left: 4px;
+    border: 1px solid;
+    padding: 5px;
+
+    border-radius: 4px;
+    background-color: colors.$gray2;
+    white-space: nowrap;
+}
+
+.unselectIcon:hover {
+    color: colors.$purple6;
+}
+
+.inputContainer {
+    width: 100%;
+    margin-left: 10px;
+}
+
+.inputContainer input {
+    width: 100%;
+    border: 0;
+    padding-top: 5px;
+    padding-bottom: 5px;
+
+    outline: none;
+}
+
+.inputSuggestions {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 5px 10px 10px 5px;
+
+    z-index: 100;
+    background: white;
+    box-shadow: 0px 3px 6px -4px rgba(0, 0, 0, 0.12), 0px 6px 16px rgba(0, 0, 0, 0.08), 0px 9px 28px 8px rgba(0, 0, 0, 0.05);
+    border-radius: 2px;
+}
+
+.suggestion:hover {
+    color: colors.$purple6;
+}
+
+.hidden {
+    display: none;
+}

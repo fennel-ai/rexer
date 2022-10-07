@@ -1,5 +1,6 @@
 import "./styles/App.less";
 import Navbar from "./Navbar";
+import DashboardPage from "./DashboardPage";
 
 interface User {
     email: string,
@@ -16,7 +17,7 @@ function App({ user }: Props) {
     return (
         <div>
             <Navbar user={user} />
-            Hello World
+            <DashboardPage />
         </div>
     );
 }
