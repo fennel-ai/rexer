@@ -15,8 +15,9 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 function SearchBar(props: Props): JSX.Element {
-    const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>([{ type: "tag", value: "production" }, { type: "tag", value: "WIP" }]);
+    const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>([]);
     const [value, setValue] = useState<string | undefined>(props.initialValue);
+    const [focused, setFocused] = useState<boolean>(false);
 
     const onSelectFilter = (f: FilterOption) => setSelectedFilters([...selectedFilters, f]);
     const onUnselect = (unf: FilterOption) => setSelectedFilters(selectedFilters.filter(f => f.type !== unf.type || f.value !== unf.value));
@@ -41,26 +42,64 @@ function SearchBar(props: Props): JSX.Element {
                 <span className={styles.inputContainer}>
                     <input
                         type="text"
-                        value={value}
+                        value={value || ""}
                         placeholder={props.placeholder}
                         onChange={onChange}
+                        onBlur={() => setFocused(false)}
+                        onFocus={() => setFocused(true)}
                     />
-                    <div className={styles.inputSuggestions}>
-                        {props.filterOptions.map(f => (
-                            <div key={`${f.type}:${f.value}`} className={styles.suggestion} onClick={() => onSelectFilter(f)}>
-                                {f.type}: {f.value}
-                            </div>
-                        ))}
-                    </div>
+                    <InputSuggestions
+                        hidden={!focused}
+                        allFilters={props.filterOptions}
+                        selectedFilters={selectedFilters}
+                        onSelectFilter={onSelectFilter}
+                        text={value}
+                    />
                 </span>
             </span>
         </div>
     );
 }
 
+interface InputSuggestionsProps {
+    hidden: boolean,
+    allFilters: FilterOption[],
+    selectedFilters: FilterOption[],
+    text: string | undefined,
+    onSelectFilter: (f: FilterOption) => void,
+}
+
+function InputSuggestions({ hidden, allFilters, text, selectedFilters, onSelectFilter }: InputSuggestionsProps): JSX.Element | null {
+    let filters = allFilters.filter(f => !selectedFilters.some(sf => sf.type === f.type && sf.value === f.value));
+    if (text) {
+        filters = filters.filter(f => f.value.startsWith(text));
+    }
+
+    if (filters.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className={styles.inputSuggestions}>
+            {filters.map(f => (
+                <div
+                    key={`${f.type}:${f.value}`}
+                    className={styles.suggestion}
+                    onClick={() => {
+                        console.log(f);
+                        onSelectFilter(f);
+                    }}>
+
+                    {f.type}: {f.value}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 type SelectedFilterProps = FilterOption & {
     onUnselect: (f: FilterOption) => void,
-};
+}
 
 function SelectedFilter({ type, value, onUnselect } : SelectedFilterProps): JSX.Element {
     const name = `${type}: ${value}`;
