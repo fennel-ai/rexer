@@ -1,3 +1,4 @@
+import classnames from "classnames";
 import { SearchOutlined, CloseOutlined } from "@ant-design/icons"
 import React, { useState } from "react";
 
@@ -19,7 +20,10 @@ function SearchBar(props: Props): JSX.Element {
     const [value, setValue] = useState<string | undefined>(props.initialValue);
     const [focused, setFocused] = useState<boolean>(false);
 
-    const onSelectFilter = (f: FilterOption) => setSelectedFilters([...selectedFilters, f]);
+    const onSelectFilter = (f: FilterOption) => {
+        setSelectedFilters([...selectedFilters, f]);
+        setValue("");
+    }
     const onUnselect = (unf: FilterOption) => setSelectedFilters(selectedFilters.filter(f => f.type !== unf.type || f.value !== unf.value));
 
     const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,15 +84,13 @@ function InputSuggestions({ hidden, allFilters, text, selectedFilters, onSelectF
     }
 
     return (
-        <div className={styles.inputSuggestions}>
+        <div className={classnames(styles.inputSuggestions, hidden && styles.hidden)}>
             {filters.map(f => (
                 <div
                     key={`${f.type}:${f.value}`}
                     className={styles.suggestion}
-                    onClick={() => {
-                        console.log(f);
-                        onSelectFilter(f);
-                    }}>
+                    onMouseDown={(e) => e.preventDefault()} // work around of the onclick, onblur triggering order
+                    onClick={() => onSelectFilter(f)}>
 
                     {f.type}: {f.value}
                 </div>
