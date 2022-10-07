@@ -1,5 +1,4 @@
 import { List } from "antd";
-import { SearchOutlined, CloseOutlined } from "@ant-design/icons"
 import React from "react";
 
 import SearchBar from "./SearchBar";
@@ -14,6 +13,7 @@ function DashboardPage(): JSX.Element {
             </div>
             <SearchBar
                 className={styles.search}
+                placeholder="Search for a feature"
                 filterOptions={[{ type: "tag", value: "awesome" }, { type: "tag", value: "great" }, { type: "name", value: "foo" }, { type: "name", value: "bar" }]}
             />
             <FeatureList />

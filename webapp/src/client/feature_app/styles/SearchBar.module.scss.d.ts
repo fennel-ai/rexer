@@ -5,6 +5,8 @@ interface CssExports {
   'inputSuggestions': string;
   'prefixContainer': string;
   'selectedFilter': string;
+  'suggestion': string;
+  'unselectIcon': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
