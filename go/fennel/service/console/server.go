@@ -111,7 +111,8 @@ func (s *server) setupRouter() {
 	s.Static(StaticImagesMount, WebAppRoot+"/images")
 	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
-	s.GET("/", s.Feature)
+	s.GET("/", s.Dashboard)
+	s.POST("/features", s.Features)
 }
 
 func fakeUser() userL.User {
@@ -124,11 +125,74 @@ func fakeUser() userL.User {
 	}
 }
 
-func (s *server) Feature(c *gin.Context) {
+func (s *server) Dashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("home"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
 		"user":                 jsonL.User2J(fakeUser()),
+	})
+}
+
+func (s *server) Features(c *gin.Context) {
+	type Filter struct {
+		Type  string `form:"type"`
+		Value string `form:"value"`
+	}
+	type Feature struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Version uint   `json:"version"`
+		Tags    []string
+	}
+	var form struct {
+		Filters []Filter `form:"filters"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	allFeatures := []Feature{
+		{
+			ID:   "101",
+			Name: "user_avg_rating",
+			Tags: []string{"good"},
+		},
+		{
+			ID:   "102",
+			Name: "movie_avg_rating",
+			Tags: []string{"ok"},
+		},
+		{
+			ID:   "103",
+			Name: "user_likes_last_3days",
+			Tags: []string{"bad"},
+		},
+		{
+			ID:   "104",
+			Name: "movie_likes_last_3days",
+			Tags: []string{"ok"},
+		},
+	}
+	features := make([]Feature, 0, len(allFeatures))
+	for _, feature := range allFeatures {
+		match := true
+		for _, filter := range form.Filters {
+			if filter.Type == "tag" && feature.Tags[0] != filter.Value {
+				match = false
+			}
+			if filter.Type == "name" && feature.Name != filter.Value {
+				match = false
+			}
+		}
+		if match {
+			features = append(features, feature)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"features": features,
 	})
 }
 
