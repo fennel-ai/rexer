@@ -1,5 +1,10 @@
 @use "../../styles/colors";
 
+.container {
+    border: 1px solid colors.$gray5;
+    border-radius: 2px;
+}
+
 .prefixContainer {
     display: flex;
     align-items: center;
