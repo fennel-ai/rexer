@@ -58,8 +58,11 @@ function FeatureList({ features }: { features: Feature[] }): JSX.Element {
 }
 
 function SingleFeature({ feature }: { feature: Feature }): JSX.Element {
+    const navigateToDetail = () => {
+        window.location.assign("/feature/101"); // TODO(xiao)
+    };
     return (
-        <div className={commonStyles.listItem}>
+        <div className={commonStyles.listItem} onClick={navigateToDetail}>
             <div className={commonStyles.listItemLhs}>
                 <ProfileOutlined size={18} />
                 <span>{feature.name}</span>

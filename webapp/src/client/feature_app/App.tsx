@@ -1,6 +1,13 @@
+import {
+    BrowserRouter,
+    Routes,
+    Route,
+} from "react-router-dom";
+
 import "./styles/App.less";
 import Navbar from "./Navbar";
 import DashboardPage from "./DashboardPage";
+import FeatureDetailPage from "./FeatureDetailPage";
 
 interface User {
     email: string,
@@ -15,10 +22,28 @@ interface Props {
 
 function App({ user }: Props) {
     return (
-        <div>
-            <Navbar user={user} />
-            <DashboardPage />
-        </div>
+        <BrowserRouter>
+            <Routes>
+                <Route
+                    path="/"
+                    element={(
+                        <>
+                            <Navbar user={user} />
+                            <DashboardPage />
+                        </>
+                    )}
+                />
+                <Route
+                    path="/feature/:featureID"
+                    element={(
+                        <>
+                            <Navbar user={user} />
+                            <FeatureDetailPage />
+                        </>
+                    )}
+                />
+            </Routes>
+        </BrowserRouter>
     );
 }
 

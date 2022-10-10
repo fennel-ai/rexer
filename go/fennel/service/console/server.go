@@ -112,6 +112,8 @@ func (s *server) setupRouter() {
 	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
 	s.GET("/", s.Dashboard)
+	s.GET("/feature/:id", s.Feature)
+
 	s.POST("/features", s.Features)
 }
 
@@ -123,6 +125,14 @@ func fakeUser() userL.User {
 		LastName:      "Jiang",
 		OnboardStatus: userL.OnboardStatusDone,
 	}
+}
+
+func (s *server) Feature(c *gin.Context) {
+	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
+		"title":                title("Feature"),
+		"featureAppBundlePath": s.featureAppBundlePath(),
+		"user":                 jsonL.User2J(fakeUser()),
+	})
 }
 
 func (s *server) Dashboard(c *gin.Context) {
