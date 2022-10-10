@@ -1,6 +1,35 @@
+@use "../../styles/colors";
+
 .container {
     display: flex;
     flex-direction: column;
 
     padding: 28px 128px 20px 128px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-top: 24px;
+}
+
+.listItem {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 8px;
+}
+
+.listItem:hover {
+    background: colors.$gray2;
+}
+
+.listItemLhs {
+    display: flex;
+    gap: 7px;
+    align-items: center;
 }

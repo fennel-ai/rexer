@@ -1,9 +1,9 @@
-import { List } from "antd";
 import axios, { AxiosResponse } from "axios";
+import { ProfileOutlined, RightOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 
 import SearchBar, { type FilterOption } from "./SearchBar";
-import pageStyles from "./styles/Page.module.scss";
+import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
 
 interface Feature {
@@ -34,7 +34,7 @@ function DashboardPage(): JSX.Element {
         { type: "name", value: "movie_likes_last_3days"},
     ];
     return (
-        <div className={pageStyles.container}>
+        <div className={commonStyles.container}>
             <div>
                 <h4 className={styles.title}>Dashboard</h4>
             </div>
@@ -51,15 +51,21 @@ function DashboardPage(): JSX.Element {
 
 function FeatureList({ features }: { features: Feature[] }): JSX.Element {
     return (
-        <List
-            className={styles.featureList}
-            dataSource={features}
-            renderItem={feature => (
-                <List.Item>
-                    {feature.name}
-                </List.Item>
-            )}
-        />
+        <div className={commonStyles.list}>
+            {features.map(f => (<SingleFeature key={f.name} feature={f} />))}
+        </div>
+    );
+}
+
+function SingleFeature({ feature }: { feature: Feature }): JSX.Element {
+    return (
+        <div className={commonStyles.listItem}>
+            <div className={commonStyles.listItemLhs}>
+                <ProfileOutlined size={18} />
+                <span>{feature.name}</span>
+            </div>
+            <RightOutlined size={10} />
+        </div>
     );
 }
 

@@ -38,7 +38,7 @@ function SearchBar(props: Props): JSX.Element {
 
     return (
         <div className={props.className}>
-            <span className="ant-input-affix-wrapper">
+            <span className={classnames("ant-input-affix-wrapper", styles.container)}>
                 <span className={styles.prefixContainer}>
                     <SearchOutlined />
                     {selectedFilters.map(f => (
