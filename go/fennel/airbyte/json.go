@@ -114,6 +114,7 @@ var _ ConnectionConfig = S3ConnectorConfig{}
 var _ ConnectionConfig = BigQueryConnectorConfig{}
 var _ ConnectionConfig = PostgresConnectorConfig{}
 var _ ConnectionConfig = MySQLConnectorConfig{}
+var _ ConnectionConfig = SnowflakeConnectorConfig{}
 
 // S3 Info
 
@@ -300,6 +301,41 @@ func NewMySQLConnectorConfig(src data_integration.MySQL) MySQLConnectorConfig {
 
 func (b MySQLConnectorConfig) GetSourceType() string {
 	return "MySQL"
+}
+
+type SnowflakeCredentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	AuthType string `json:"auth_type"`
+}
+
+// Snowflake Info
+type SnowflakeConnectorConfig struct {
+	Credentials SnowflakeCredentials `json:"credentials"`
+	Database    string               `json:"database"`
+	Host        string               `json:"host"`
+	Role        string               `json:"role"`
+	Warehouse   string               `json:"warehouse"`
+	Schema      string               `json:"schema"`
+}
+
+func NewSnowflakeConnectorConfig(src data_integration.Snowflake) SnowflakeConnectorConfig {
+	return SnowflakeConnectorConfig{
+		Credentials: SnowflakeCredentials{
+			Username: src.Username,
+			Password: src.Password,
+			AuthType: "username/password",
+		},
+		Database:  src.Dbname,
+		Host:      src.Host,
+		Role:      src.Role,
+		Schema:    src.Schema,
+		Warehouse: src.Warehouse,
+	}
+}
+
+func (b SnowflakeConnectorConfig) GetSourceType() string {
+	return "Snowflake"
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

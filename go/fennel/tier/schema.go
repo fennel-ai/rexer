@@ -191,6 +191,19 @@ var Schema = db.Schema{
 			PRIMARY KEY (name),
 			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
 		);`,
+	25: `CREATE TABLE IF NOT EXISTS snowflake_source (
+			name VARCHAR(255) NOT NULL,	
+			source_id VARCHAR(255) NOT NULL,
+			db_name VARCHAR(255) NOT NULL,
+			host VARCHAR(255) NOT NULL,
+			jdbc_params VARCHAR(255) NOT NULL,
+			role VARCHAR(255) NOT NULL,
+			warehouse VARCHAR(255) NOT NULL,
+			db_schema VARCHAR(255) NOT NULL,
+			last_updated timestamp default now() on update now(), 
+			PRIMARY KEY (name),
+			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
+		);`,
 	// ==================== END Schema for Data Integration ======================
 	// ==================== BEGIN Schema for usage counters ================
 	23: `CREATE TABLE IF NOT EXISTS usage_counters (

@@ -37,6 +37,9 @@ func StoreSource(ctx context.Context, tier tier.Tier, src data_integration.Sourc
 	case data_integration.MySQL:
 		sql := `INSERT INTO mysql_source (name, host, port, db_name, jdbc_params, source_id) VALUES (?, ?, ?, ?, ?, ?)`
 		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.Host, srcDerived.Port, srcDerived.Dbname, srcDerived.JdbcParams, srcId)
+	case data_integration.Snowflake:
+		sql := `INSERT INTO snowflake_source (name, host, warehouse, role, db_name, jdbc_params, db_schema, source_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+		_, err = tier.DB.QueryContext(ctx, sql, srcDerived.Name, srcDerived.Host, srcDerived.Warehouse, srcDerived.Role, srcDerived.Dbname, srcDerived.JdbcParams, srcDerived.Schema, srcId)
 	default:
 		err = fmt.Errorf("unsupported source type: %T found during storing source", src)
 	}
@@ -69,6 +72,10 @@ func RetrieveSource(ctx context.Context, tier tier.Tier, srcName string) (data_i
 		var src data_integration.MySQL
 		err = tier.DB.GetContext(ctx, &src, "SELECT * FROM mysql_source WHERE name = ?", srcName)
 		return src, err
+	case "Snowflake":
+		var src data_integration.Snowflake
+		err = tier.DB.GetContext(ctx, &src, "SELECT * FROM snowflake_source WHERE name = ?", srcName)
+		return src, err
 	default:
 		return nil, fmt.Errorf("unsupported source type: %s found during retrieving source", srcSer.Type)
 	}
@@ -88,6 +95,8 @@ func DeleteSource(ctx context.Context, tier tier.Tier, src data_integration.Sour
 		_, err = tier.DB.ExecContext(ctx, "DELETE FROM postgres_source WHERE name = ?", srcDerived.Name)
 	case data_integration.MySQL:
 		_, err = tier.DB.ExecContext(ctx, "DELETE FROM mysql_source WHERE name = ?", srcDerived.Name)
+	case data_integration.Snowflake:
+		_, err = tier.DB.ExecContext(ctx, "DELETE FROM snowflake_source WHERE name = ?", srcDerived.Name)
 	default:
 		err = fmt.Errorf("unsupported source type: %T found during deleting source", srcDerived)
 	}

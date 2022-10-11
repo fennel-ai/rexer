@@ -33,6 +33,10 @@ func UnmarshalSource(data []byte) (data_integration.Source, error) {
 		src := data_integration.MySQL{}
 		err = json.Unmarshal(data, &src)
 		return src, err
+	case "Snowflake":
+		src := data_integration.Snowflake{}
+		err = json.Unmarshal(data, &src)
+		return src, err
 	default:
 		return nil, fmt.Errorf("unknown source type: %s", srcInfo["type"])
 	}

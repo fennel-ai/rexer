@@ -382,6 +382,9 @@ func getConnectionConfiguration(source data_integration.Source, sourceDefId stri
 	case data_integration.MySQL:
 		mysqlConnectorConfig := NewMySQLConnectorConfig(src)
 		srcConfig.ConnectionConfiguration = mysqlConnectorConfig
+	case data_integration.Snowflake:
+		snowflakeConnectorConfig := NewSnowflakeConnectorConfig(src)
+		srcConfig.ConnectionConfiguration = snowflakeConnectorConfig
 	default:
 		return srcConfig, fmt.Errorf("source type %s not supported", reflect.TypeOf(source).Name())
 	}

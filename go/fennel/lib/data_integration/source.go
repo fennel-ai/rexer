@@ -27,6 +27,7 @@ var _ Source = S3{}
 var _ Source = BigQuery{}
 var _ Source = Postgres{}
 var _ Source = MySQL{}
+var _ Source = Snowflake{}
 
 type S3 struct {
 	Name               string `db:"name" json:"name"`
@@ -240,4 +241,59 @@ func (s MySQL) Validate() error {
 		return fmt.Errorf("dbname is required")
 	}
 	return nil
+}
+
+type Snowflake struct {
+	SQLSource
+	Warehouse string `db:"warehouse" json:"warehouse"`
+	Role      string `db:"role" json:"role"`
+	Schema    string `db:"db_schema" json:"schema"`
+}
+
+func (s Snowflake) Validate() error {
+	if s.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if s.Host == "" {
+		return fmt.Errorf("host/account is required")
+	}
+	if s.Dbname == "" {
+		return fmt.Errorf("dbname is required")
+	}
+	if s.Warehouse == "" {
+		return fmt.Errorf("warehouse is required")
+	}
+	if s.Role == "" {
+		return fmt.Errorf("role is required")
+	}
+	if s.Schema == "" {
+		return fmt.Errorf("schema is required")
+	}
+	return nil
+}
+
+func (s Snowflake) GetSourceName() string {
+	return s.Name
+}
+
+func (s Snowflake) GetSourceId() string {
+	return s.SourceId
+}
+
+func (s Snowflake) GetDefaultCursorField() string {
+	return ""
+}
+
+func (s Snowflake) Equals(src Source) error {
+	if src.GetSourceName() != s.Name {
+		return fmt.Errorf("source name mismatch")
+	}
+	if s2, ok := src.(Snowflake); ok {
+		if s.Host == s2.Host && s.Dbname == s2.Dbname && s.Warehouse == s2.Warehouse && s.Role == s2.Role && s.Schema == s2.Schema {
+			return nil
+		}
+		return fmt.Errorf("snowflake fields do not match")
+	} else {
+		return fmt.Errorf("source type mismatch")
+	}
 }
