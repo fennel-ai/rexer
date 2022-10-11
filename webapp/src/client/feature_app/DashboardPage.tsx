@@ -36,7 +36,7 @@ function DashboardPage(): JSX.Element {
     return (
         <div className={commonStyles.container}>
             <div>
-                <h4 className={styles.title}>Dashboard</h4>
+                <h4 className={commonStyles.title}>Dashboard</h4>
             </div>
             <SearchBar
                 className={styles.search}
