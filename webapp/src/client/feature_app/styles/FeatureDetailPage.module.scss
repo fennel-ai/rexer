@@ -1,0 +1,24 @@
+.titleLhs {
+    display: flex;
+    align-items: center;
+}
+
+.titleIcon {
+    margin-right: 3px;
+}
+
+.tags {
+    margin-left: 8px;
+
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tag {
+    padding: 1px 8px 1px 8px;
+    font-size: 12px;
+    background: #E6F7FF;
+    color: #1890FF;
+    border: 1px solid #91D5FF;
+}
