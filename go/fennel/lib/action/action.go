@@ -191,8 +191,15 @@ func FromValueDict(dict value.Dict) (Action, error) {
 	}
 
 	if timestamp, ok := dict.Get("timestamp"); ok {
+
 		if ts, ok := timestamp.(value.Int); ok {
 			action.Timestamp = ftypes.Timestamp(ts)
+		} else if ts, ok := timestamp.(value.Double); ok {
+			tsCast := int64(ts)
+			if float64(tsCast)-float64(ts) > 0.0001 {
+				return action, fmt.Errorf("timestamp must be an integer")
+			}
+			action.Timestamp = ftypes.Timestamp(tsCast)
 		} else {
 			return action, fmt.Errorf("action timestamp must be an integer")
 		}
