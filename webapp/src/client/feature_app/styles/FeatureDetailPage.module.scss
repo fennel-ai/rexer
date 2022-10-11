@@ -1,3 +1,5 @@
+@use "../../styles/colors";
+
 .titleLhs {
     display: flex;
     align-items: center;
@@ -21,4 +23,41 @@
     background: #E6F7FF;
     color: #1890FF;
     border: 1px solid #91D5FF;
+}
+
+table.subtitle {
+    margin-top: 15px;
+    table-layout: fixed;
+}
+
+table.subtitle tr {
+    padding-top: 14px;
+}
+
+table.subtitle td:first-child {
+    color: colors.$gray7;
+    padding-right: 30px;
+    width: 105px;
+}
+
+table.subtitle td {
+    vertical-align: top;
+    text-align: left;
+}
+
+.aggregateList {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.aggregate {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.versionDropdownIcon {
+    color: rgba(0, 0, 0, 0.25),
 }
