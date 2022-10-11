@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 	"fmt"
 	"os"
 	"path"
@@ -31,6 +32,8 @@ type Table interface {
 func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable) ([]string, error) {
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.build")
 	defer t.Stop()
+	parallel.Acquire(context.Background(), "nitrous", parallel.OneCPU)
+	defer parallel.Release("nitrous", parallel.OneCPU)
 	// if the directory doesn't exist, create it
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
@@ -63,8 +66,24 @@ func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable)
 
 func PickTablesToCompact(tables []Table) []Table {
 	// merge strategy:
+	// 0. If the oldest consecutive tables have a lot of expired records, force compact them
 	// 1. Merge as many consecutive files as possible, but less than maxCompactionBatch and total size less than tableSizeLimit
 	// 2. If there are multiple choices, choose the one with the smallest total size
+
+	totalSize := uint64(0)
+	expTables := make([]Table, 0, len(tables))
+	for _, table := range tables {
+		if table.ShouldGCExpired() && totalSize+table.Size() < maxCompactBatch*2 {
+			expTables = append(expTables, table)
+		} else {
+			break
+		}
+	}
+
+	if len(expTables) > 1 {
+		return expTables
+	}
+
 	type entry struct {
 		startIdx  int
 		totalSize uint64
@@ -107,6 +126,8 @@ func PickTablesToCompact(tables []Table) []Table {
 // tables slice should strictly follow the rule that newer table comes later
 // if compacting to the final(oldest) file in the shard, deletion markers will be removed
 func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableType, compactToFinal bool) (string, error) {
+	parallel.Acquire(context.Background(), "nitrous", parallel.OneCPU)
+	defer parallel.Release("nitrous", parallel.OneCPU)
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.compaction")
 	defer t.Stop()
 
@@ -136,12 +157,6 @@ func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableTy
 		}
 	}
 	switch type_ {
-	/*
-		case BDiskHashTable:
-			return buildBDiskHashTable(dirname, numShards, mt)
-		case testTable:
-			return buildEmptyTable(dirname, numShards, mt)
-	*/
 	case HashTable:
 		err = buildHashTable(filepath, m)
 	default:

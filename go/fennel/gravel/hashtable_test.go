@@ -19,6 +19,9 @@ func TestHeader(t *testing.T) {
 		indexsize:   5329710,
 		minExpiry:   25234,
 		maxExpiry:   823042,
+		expiryP25:   0,
+		expiryP50:   100,
+		expiryP75:   1000,
 	}
 	var buf bytes.Buffer
 	writer := bufio.NewWriterSize(&buf, 1024)

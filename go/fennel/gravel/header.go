@@ -2,7 +2,7 @@ package gravel
 
 import (
 	"errors"
-	"github.com/cespare/xxhash/v2"
+
 	"github.com/zeebo/xxh3"
 )
 
@@ -35,13 +35,12 @@ func Hash(k []byte) uint64 {
 	return xxh3.Hash(k)
 }
 
-// ShardHash is for deciding which shard to go, and it uses a different function
-// with the one that is used inside the hash-table to avoid the risk of unexpected
-// distribution unevenness per hash table file
-func ShardHash(k []byte) uint64 {
-	return xxhash.Sum64(k) // xxh64
-}
-
-func Shard(k []byte, numShards uint64) uint64 {
-	return ShardHash(k) & (numShards - 1)
+// Shard returns the shard this hash should go to.
+// To calculate the Shard, we don't want to use the hash as it is to avoid the risk
+// of unexpected distribution unevenness. Instead, we come up with a related hash
+// by xoring the lower 32 bits with higher 32 bits and higher 32 bits with lower 32
+// bits. This is significantly faster than taking an independent hash
+func Shard(h uint64, numShards uint64) uint64 {
+	sh := h ^ (h >> 32) ^ (h << 32)
+	return sh & (numShards - 1)
 }

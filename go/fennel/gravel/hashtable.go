@@ -15,17 +15,17 @@ package gravel
 	Here is how the table is laid out in disk
 		Header (64 bytes)
 		Data (variable size, followed by padding to make sure the end-of-section is aligned with 64 bytes)
-		L1 Index (variable size - fixed 64 bytes for each hash bucket)
+		L1 Index (variable size - fixed 32 bytes for each hash bucket)
 		L2 Index (variable size - single block for all index data that doesn't fit in L1 index)
         4 bytes MagicTailer
 
 	Given a key, we find the bucket that that it goes to using it hash and the number
 	of total buckets (stored in header). Then we jump to L1 index for that bucket. That
 	bucket contains a bunch of fingerprints of keys living in that bucket. It also stores
-	the offset in the data section where the actual data lives. If 64 bytes are sufficient
+	the offset in the data section where the actual data lives. If 32 bytes are sufficient
 	for all fingerprints, we will directly jump to data section if any fingerprint matches.
-	If 64 bytes aren't sufficient, it contains the offset within L2 section where
-	the rest of the fingerprints are stored.
+	If 32 bytes aren't sufficient, it contains the offset within L2 section where
+	the rest of the fingerprints are stored (this happens for <8% of keys only)
 
 	Header block stores summary of the table. Here is its structure:
 		4 bytes MagicHeader
@@ -44,15 +44,18 @@ package gravel
 		4 bytes level 2 index checksum (TODO)
 		filler bytes to make the total header size 64
 
-	1st level index can be thought of as literally a flat list of 64 bytes - one entry for each
-	hash bucket. The structure of these 64 bytes are as follows:
+	1st level index can be thought of as literally a flat list of 32 bytes - one entry for each
+	hash bucket. The structure of these 32 bytes are as follows:
 		1 byte - number of keys in this bucket
 		5 bytes for the location of the actual data - expressed as offset within data section
-        Then either 3 bytes * 19 == 57 bytes,  19 fingerprints, if number of keys <= 19, which means not all fingerprints can fit in the bucket
-             or     4 bytes offset in L2 index of the overflow fingerprints, then 3 bytes * 18 = 54 bytes
+		Then if number of keys <= 13:
+			One 2 byte fingerprint for all keys one after one
+		Else:
+			4 bytes of the location in overflow where the remaining keys will be present
+			Followed by 2 byte fingerprint for first 11 keys (remaining fingerprints will be in overflow)
 
-	2nd level index stores any remaining fingerprints that could not fit within 64 bytes of L1 entry.
-	Each fingerprint is fixed 3 bytes.
+	2nd level index stores any remaining fingerprints that could not fit within 32 bytes of L1 entry.
+	Each fingerprint is fixed 2 bytes.
 
 	Data section stores a flat list of all the entries like below:
     note that for records in each bucket, keys and metadata are grouped together
@@ -98,7 +101,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"go.uber.org/zap"
@@ -106,13 +111,14 @@ import (
 )
 
 const (
-	magicHeader         uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
-	magicTailer         uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
-	v1codec_xxhash      uint8  = 1
-	numRecordsPerBucket uint32 = 19
-	fileHeaderSize      int    = 64
-	bucketSizeBytes     int    = 64 // a common cache line size
-	maxBucketFpCount    int    = 28
+	magicHeader                  uint32 = 0x24112021 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
+	magicTailer                  uint32 = 0x20211124 // this is just an arbitrary 32 bit number - day Fennel was incorporated :)
+	v1codec_xxhash               uint8  = 1
+	numRecordsPerBucket          uint32 = 9
+	fileHeaderSize               int    = 64
+	bucketSizeBytes              int    = 32 // half of a cache line
+	maxBucketFpCount             int    = 13
+	expiryPercentileSamplingSize int    = 10000
 )
 
 var incompleteFile = fmt.Errorf("expected end of file")
@@ -130,6 +136,9 @@ type header struct {
 	codec       uint8
 	encrypted   bool
 	compression uint8
+	expiryP25   Timestamp
+	expiryP50   Timestamp
+	expiryP75   Timestamp
 }
 
 // record denotes a k-v pair that exists within the table, for internal use only when building the table
@@ -161,7 +170,8 @@ type hashTable struct {
 }
 
 func (ht *hashTable) ShouldGCExpired() bool {
-	return false
+	now := time.Now().Unix()
+	return int64(ht.head.expiryP50) < now
 }
 
 func (ht *hashTable) IndexSize() uint64 {
@@ -278,7 +288,7 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 	if numKeys > maxBucketFpCount {
 		overflow = binary.LittleEndian.Uint32(index[sofar:])
 		sofar += 4
-		fpInBucket = maxBucketFpCount - 1
+		fpInBucket = maxBucketFpCount - 2
 	}
 	// now compare all sorted fps one by one until seeing a bigger value which indicates a stop
 	curFpPos := 0
@@ -287,14 +297,6 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 	matchFpPos := -1
 	matchFpCount := 0
 
-	if fpInBucket > maxBucketFpCount/2 {
-		// accelerate the fingerprint searching
-		skipPos := fpInBucket >> 1
-		if index[sofar+skipPos*2] < fpB1 {
-			curFpPos = skipPos + 1
-			sofar += (skipPos + 1) * 2
-		}
-	}
 	for ; curFpPos < fpInBucket; curFpPos += 1 {
 		if index[sofar] > fpB1 {
 			return matchFpPos, matchFpCount, numKeys, datapos, nil
@@ -337,7 +339,7 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 // sorted on bucketID
 func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, records []record) (uint32, error) {
 	overflow := make([]byte, 0, 2*numBuckets*8) // reserve some size (but not too large, 8 times the number of buckets) to avoid too much copying
-	entry := make([]byte, 64)
+	entry := make([]byte, 32)
 	for bid := uint32(0); bid < numBuckets; bid++ {
 		slice.Fill(entry, 0)
 
@@ -351,7 +353,6 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 
 		if numKeys > 0 {
 			// not an empty bucket
-
 			// write the position of this bucket's data (as offset within data segment) in 5 bytes
 			datapos := l2entry.dataStart
 			if datapos >= (1 << 40) {
@@ -369,7 +370,7 @@ func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, rec
 				// followed by overflow section offset, if keys can't feed into the bucket
 				binary.LittleEndian.PutUint32(entry[sofar:], uint32(len(overflow)))
 				sofar += 4
-				fpToPutInBucket = maxBucketFpCount - 1 // bucket can't hold maxBucketFpCount fingerprints anymore, reduce by one
+				fpToPutInBucket = maxBucketFpCount - 2 // bucket can't hold maxBucketFpCount fingerprints anymore, reduce by one
 			}
 
 			curRecord := l2entry.firstRecord
@@ -596,8 +597,21 @@ func buildHashTable(filepath string, data map[string]Value) error {
 	minExpiry := Timestamp(math2.MaxUint32)
 	maxExpiry := Timestamp(0)
 	records := getRecords(data, numBuckets)
+
+	expTimeSampled := make([]Timestamp, 0, expiryPercentileSamplingSize)
+	sampledIdx := 0
 	for _, r := range records {
 		v := r.value
+		if sampledIdx < expiryPercentileSamplingSize {
+			if !v.deleted {
+				if v.expires > 0 {
+					expTimeSampled = append(expTimeSampled, v.expires)
+				} else {
+					expTimeSampled = append(expTimeSampled, math2.MaxUint32)
+				}
+				sampledIdx += 1
+			}
+		}
 		if v.expires > 0 {
 			if minExpiry > v.expires {
 				minExpiry = v.expires
@@ -607,6 +621,11 @@ func buildHashTable(filepath string, data map[string]Value) error {
 			}
 		}
 	}
+	sort.Slice(expTimeSampled, func(i, j int) bool { return expTimeSampled[i] < expTimeSampled[j] })
+	if len(expTimeSampled) == 0 {
+		expTimeSampled = append(expTimeSampled, math2.MaxUint32) // avoid crash due to empty sampling
+	}
+
 	// now start writing the data section starting byte 64 (leaving bytes 0 - 63 for header)
 	_, err = f.Seek(int64(fileHeaderSize), unix.SEEK_SET)
 	if err != nil {
@@ -660,6 +679,9 @@ func buildHashTable(filepath string, data map[string]Value) error {
 		indexsize:   indexsize,
 		minExpiry:   minExpiry,
 		maxExpiry:   maxExpiry,
+		expiryP25:   expTimeSampled[len(expTimeSampled)/4],
+		expiryP50:   expTimeSampled[len(expTimeSampled)/2],
+		expiryP75:   expTimeSampled[(len(expTimeSampled)*3)/4],
 	}
 	if err = writeHeader(writer, head); err != nil {
 		return err
@@ -689,6 +711,9 @@ func writeHeader(writer *bufio.Writer, head header) error {
 	binary.LittleEndian.PutUint32(buf[23:], head.indexsize)
 	binary.LittleEndian.PutUint32(buf[27:], uint32(head.minExpiry))
 	binary.LittleEndian.PutUint32(buf[31:], uint32(head.maxExpiry))
+	binary.LittleEndian.PutUint32(buf[35:], uint32(head.expiryP25))
+	binary.LittleEndian.PutUint32(buf[39:], uint32(head.expiryP50))
+	binary.LittleEndian.PutUint32(buf[43:], uint32(head.expiryP75))
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
@@ -718,6 +743,9 @@ func readHeader(buf []byte) (header, error) {
 	head.indexsize = binary.LittleEndian.Uint32(buf[23:])
 	head.minExpiry = Timestamp(binary.LittleEndian.Uint32(buf[27:]))
 	head.maxExpiry = Timestamp(binary.LittleEndian.Uint32(buf[31:]))
+	head.expiryP25 = Timestamp(binary.LittleEndian.Uint32(buf[35:]))
+	head.expiryP50 = Timestamp(binary.LittleEndian.Uint32(buf[39:]))
+	head.expiryP75 = Timestamp(binary.LittleEndian.Uint32(buf[43:]))
 	return head, nil
 }
 
@@ -833,6 +861,9 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 		data:       data,
 		size:       uint64(size),
 	}
+	tableInfo := fmt.Sprintf("numRecords:%d,totalSize:%d,indexSize:%d,minExp:%d,maxExp:%d,expP25:%d,expP50:%d,expP75:%d",
+		header.numRecords, size, header.indexsize, header.minExpiry, header.maxExpiry, header.expiryP25, header.expiryP50, header.expiryP75)
+	zap.L().Info("opened hash table", zap.String("filename", fullFileName), zap.String("info", tableInfo))
 	runtime.SetFinalizer(tableObj, (*hashTable).Close)
 	return tableObj, nil
 }

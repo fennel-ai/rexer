@@ -42,14 +42,14 @@ var tablesQueriedReporter = promauto.NewSummaryVec(prometheus.SummaryOpts{
 }, []string{"realm_id"})
 
 type Gravel struct {
-	memtable            Memtable
+	memtable            *Memtable
 	tm                  *TableManager
 	commitlock          sync.Mutex
 	opts                Options
 	stats               Stats
 	closeCh             chan struct{}
 	periodicFlushTicker *time.Ticker
-	logger 				*zap.Logger
+	logger              *zap.Logger
 }
 
 func Open(opts Options) (ret *Gravel, failure error) {
@@ -73,7 +73,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		stats:               Stats{},
 		closeCh:             make(chan struct{}, 1),
 		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
-		logger:				 logger,
+		logger:              logger,
 	}
 	go ret.periodicallyFlush()
 	go ret.reportStats()
@@ -82,8 +82,8 @@ func Open(opts Options) (ret *Gravel, failure error) {
 
 func (g *Gravel) Get(key []byte) ([]byte, error) {
 	tablesQueried := 0
-	shard := Shard(key, g.tm.NumShards())
 	hash := Hash(key)
+	shard := Shard(hash, g.tm.NumShards())
 	sample := shouldSample()
 
 	maybeInc(sample, &g.stats.Gets)
@@ -185,6 +185,9 @@ func (g *Gravel) Teardown() error {
 }
 
 func (g *Gravel) Close() error {
+	if err := g.Flush(); err != nil {
+		return err
+	}
 	// notify that the db has been closed
 	g.closeCh <- struct{}{}
 	return g.tm.Close()

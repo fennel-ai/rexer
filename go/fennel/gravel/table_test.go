@@ -32,7 +32,7 @@ func testTableType(t *testing.T, type_ TableType, sz int) {
 	id := rand.Uint64()
 	dirname := fmt.Sprintf("/tmp/gravel-%d", id)
 	start := time.Now()
-	filenames, err := BuildTable(dirname, uint64(numShards), type_, &mt)
+	filenames, err := BuildTable(dirname, uint64(numShards), type_, mt)
 	tables := make([]Table, numShards)
 	for i, fname := range filenames {
 		newname := fmt.Sprintf("%d_%d%s", i, 1, FileExtension)
@@ -79,7 +79,7 @@ func benchmarkTableGet(b *testing.B, sz int, type_ TableType) {
 	mt := getMemTable(sz, numShards)
 	id := rand.Uint64()
 	dirname := fmt.Sprintf("/tmp/gravel-%d", id)
-	filenames, _ := BuildTable(dirname, uint64(numShards), type_, &mt)
+	filenames, _ := BuildTable(dirname, uint64(numShards), type_, mt)
 	tables := make([]Table, numShards)
 	for i, fname := range filenames {
 		newname := fmt.Sprintf("%d_%d%s", i, 1, FileExtension)
@@ -117,7 +117,7 @@ func benchmarkTableAbsent(b *testing.B, sz int, type_ TableType) {
 	mt := getMemTable(sz, numShards)
 	id := rand.Uint64()
 	dirname := fmt.Sprintf("/tmp/gravel-%d", id)
-	filenames, _ := BuildTable(dirname, uint64(numShards), type_, &mt)
+	filenames, _ := BuildTable(dirname, uint64(numShards), type_, mt)
 	tables := make([]Table, numShards)
 	for i, fname := range filenames {
 		newname := fmt.Sprintf("%d_%d%s", i, 1, FileExtension)
@@ -151,7 +151,7 @@ func benchmarkTableAbsent(b *testing.B, sz int, type_ TableType) {
 	fmt.Printf("dummy got was: %v\n", got)
 }
 
-func getMemTable(sz, numShards int) Memtable {
+func getMemTable(sz, numShards int) *Memtable {
 	mt := NewMemTable(uint64(numShards))
 	keys := make([][]byte, 0, sz)
 	vals := make([][]byte, 0, sz)
