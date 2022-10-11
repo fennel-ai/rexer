@@ -537,7 +537,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             ],
         },
         milvusConf: {},
-        modelMonitoringConf: {},
+        // modelMonitoringConf: {},
         // Run nitrous on the plane.
         nitrousConf: {
             replicas: 1,
