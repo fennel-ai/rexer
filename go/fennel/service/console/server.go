@@ -20,11 +20,13 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
 	userL "fennel/mothership/lib/user"
 )
 
 const (
+	SignInURL          = "/signin"
 	WebAppRoot         = "../../webapp"
 	StaticJSMount      = "/assets"
 	StaticImagesMount  = "/images"
@@ -111,10 +113,32 @@ func (s *server) setupRouter() {
 	s.Static(StaticImagesMount, WebAppRoot+"/images")
 	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
-	s.GET("/", s.Dashboard)
-	s.GET("/feature/:id", s.Feature)
+	s.GET("/signup", s.SignOnGet)
+	s.GET(SignInURL, s.SignOnGet)
+	s.GET("/forgot_password", s.SignOnGet)
+	s.GET("/reset_password", s.SignOnGet)
 
-	s.POST("/features", s.Features)
+	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
+	auth.GET("/", s.Dashboard)
+	auth.GET("/feature/:id", s.Feature)
+	auth.POST("/features", s.Features)
+}
+
+func (s *server) SignOnGet(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
+		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
+		"signOnBundlePath": s.signOnBundlePath(),
+	})
+}
+
+func (s *server) signOnBundlePath() string {
+	wpManifest := s.wpManifest
+	if s.isDev() {
+		wpManifest, _ = readWebpackManifest()
+	}
+
+	return StaticJSMount + "/" + wpManifest[SignOnJSBundle]
 }
 
 func fakeUser() userL.User {

@@ -17,6 +17,7 @@ import (
 	"fennel/mothership/lib"
 	customerL "fennel/mothership/lib/customer"
 	dataplaneL "fennel/mothership/lib/dataplane"
+	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
@@ -140,7 +141,7 @@ func (s *server) setupMiddlewares() {
 	store := cookie.NewStore([]byte(s.args.SessionKey))
 	s.Use(sessions.Sessions("mysession", store))
 
-	s.Use(WithFlashMessage)
+	s.Use(ginL.WithFlashMessage)
 }
 
 func (s *server) setupRouter() {
@@ -160,7 +161,7 @@ func (s *server) setupRouter() {
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
-	auth := s.Group("/", AuthenticationRequired(s.db))
+	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
 	auth.GET("/onboard", s.Onboard)
 
 	onboarded := auth.Group("/", Onboarded(s.db))
@@ -300,11 +301,11 @@ func (s *server) ConfirmUser(c *gin.Context) {
 		} else {
 			msgDesc = "Failed to confirm the email. Please try again later."
 		}
-		addFlashMessage(session, FlashTypeError, msgDesc)
+		ginL.AddFlashMessage(session, ginL.FlashTypeError, msgDesc)
 		c.Redirect(http.StatusFound, SignInURL)
 		return
 	}
-	addFlashMessage(session, FlashTypeSuccess, "Your email address has been confirmed! You can now sign in.")
+	ginL.AddFlashMessage(session, ginL.FlashTypeSuccess, "Your email address has been confirmed! You can now sign in.")
 	c.Redirect(http.StatusFound, SignInURL)
 }
 
@@ -369,7 +370,7 @@ func (s *server) SignIn(c *gin.Context) {
 		return
 	}
 
-	saveUserIntoCookie(sessions.Default(c), user)
+	ginL.SaveUserIntoCookie(sessions.Default(c), user)
 	c.JSON(http.StatusOK, gin.H{})
 }
 
