@@ -16,6 +16,7 @@
     "@types/human-format": "^1.0.0",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
+    "@types/react-syntax-highlighter": "^15.5.5",
     "@types/sass": "^1.43.1",
     "@typescript-eslint/eslint-plugin": "^5.30.6",
     "@typescript-eslint/parser": "^5.30.6",
