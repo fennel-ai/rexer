@@ -347,6 +347,21 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         // disable injecting linkerd for the connector jobs
                         "linkerd.io/inject": "disabled",
                     }
+                },
+
+                // set resources for the jobs which reads and writes data from the source to the sink
+                //
+                // TODO(mohit): This should be made specific to the tiers, based on their resource requirements
+                // (amount of data we might potentially read on every sync)
+                "resources": {
+                    "requests": {
+                        "cpu": "6500m",
+                        "memory": "12Gi",
+                    },
+                    "limits": {
+                        "cpu": "7500m",
+                        "memory": "15Gi",
+                    },
                 }
             },
 
