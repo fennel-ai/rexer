@@ -34,10 +34,7 @@ func NewTestNitrous[TB testing.TB](t TB) TestNitrous {
 	flags.Dev = true
 	flags.PlaneID = planeId
 	flags.GravelDir = t.TempDir()
-	flags.BadgerBlockCacheMB = 1000
-	flags.RistrettoMaxCost = 1000
-	flags.RistrettoAvgCost = 1
-	flags.BinPartitions = 1  // by-default we create topics with partition = 1
+	flags.BinPartitions = 1 // by-default we create topics with partition = 1
 	flags.Identity = "localhost"
 	p, err := nitrous.CreateFromArgs(flags)
 	require.NoError(t, err)

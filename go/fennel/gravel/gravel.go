@@ -43,9 +43,12 @@ var tablesQueriedReporter = promauto.NewSummaryVec(prometheus.SummaryOpts{
 }, []string{"realm_id"})
 
 type Gravel struct {
-	memtable            *Memtable
+	memtables    [2]*Memtable
+	memtableLock sync.RWMutex
+	flushingWg   sync.WaitGroup
+	flushing     bool
+
 	tm                  *TableManager
-	commitlock          sync.Mutex
 	opts                Options
 	stats               Stats
 	closeCh             chan struct{}
@@ -68,16 +71,19 @@ func Open(opts Options, clock clock.Clock) (ret *Gravel, failure error) {
 	// if the DB was earlier created with a different number of shards, use the existing value in the DB
 	opts.NumShards = tableManager.NumShards()
 	ret = &Gravel{
-		memtable:            NewMemTable(tableManager.NumShards()),
+		memtableLock:        sync.RWMutex{},
+		flushingWg:          sync.WaitGroup{},
+		flushing:            false,
 		tm:                  tableManager,
 		opts:                opts,
-		commitlock:          sync.Mutex{},
 		stats:               Stats{},
 		closeCh:             make(chan struct{}, 1),
 		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
 		logger:              logger,
 		clock:               clock,
 	}
+	ret.memtables[0] = NewMemTable(tableManager.NumShards())
+	ret.memtables[1] = NewMemTable(tableManager.NumShards())
 	go ret.periodicallyFlush()
 	go ret.reportStats()
 	return ret, nil
@@ -91,20 +97,30 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 
 	maybeInc(sample, &g.stats.Gets)
 	now := Timestamp(g.clock.Now().Unix())
-	val, err := g.memtable.Get(key, shard)
-	switch err {
-	case ErrNotFound:
-		// do nothing, we will just check it in all the tables
-		maybeInc(sample, &g.stats.MemtableMisses)
-	case nil:
-		maybeInc(sample, &g.stats.MemtableHits)
-		if shouldSampleEvery1024() {
-			tablesQueriedReporter.WithLabelValues("0").Observe(float64(tablesQueried))
+
+	g.memtableLock.RLock()
+	for _, mt := range g.memtables {
+		val, err := mt.Get(key, shard)
+		switch err {
+		case ErrNotFound:
+		case nil:
+			g.memtableLock.RUnlock()
+			maybeInc(sample, &g.stats.MemtableHits)
+			if shouldSampleEvery1024() {
+				tablesQueriedReporter.WithLabelValues("0").Observe(float64(tablesQueried))
+			}
+			return handle(val, now)
+		default:
+			g.memtableLock.RUnlock()
+			return nil, err
 		}
-		return handle(val, now)
-	default:
-		return nil, err
+		if !g.flushing {
+			break
+		}
 	}
+	g.memtableLock.RUnlock()
+	maybeInc(sample, &g.stats.MemtableMisses)
+
 	g.tm.Reserve()
 	defer g.tm.Release()
 	tables, err := g.tm.List(shard)
@@ -138,8 +154,6 @@ func (g *Gravel) NewBatch() *Batch {
 }
 
 func (g *Gravel) commit(batch *Batch) error {
-	g.commitlock.Lock()
-	defer g.commitlock.Unlock()
 	batchsz := uint64(0)
 	for _, e := range batch.Entries() {
 		batchsz += uint64(sizeof(e))
@@ -148,14 +162,16 @@ func (g *Gravel) commit(batch *Batch) error {
 		// this batch is so large that it won't fit in any single memtable
 		return errors.New("commit batch too large")
 	}
-	if g.memtable.Size()+batchsz > g.opts.MaxMemtableSize {
+	if g.memtables[0].Size()+batchsz > g.opts.MaxMemtableSize {
 		// flush so that this commit can go to the next memtable
 		if err := g.flush(); err != nil {
 			return err
 		}
 	}
+	g.memtableLock.RLock()
+	defer g.memtableLock.RUnlock()
 	// batch can fit in a single memtable, so set it now
-	return g.memtable.SetMany(batch.Entries(), &g.stats)
+	return g.memtables[0].SetMany(batch.Entries(), &g.stats)
 }
 
 func handle(val Value, now Timestamp) ([]byte, error) {
@@ -206,28 +222,49 @@ func (g *Gravel) Flush() error {
 
 // TODO(mohit): Expose Flush as a public method for testing!
 
-// NOTE: the caller of flush is expected to hold commitlock
 func (g *Gravel) flush() error {
-	if g.memtable.Size() == 0 {
+	defer g.periodicFlushTicker.Reset(periodicFlushTickerDur)
+
+	g.memtableLock.Lock()
+	if g.memtables[0].Size() == 0 {
 		// no valid reason to flush an empty memtable
+		g.memtableLock.Unlock()
 		return nil
 	}
-	// since a flush is being attempted, reset the periodic flush
-	g.periodicFlushTicker.Reset(periodicFlushTickerDur)
-	tablefiles, err := g.memtable.Flush(g.opts.TableType, g.opts.Dirname)
-	if err != nil {
-		return err
-	}
-	maybeInc(true, &g.stats.NumTableBuilds)
-	if err = g.tm.Append(tablefiles); err != nil {
-		return err
-	}
-	if err = g.memtable.Clear(); err != nil {
-		return err
-	}
-	g.stats.MemtableSizeBytes.Store(0)
-	g.stats.MemtableKeys.Store(0)
-	return err
+	g.flushingWg.Wait() // wait for real flushing job finishing
+
+	// now the shadow memtable (1) must be emptied
+	g.flushingWg.Add(1)
+
+	g.memtables[0], g.memtables[1] = g.memtables[1], g.memtables[0]
+	g.memtableLock.Unlock()
+
+	go func() {
+		// since a flush is being attempted, reset the periodic flush
+		tablefiles, err := g.memtables[1].Flush(g.opts.TableType, g.opts.Dirname)
+
+		// we probably should panic(), but now it's just blocking the next flush
+		// at least we shouldn't let new data come in
+		if err != nil {
+			g.logger.Error("failed to flush", zap.Error(err))
+			return
+		}
+		if err = g.tm.Append(tablefiles); err != nil {
+			g.logger.Error("failed to flush", zap.Error(err))
+			return
+		}
+		if err = g.memtables[1].Clear(); err != nil {
+			g.logger.Error("failed to flush", zap.Error(err))
+			return
+		}
+
+		maybeInc(true, &g.stats.NumTableBuilds)
+		g.stats.MemtableSizeBytes.Store(g.memtables[0].Size())
+		g.stats.MemtableKeys.Store(g.memtables[0].Len())
+
+		g.flushingWg.Done()
+	}()
+	return nil
 }
 
 // If write volume is low, memtable may not reach tablesize for
@@ -239,8 +276,6 @@ func (g *Gravel) periodicallyFlush() {
 		select {
 		case <-g.periodicFlushTicker.C:
 			func() {
-				g.commitlock.Lock()
-				defer g.commitlock.Unlock()
 				if err := g.flush(); err != nil {
 					g.logger.Warn("periodic flush failed", zap.Error(err))
 				}

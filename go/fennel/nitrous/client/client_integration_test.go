@@ -27,12 +27,12 @@ import (
 
 func topicProducer(args fnitrous.NitrousArgs, scope resource.Scope, topic string) (fkafka.FProducer, error) {
 	config := fkafka.RemoteProducerConfig{
-		Scope: scope,
-		Topic: topic,
+		Scope:           scope,
+		Topic:           topic,
 		BootstrapServer: args.MskKafkaServer,
-		Username: args.MskKafkaUsername,
-		Password: args.MskKafkaPassword,
-		SaslMechanism: fkafka.SaslScramSha512Mechanism,
+		Username:        args.MskKafkaUsername,
+		Password:        args.MskKafkaPassword,
+		SaslMechanism:   fkafka.SaslScramSha512Mechanism,
 	}
 	p, err := config.Materialize()
 	return p.(fkafka.FProducer), err
@@ -48,9 +48,6 @@ func TestPushToShardedNitrous(t *testing.T) {
 	flags.Dev = true
 	flags.PlaneID = planeId
 	flags.GravelDir = t.TempDir()
-	flags.BadgerBlockCacheMB = 1000
-	flags.RistrettoMaxCost = 1000
-	flags.RistrettoAvgCost = 1
 
 	// We will configure multiple partitions, to which the client will push based on the hash of the group keys
 	flags.BinPartitions = 2
@@ -62,18 +59,18 @@ func TestPushToShardedNitrous(t *testing.T) {
 	// we need to create only the nitrous based topics
 	topics := make([]confKafka.TopicSpecification, 0)
 	topics = append(topics, confKafka.TopicSpecification{
-		Topic: scope.PrefixedName(libnitrous.BINLOG_KAFKA_TOPIC),
-		NumPartitions: 2,
+		Topic:             scope.PrefixedName(libnitrous.BINLOG_KAFKA_TOPIC),
+		NumPartitions:     2,
 		ReplicationFactor: 0,
 	})
 	topics = append(topics, confKafka.TopicSpecification{
-		Topic: scope.PrefixedName(libnitrous.REQS_KAFKA_TOPIC),
-		NumPartitions: 1,
+		Topic:             scope.PrefixedName(libnitrous.REQS_KAFKA_TOPIC),
+		NumPartitions:     1,
 		ReplicationFactor: 0,
 	})
 	topics = append(topics, confKafka.TopicSpecification{
-		Topic: scope.PrefixedName(libnitrous.AGGR_CONF_KAFKA_TOPIC),
-		NumPartitions: 1,
+		Topic:             scope.PrefixedName(libnitrous.AGGR_CONF_KAFKA_TOPIC),
+		NumPartitions:     1,
 		ReplicationFactor: 0,
 	})
 
@@ -90,11 +87,11 @@ func TestPushToShardedNitrous(t *testing.T) {
 	aggrConfProducer, err := topicProducer(flags, scope, libnitrous.AGGR_CONF_KAFKA_TOPIC)
 	assert.NoError(t, err)
 	cfg := client.NitrousClientConfig{
-		TierID:         0,
-		ServerAddr:     addr.String(),
-		BinlogProducer: binlogProducer,
-		BinlogPartitions: 2,
-		ReqsLogProducer: reqslogProducer,
+		TierID:                0,
+		ServerAddr:            addr.String(),
+		BinlogProducer:        binlogProducer,
+		BinlogPartitions:      2,
+		ReqsLogProducer:       reqslogProducer,
 		AggregateConfProducer: aggrConfProducer,
 	}
 	res, err := cfg.Materialize()
