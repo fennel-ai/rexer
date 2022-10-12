@@ -12,7 +12,7 @@ function SignIn() {
                 <div className={styles.logoDivider} />
                 <div className={styles.content}>
                     <div className={styles.header}>
-                        <h4 className={styles.headerTitle}>Sign In</h4>
+                        <h4>Sign In</h4>
                         <a href="/signup" className={styles.headerAlt}>Sign up instead?</a>
                     </div>
                     <SignInForm />

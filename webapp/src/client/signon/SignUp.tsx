@@ -83,7 +83,7 @@ function SignUpForm({ onSubmit }: SignUpFormProps) {
     return (
         <>
             <div className={styles.header}>
-                <h4 className={styles.headerTitle}>Sign up</h4>
+                <h4>Sign up</h4>
                 <a href="/signin" className={styles.headerAlt}>Login instead?</a>
             </div>
             <div className={styles.mainForm}>
@@ -155,7 +155,7 @@ function ConfirmEmail(props: {email: string}) {
                 />
 
                 <div className={styles.confirmEmailMessage}>
-                    <h4 className={styles.headerTitle}>
+                    <h4>
                         You’re on your way! Please confirm your email.
                     </h4>
                     <p>
