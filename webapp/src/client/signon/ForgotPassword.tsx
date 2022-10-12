@@ -1,10 +1,14 @@
 import { Form, Input, Button, notification } from "antd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios, { AxiosError } from "axios";
 
 import styles from "./styles/SignOn.module.scss";
 
-function ForgotPassword() {
+function ForgotPassword(): JSX.Element {
+    useEffect(() => {
+        document.title = "Fennel | Forgot Password";
+    }, []);
+
     return (
         <div className={styles.page}>
             <div className={styles.container}>
@@ -22,7 +26,7 @@ function ForgotPassword() {
     );
 }
 
-function ForgotForm() {
+function ForgotForm(): JSX.Element {
     const [submitting, setSubmitting] = useState(false);
 
     const onFinish = (values: {email: string}) => {

@@ -6,7 +6,7 @@ const container = document.getElementById("root")!;  // eslint-disable-line @typ
 const props = container.dataset;
 
 const root = createRoot(container);
-root.render(<SignOnApp page={props.page!} />); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+root.render(<SignOnApp />);
 
 const flashMsgType = props.flashMsgType;
 const flashMsgContent = props.flashMsgContent;

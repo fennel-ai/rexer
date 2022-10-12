@@ -1,10 +1,13 @@
 import { Button, Form, Input, notification } from "antd";
 import axios, { AxiosError } from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import styles from "./styles/SignOn.module.scss";
 
-function SignIn() {
+function SignIn(): JSX.Element {
+    useEffect(() => {
+        document.title = "Fennel | Sign In";
+    }, []);
     return (
         <div className={styles.page}>
             <div className={styles.container}>

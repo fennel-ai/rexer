@@ -148,13 +148,14 @@ func (s *server) setupRouter() {
 	s.Static(StaticImagesMount, WebAppRoot+"/images")
 	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
-	s.GET("/signup", s.SignUpGet)
+	s.GET("/signup", s.SignOnGet)
+	s.GET(SignInURL, s.SignOnGet)
+	s.GET("/forgot_password", s.SignOnGet)
+	s.GET("/reset_password", s.SignOnGet)
+
 	s.POST("/signup", s.SignUp)
-	s.GET(SignInURL, s.SignInGet)
 	s.POST(SignInURL, s.SignIn)
-	s.GET("/forgot_password", s.ForgotPasswordGet)
 	s.POST("/forgot_password", s.ForgotPassword)
-	s.GET("/reset_password", s.ResetPasswordGet)
 	s.POST("/reset_password", s.ResetPassword)
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
@@ -235,39 +236,10 @@ func (s *server) clientAppBundlePath() string {
 	return StaticJSMount + "/" + wpManifest[ClientAppJSBundle]
 }
 
-func (s *server) ResetPasswordGet(c *gin.Context) {
+func (s *server) SignOnGet(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title":            title("Reset Password"),
-		"page":             ResetPasswordPage,
-		"signOnBundlePath": s.signOnBundlePath(),
-	})
-}
-
-func (s *server) SignUpGet(c *gin.Context) {
-	c.Header("Cache-Control", "no-cache")
-	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title":            title("Sign Up"),
-		"page":             SignUpPage,
-		"signOnBundlePath": s.signOnBundlePath(),
-	})
-}
-
-func (s *server) SignInGet(c *gin.Context) {
-	c.Header("Cache-Control", "no-cache")
-	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title":            title("Sign In"),
-		"page":             SignInPage,
 		"flashMsg":         c.GetStringMapString(FlashMessageKey),
-		"signOnBundlePath": s.signOnBundlePath(),
-	})
-}
-
-func (s *server) ForgotPasswordGet(c *gin.Context) {
-	c.Header("Cache-Control", "no-cache")
-	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"title":            title("Forgot Password"),
-		"page":             ForgotPasswordPage,
 		"signOnBundlePath": s.signOnBundlePath(),
 	})
 }
