@@ -12,7 +12,7 @@ function ResetPassword() {
                 <div className={styles.logoDivider} />
                 <div className={styles.content}>
                     <div className={styles.header}>
-                        <h4 className={styles.headerTitle}>Reset your password</h4>
+                        <h4>Reset your password</h4>
                         <a href="/signin" className={styles.headerAlt}>Sign in</a>
                     </div>
                     <ResetForm />

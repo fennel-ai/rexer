@@ -4,6 +4,7 @@ import axios, { AxiosResponse } from "axios";
 import { Line, LineConfig } from '@ant-design/plots';
 import humanFormat from "human-format";
 import { useParams, generatePath } from "react-router-dom";
+import classNames from "classnames";
 
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
@@ -20,13 +21,9 @@ function DashboardPage() {
     const [selected, setSelected] = useState<string>("Last day");
 
     const DateControlLink = ({ duration, step, text }: { duration: number, step: string, text: string }) => {
-        const klasses = [styles.dateControl];
-        if (selected === text) {
-            klasses.push(styles.selected);
-        }
         return (
             <a
-                className={klasses.join(" ")}
+                className={classNames(styles.dateControl, (selected === text) && styles.selected)}
                 onClick={e => {
                     e.preventDefault();
                     setStartTime(now - duration);
@@ -42,7 +39,7 @@ function DashboardPage() {
     return (
         <div className={commonStyles.container}>
             <div className={styles.titleSection}>
-                <h4 className={styles.title}>Dashboard</h4>
+                <h4>Dashboard</h4>
                 <Space size={24}>
                     <DateControlLink
                         duration={DAY_MS}

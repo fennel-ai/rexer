@@ -12,7 +12,7 @@ function ForgotPassword() {
                 <div className={styles.logoDivider} />
                 <div className={styles.content}>
                     <div className={styles.header}>
-                        <h4 className={styles.headerTitle}>Forgot Password?</h4>
+                        <h4>Forgot Password?</h4>
                         <a href="/signin" className={styles.headerAlt}>Sign in</a>
                     </div>
                     <ForgotForm />

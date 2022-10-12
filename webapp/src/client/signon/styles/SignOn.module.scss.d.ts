@@ -11,7 +11,6 @@ interface CssExports {
   'formItem': string;
   'header': string;
   'headerAlt': string;
-  'headerTitle': string;
   'logo': string;
   'logoDivider': string;
   'mainForm': string;

@@ -3,7 +3,6 @@
 interface CssExports {
   'dateControl': string;
   'selected': string;
-  'title': string;
   'titleSection': string;
 }
 export const cssExports: CssExports;
