@@ -1,10 +1,14 @@
 import { Form, Input, Button, notification } from "antd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios, { AxiosError } from "axios";
 
 import styles from "./styles/SignOn.module.scss";
 
-function ResetPassword() {
+function ResetPassword(): JSX.Element {
+    useEffect(() => {
+        document.title = "Fennel | Reset Password";
+    }, []);
+
     return (
         <div className={styles.page}>
             <div className={styles.container}>
@@ -27,7 +31,7 @@ function readTokenFromURLParam(): string {
     return url.searchParams.get("token") || "";
 }
 
-function ResetForm() {
+function ResetForm(): JSX.Element {
     const [submitting, setSubmitting] = useState(false);
     const token = readTokenFromURLParam();
 

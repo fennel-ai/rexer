@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 
 import styles from "./styles/SignOn.module.scss";
 
-function SignUp() {
+function SignUp(): JSX.Element {
     const [submitted, setSubmitted] = useState(false);
     const [submittedEmail, setSubmittedEmail] = useState("");
 
@@ -15,6 +15,7 @@ function SignUp() {
     };
 
     useEffect(() => {
+        document.title = "Fennel | Sign Up";
         notification.info({
             key: "documentation",
             message: (
