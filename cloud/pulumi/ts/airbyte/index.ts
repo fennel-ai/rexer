@@ -170,14 +170,14 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     //  https://github.com/fennel-ai/public/tree/main/helm-charts/airbyte
     //
     // This is also mentioned in the Airbyte Issue - https://github.com/airbytehq/airbyte/issues/1868#issuecomment-1025952077
-    const imageTag = "0.39.1-alpha";
+    const imageTag = "0.40.14";
     const serverPort = 8001;
     const airbyteRelease = new k8s.helm.v3.Release("airbyte", {
         repositoryOpts: {
             "repo": "https://fennel-ai.github.io/public/helm-charts/airbyte/",
         },
         chart: "airbyte",
-        version: "0.3.9",
+        version: "0.4.6",
         values: {
             "version": imageTag,
 
@@ -378,6 +378,23 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 // disable minio logging which is configured by default
                 "minio": {
                     "enabled": false,
+                },
+                "s3": {
+                    "enabled": true,
+                    "bucket": bucketName,
+                    "bucketRegion": input.region,
+                }
+            },
+
+            // enable worker state to be written to s3 as well
+            "state": {
+                "accessKey": {
+                    "existingSecret": secretName,
+                    "existingSecretKey": "accessKey",
+                },
+                "secretKey": {
+                    "existingSecret": secretName,
+                    "existingSecretKey": "secretKey",
                 },
                 "s3": {
                     "enabled": true,
