@@ -256,7 +256,7 @@ func (s *server) ForgotPassword(c *gin.Context) {
 		return
 	}
 	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email, &s.mothership); err != nil {
-		respondError(c, err, "send the reset password email")
+		ginL.RespondError(c, err, "send the reset password email")
 		return
 	}
 
@@ -276,7 +276,7 @@ func (s *server) ResetPassword(c *gin.Context) {
 	}
 
 	if err := userC.ResetPassword(c.Request.Context(), s.db, form.Token, form.Password); err != nil {
-		respondError(c, err, "reset password")
+		ginL.RespondError(c, err, "reset password")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
@@ -331,11 +331,11 @@ func (s *server) SignUp(c *gin.Context) {
 	ctx := c.Request.Context()
 	user, err := userC.SignUp(ctx, s.db, form.FirstName, form.LastName, form.Email, form.Password)
 	if err != nil {
-		respondError(c, err, "sign up")
+		ginL.RespondError(c, err, "sign up")
 		return
 	}
 	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user, &s.mothership); err != nil {
-		respondError(c, err, "send confirmation email")
+		ginL.RespondError(c, err, "send confirmation email")
 		return
 	}
 
@@ -408,7 +408,7 @@ func (s *server) Home(c *gin.Context) {
 
 	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
 	if err != nil {
-		respondError(c, err, "fetch tiers")
+		ginL.RespondError(c, err, "fetch tiers")
 		return
 	}
 	if len(tiers) == 0 {
@@ -464,7 +464,7 @@ func (s *server) Tiers(c *gin.Context) {
 
 	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
 	if err != nil {
-		respondError(c, err, "fetch tiers")
+		ginL.RespondError(c, err, "fetch tiers")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -565,7 +565,7 @@ func (s *server) Features(c *gin.Context) {
 func (s *server) Logout(c *gin.Context) {
 	if user, ok := CurrentUser(c); ok {
 		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
-			respondError(c, err, "log out the user")
+			ginL.RespondError(c, err, "log out the user")
 			return
 		}
 	}
@@ -621,7 +621,7 @@ func (s *server) UpdateUserNames(c *gin.Context) {
 
 	if user, ok := CurrentUser(c); ok {
 		if err := userC.UpdateUserNames(c.Request.Context(), s.db, user, form.FirstName, form.LastName); err != nil {
-			respondError(c, err, "update user names")
+			ginL.RespondError(c, err, "update user names")
 			return
 		}
 	}
@@ -642,7 +642,7 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 
 	if user, ok := CurrentUser(c); ok {
 		if _, err := userC.UpdatePassword(c.Request.Context(), s.db, user, form.CurrentPassword, form.NewPassword); err != nil {
-			respondError(c, err, "update user password")
+			ginL.RespondError(c, err, "update user password")
 			return
 		}
 	}
@@ -680,7 +680,7 @@ func (s *server) OnboardCreateTeam(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	_, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.AllowAutoJoin, &user)
 	if err != nil {
-		respondError(c, err, "create team (onboard)")
+		ginL.RespondError(c, err, "create team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -701,7 +701,7 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	err := onboardC.JoinTeam(c.Request.Context(), s.db, form.TeamID, &user)
 	if err != nil {
-		respondError(c, err, "join team (onboard)")
+		ginL.RespondError(c, err, "join team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -716,7 +716,7 @@ func (s *server) OnboardAssignTier(c *gin.Context) {
 		err = errors.New("no available pre-provisioned tier")
 	}
 	if err != nil {
-		respondError(c, err, "assign a tier (onboard)")
+		ginL.RespondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	if available {
@@ -733,7 +733,7 @@ func (s *server) OnboardTier(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	tier, err := onboardC.FetchTier(c.Request.Context(), s.db, user.CustomerID)
 	if err != nil {
-		respondError(c, err, "assign a tier (onboard)")
+		ginL.RespondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	var dp dataplaneL.DataPlane
@@ -746,7 +746,7 @@ func (s *server) OnboardTier(c *gin.Context) {
 func (s *server) OnboardTierProvisioned(c *gin.Context) {
 	user, _ := CurrentUser(c)
 	if err := onboardC.TierProvisioned(c.Request.Context(), s.db, &user); err != nil {
-		respondError(c, err, "assign a tier (onboard)")
+		ginL.RespondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -766,18 +766,18 @@ func (s *server) QueryRangeMetrics(c *gin.Context) {
 
 	var req queryRangeRequest
 	if err := c.ShouldBind(&req); err != nil {
-		respondError(c, err, "parse query range metrics params")
+		ginL.RespondError(c, err, "parse query range metrics params")
 		return
 	}
 	start, end, step, err := req.parseParams()
 	if err != nil {
-		respondError(c, err, "parse query range metrics params")
+		ginL.RespondError(c, err, "parse query range metrics params")
 		return
 	}
 
 	result, err := metricC.QueryRange(c.Request.Context(), s.db, tier, req.Query, start, end, step)
 	if err != nil {
-		respondError(c, err, "query range metrics")
+		ginL.RespondError(c, err, "query range metrics")
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -796,19 +796,6 @@ func (req queryRangeRequest) parseParams() (time.Time, time.Time, time.Duration,
 	}
 	step, err = time.ParseDuration(req.Step)
 	return start, end, step, err
-}
-
-func respondError(c *gin.Context, err error, action string) {
-	if ue, ok := err.(*lib.UserReadableError); ok {
-		c.JSON(ue.StatusCode, gin.H{
-			"error": ue.Msg,
-		})
-	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Failed to %s, please try again later.", action),
-		})
-		log.Printf("Failed to %s: %v\n", action, err)
-	}
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {
