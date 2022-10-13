@@ -17,14 +17,18 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/sendgrid/sendgrid-go"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	userC "fennel/mothership/controller/user"
+	"fennel/mothership/lib"
+	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
-	userL "fennel/mothership/lib/user"
 )
 
 const (
+	SignInURL          = "/signin"
 	WebAppRoot         = "../../webapp"
 	StaticJSMount      = "/assets"
 	StaticImagesMount  = "/images"
@@ -104,6 +108,8 @@ func (s *server) setupMiddlewares() {
 
 	store := cookie.NewStore([]byte(s.args.SessionKey))
 	s.Use(sessions.Sessions("mysession", store))
+
+	s.Use(ginL.WithFlashMessage)
 }
 
 func (s *server) setupRouter() {
@@ -111,35 +117,226 @@ func (s *server) setupRouter() {
 	s.Static(StaticImagesMount, WebAppRoot+"/images")
 	s.Static(StaticJSMount, WebAppRoot+"/dist")
 
-	s.GET("/", s.Dashboard)
-	s.GET("/feature/:id", s.Feature)
+	s.GET("/signup", s.SignOnGet)
+	s.GET(SignInURL, s.SignOnGet)
+	s.GET("/forgot_password", s.SignOnGet)
+	s.GET("/reset_password", s.SignOnGet)
 
-	s.POST("/features", s.Features)
+	s.POST("/signup", s.SignUp)
+	s.POST(SignInURL, s.SignIn)
+	s.POST("/forgot_password", s.ForgotPassword)
+	s.POST("/reset_password", s.ResetPassword)
+	s.GET("/confirm_user", s.ConfirmUser)
+	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
+
+	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
+
+	auth.POST("/logout", s.Logout)
+	auth.GET("/", s.Dashboard)
+	auth.GET("/feature/:id", s.Feature)
+	auth.POST("/features", s.Features)
 }
 
-func fakeUser() userL.User {
-	// TODO(xiao) use real user from auth
-	return userL.User{
-		Email:         "xiao@fennel.ai",
-		FirstName:     "Xiao",
-		LastName:      "Jiang",
-		OnboardStatus: userL.OnboardStatusDone,
+func (s *server) ForgotPassword(c *gin.Context) {
+	var form struct {
+		Email string `json:"email"`
 	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email, &s.mothership); err != nil {
+		ginL.RespondError(c, err, "send the reset password email")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) ResetPassword(c *gin.Context) {
+	var form struct {
+		Token    string `form:"token"`
+		Password string `form:"password"`
+	}
+	if err := c.ShouldBind(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if err := userC.ResetPassword(c.Request.Context(), s.db, form.Token, form.Password); err != nil {
+		ginL.RespondError(c, err, "reset password")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) ConfirmUser(c *gin.Context) {
+	var form struct {
+		Token string `form:"token"`
+	}
+	if err := c.ShouldBind(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	session := sessions.Default(c)
+	if _, err := userC.ConfirmUser(c.Request.Context(), s.db, form.Token); err != nil {
+		msgDesc := ""
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			msgDesc = ue.Msg
+		} else {
+			msgDesc = "Failed to confirm the email. Please try again later."
+		}
+		ginL.AddFlashMessage(session, ginL.FlashTypeError, msgDesc)
+		c.Redirect(http.StatusFound, SignInURL)
+		return
+	}
+	ginL.AddFlashMessage(session, ginL.FlashTypeSuccess, "Your email address has been confirmed! You can now sign in.")
+	c.Redirect(http.StatusFound, SignInURL)
+}
+
+func (s *server) sendgridClient() *sendgrid.Client {
+	return sendgrid.NewSendClient(s.args.SendgridAPIKey)
+}
+
+func (s *server) SignUp(c *gin.Context) {
+	var form struct {
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+	}
+
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := userC.SignUp(ctx, s.db, form.FirstName, form.LastName, form.Email, form.Password)
+	if err != nil {
+		ginL.RespondError(c, err, "sign up")
+		return
+	}
+	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user, &s.mothership); err != nil {
+		ginL.RespondError(c, err, "send confirmation email")
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{})
+}
+
+func (s *server) SignIn(c *gin.Context) {
+	var form struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	user, err := userC.SignIn(c.Request.Context(), s.db, form.Email, form.Password)
+	if err != nil {
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to sign in. Please try again later.",
+			})
+			log.Printf("Failed to sign in: %v\n", err)
+		}
+		return
+	}
+
+	ginL.SaveUserIntoCookie(sessions.Default(c), user)
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) ResendConfirmationEmail(c *gin.Context) {
+	var form struct {
+		Email string `json:"email"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err := userC.ResendConfirmationEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email, &s.mothership)
+	if err != nil {
+		if ue, ok := err.(*lib.UserReadableError); ok {
+			c.JSON(ue.StatusCode, gin.H{
+				"error": ue.Msg,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Fail to resend confirmation email, please try again later.",
+			})
+			log.Printf("Failed to resend confirmation email: %v\n", err)
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{})
+}
+
+func (s *server) SignOnGet(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
+		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
+		"signOnBundlePath": s.signOnBundlePath(),
+	})
+}
+
+func (s *server) signOnBundlePath() string {
+	wpManifest := s.wpManifest
+	if s.isDev() {
+		wpManifest, _ = readWebpackManifest()
+	}
+
+	return StaticJSMount + "/" + wpManifest[SignOnJSBundle]
+}
+
+func (s *server) Logout(c *gin.Context) {
+	if user, ok := ginL.CurrentUser(c); ok {
+		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
+			ginL.RespondError(c, err, "log out the user")
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (s *server) Feature(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("Feature"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(fakeUser()),
+		"user":                 jsonL.User2J(user),
 	})
 }
 
 func (s *server) Dashboard(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("home"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(fakeUser()),
+		"user":                 jsonL.User2J(user),
 	})
 }
 

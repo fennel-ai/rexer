@@ -1,36 +1,36 @@
-package main
+package gin
 
 import (
-	libuser "fennel/mothership/lib/user"
+	userL "fennel/mothership/lib/user"
 	"log"
 
 	"github.com/gin-contrib/sessions"
 )
 
 const (
+	RememberTokenKey       = "remember_token"
 	FlashMessageTypeKey    = "flash_message_type"
 	FlashMessageContentKey = "flash_message_content"
-	RememberTokenKey       = "remember_token"
 
 	FlashTypeError   = "error"
 	FlashTypeSuccess = "success"
 )
 
-func addFlashMessage(session sessions.Session, msgType, msgContent string) {
-	session.Set(FlashMessageTypeKey, msgType)
-	session.Set(FlashMessageContentKey, msgContent)
-
-	if err := session.Save(); err != nil {
-		log.Printf("Error saving cookie: %v", err)
-	}
-}
-
-func saveUserIntoCookie(session sessions.Session, user libuser.User) {
+func SaveUserIntoCookie(session sessions.Session, user userL.User) {
 	if !user.RememberToken.Valid {
 		log.Printf("Error saving cookie: remember token missing")
 		return
 	}
 	session.Set(RememberTokenKey, user.RememberToken.String)
+	if err := session.Save(); err != nil {
+		log.Printf("Error saving cookie: %v", err)
+	}
+}
+
+func AddFlashMessage(session sessions.Session, msgType, msgContent string) {
+	session.Set(FlashMessageTypeKey, msgType)
+	session.Set(FlashMessageContentKey, msgContent)
+
 	if err := session.Save(); err != nil {
 		log.Printf("Error saving cookie: %v", err)
 	}

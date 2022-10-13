@@ -17,6 +17,7 @@ import (
 	"fennel/mothership/lib"
 	customerL "fennel/mothership/lib/customer"
 	dataplaneL "fennel/mothership/lib/dataplane"
+	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
@@ -140,7 +141,7 @@ func (s *server) setupMiddlewares() {
 	store := cookie.NewStore([]byte(s.args.SessionKey))
 	s.Use(sessions.Sessions("mysession", store))
 
-	s.Use(WithFlashMessage)
+	s.Use(ginL.WithFlashMessage)
 }
 
 func (s *server) setupRouter() {
@@ -160,15 +161,15 @@ func (s *server) setupRouter() {
 	s.GET("/confirm_user", s.ConfirmUser)
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
-	auth := s.Group("/", AuthenticationRequired(s.db))
+	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
 	auth.GET("/onboard", s.Onboard)
 
-	onboarded := auth.Group("/", Onboarded(s.db))
+	onboarded := auth.Group("/", ginL.Onboarded(s.db))
 	onboarded.GET("/", s.Home)
 	onboarded.GET(TierManagementURL, s.TierManagement)
 	onboarded.GET("/settings", s.Settings)
 
-	tier := onboarded.Group("/tier/:id", TierPermission(s.db))
+	tier := onboarded.Group("/tier/:id", ginL.TierPermission(s.db, SignInURL))
 	tier.GET("/", s.Dashboard)
 	tier.GET("/dashboard", s.Dashboard)
 	tier.GET("/data", s.Data)
@@ -239,7 +240,7 @@ func (s *server) clientAppBundlePath() string {
 func (s *server) SignOnGet(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"flashMsg":         c.GetStringMapString(FlashMessageKey),
+		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
 		"signOnBundlePath": s.signOnBundlePath(),
 	})
 }
@@ -255,7 +256,7 @@ func (s *server) ForgotPassword(c *gin.Context) {
 		return
 	}
 	if err := userC.SendResetPasswordEmail(c.Request.Context(), s.db, s.sendgridClient(), form.Email, &s.mothership); err != nil {
-		respondError(c, err, "send the reset password email")
+		ginL.RespondError(c, err, "send the reset password email")
 		return
 	}
 
@@ -275,7 +276,7 @@ func (s *server) ResetPassword(c *gin.Context) {
 	}
 
 	if err := userC.ResetPassword(c.Request.Context(), s.db, form.Token, form.Password); err != nil {
-		respondError(c, err, "reset password")
+		ginL.RespondError(c, err, "reset password")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{})
@@ -300,11 +301,11 @@ func (s *server) ConfirmUser(c *gin.Context) {
 		} else {
 			msgDesc = "Failed to confirm the email. Please try again later."
 		}
-		addFlashMessage(session, FlashTypeError, msgDesc)
+		ginL.AddFlashMessage(session, ginL.FlashTypeError, msgDesc)
 		c.Redirect(http.StatusFound, SignInURL)
 		return
 	}
-	addFlashMessage(session, FlashTypeSuccess, "Your email address has been confirmed! You can now sign in.")
+	ginL.AddFlashMessage(session, ginL.FlashTypeSuccess, "Your email address has been confirmed! You can now sign in.")
 	c.Redirect(http.StatusFound, SignInURL)
 }
 
@@ -330,11 +331,11 @@ func (s *server) SignUp(c *gin.Context) {
 	ctx := c.Request.Context()
 	user, err := userC.SignUp(ctx, s.db, form.FirstName, form.LastName, form.Email, form.Password)
 	if err != nil {
-		respondError(c, err, "sign up")
+		ginL.RespondError(c, err, "sign up")
 		return
 	}
 	if _, err = userC.SendConfirmationEmail(ctx, s.db, s.sendgridClient(), user, &s.mothership); err != nil {
-		respondError(c, err, "send confirmation email")
+		ginL.RespondError(c, err, "send confirmation email")
 		return
 	}
 
@@ -369,7 +370,7 @@ func (s *server) SignIn(c *gin.Context) {
 		return
 	}
 
-	saveUserIntoCookie(sessions.Default(c), user)
+	ginL.SaveUserIntoCookie(sessions.Default(c), user)
 	c.JSON(http.StatusOK, gin.H{})
 }
 
@@ -403,11 +404,11 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 }
 
 func (s *server) Home(c *gin.Context) {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 
 	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
 	if err != nil {
-		respondError(c, err, "fetch tiers")
+		ginL.RespondError(c, err, "fetch tiers")
 		return
 	}
 	if len(tiers) == 0 {
@@ -433,7 +434,7 @@ func (s *server) Dashboard(c *gin.Context) {
 }
 
 func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 
 	return gin.H{
 		"title":               title(page),
@@ -459,11 +460,11 @@ func (s *server) TierManagement(c *gin.Context) {
 }
 
 func (s *server) Tiers(c *gin.Context) {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 
 	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
 	if err != nil {
-		respondError(c, err, "fetch tiers")
+		ginL.RespondError(c, err, "fetch tiers")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -485,7 +486,7 @@ func (s *server) Profiles(c *gin.Context) {
 		return
 	}
 
-	tier, _ := CurrentTier(c)
+	tier, _ := ginL.CurrentTier(c)
 	profiles, err := profileC.Profiles(c.Request.Context(), tier, form.Otype, form.Oid, form.Pagination)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -520,7 +521,7 @@ func (s *server) Actions(c *gin.Context) {
 		return
 	}
 
-	tier, _ := CurrentTier(c)
+	tier, _ := ginL.CurrentTier(c)
 	actions, err := actionC.Actions(c.Request.Context(), tier, form.ActionType, form.ActorType, form.ActorID, form.TargetType, form.TargetID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -547,7 +548,7 @@ func (s *server) Actions(c *gin.Context) {
 }
 
 func (s *server) Features(c *gin.Context) {
-	tier, _ := CurrentTier(c)
+	tier, _ := ginL.CurrentTier(c)
 	features, err := featureC.Features(c.Request.Context(), tier)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -562,9 +563,9 @@ func (s *server) Features(c *gin.Context) {
 }
 
 func (s *server) Logout(c *gin.Context) {
-	if user, ok := CurrentUser(c); ok {
+	if user, ok := ginL.CurrentUser(c); ok {
 		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
-			respondError(c, err, "log out the user")
+			ginL.RespondError(c, err, "log out the user")
 			return
 		}
 	}
@@ -572,7 +573,7 @@ func (s *server) Logout(c *gin.Context) {
 }
 
 func (s *server) User(c *gin.Context) {
-	user, ok := CurrentUser(c)
+	user, ok := ginL.CurrentUser(c)
 	if !ok {
 		// shouldn't happen, just in case of bug
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -591,7 +592,7 @@ func (s *server) User(c *gin.Context) {
 
 func (s *server) Team(c *gin.Context) {
 	var customer customerL.Customer
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	result := s.db.Take(&customer, user.CustomerID)
 
 	if result.RowsAffected == 0 {
@@ -618,9 +619,9 @@ func (s *server) UpdateUserNames(c *gin.Context) {
 		return
 	}
 
-	if user, ok := CurrentUser(c); ok {
+	if user, ok := ginL.CurrentUser(c); ok {
 		if err := userC.UpdateUserNames(c.Request.Context(), s.db, user, form.FirstName, form.LastName); err != nil {
-			respondError(c, err, "update user names")
+			ginL.RespondError(c, err, "update user names")
 			return
 		}
 	}
@@ -639,9 +640,9 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 		return
 	}
 
-	if user, ok := CurrentUser(c); ok {
+	if user, ok := ginL.CurrentUser(c); ok {
 		if _, err := userC.UpdatePassword(c.Request.Context(), s.db, user, form.CurrentPassword, form.NewPassword); err != nil {
-			respondError(c, err, "update user password")
+			ginL.RespondError(c, err, "update user password")
 			return
 		}
 	}
@@ -649,7 +650,7 @@ func (s *server) UpdateUserPassword(c *gin.Context) {
 }
 
 func (s *server) OnboardTeamMatch(c *gin.Context) {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	matched, team, isPersonalDomain := onboardC.TeamMatch(c.Request.Context(), s.db, user)
 	if matched {
 		c.JSON(http.StatusOK, gin.H{
@@ -676,10 +677,10 @@ func (s *server) OnboardCreateTeam(c *gin.Context) {
 		})
 		return
 	}
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	_, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.AllowAutoJoin, &user)
 	if err != nil {
-		respondError(c, err, "create team (onboard)")
+		ginL.RespondError(c, err, "create team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -697,10 +698,10 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 		})
 		return
 	}
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	err := onboardC.JoinTeam(c.Request.Context(), s.db, form.TeamID, &user)
 	if err != nil {
-		respondError(c, err, "join team (onboard)")
+		ginL.RespondError(c, err, "join team (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -709,13 +710,13 @@ func (s *server) OnboardJoinTeam(c *gin.Context) {
 }
 
 func (s *server) OnboardAssignTier(c *gin.Context) {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	tier, available, err := onboardC.AssignTier(c.Request.Context(), s.db, &user)
 	if err == nil && !available {
 		err = errors.New("no available pre-provisioned tier")
 	}
 	if err != nil {
-		respondError(c, err, "assign a tier (onboard)")
+		ginL.RespondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	if available {
@@ -729,10 +730,10 @@ func (s *server) OnboardAssignTier(c *gin.Context) {
 }
 
 func (s *server) OnboardTier(c *gin.Context) {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	tier, err := onboardC.FetchTier(c.Request.Context(), s.db, user.CustomerID)
 	if err != nil {
-		respondError(c, err, "assign a tier (onboard)")
+		ginL.RespondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	var dp dataplaneL.DataPlane
@@ -743,9 +744,9 @@ func (s *server) OnboardTier(c *gin.Context) {
 }
 
 func (s *server) OnboardTierProvisioned(c *gin.Context) {
-	user, _ := CurrentUser(c)
+	user, _ := ginL.CurrentUser(c)
 	if err := onboardC.TierProvisioned(c.Request.Context(), s.db, &user); err != nil {
-		respondError(c, err, "assign a tier (onboard)")
+		ginL.RespondError(c, err, "assign a tier (onboard)")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -761,22 +762,22 @@ type queryRangeRequest struct {
 }
 
 func (s *server) QueryRangeMetrics(c *gin.Context) {
-	tier, _ := CurrentTier(c)
+	tier, _ := ginL.CurrentTier(c)
 
 	var req queryRangeRequest
 	if err := c.ShouldBind(&req); err != nil {
-		respondError(c, err, "parse query range metrics params")
+		ginL.RespondError(c, err, "parse query range metrics params")
 		return
 	}
 	start, end, step, err := req.parseParams()
 	if err != nil {
-		respondError(c, err, "parse query range metrics params")
+		ginL.RespondError(c, err, "parse query range metrics params")
 		return
 	}
 
 	result, err := metricC.QueryRange(c.Request.Context(), s.db, tier, req.Query, start, end, step)
 	if err != nil {
-		respondError(c, err, "query range metrics")
+		ginL.RespondError(c, err, "query range metrics")
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -795,19 +796,6 @@ func (req queryRangeRequest) parseParams() (time.Time, time.Time, time.Duration,
 	}
 	step, err = time.ParseDuration(req.Step)
 	return start, end, step, err
-}
-
-func respondError(c *gin.Context, err error, action string) {
-	if ue, ok := err.(*lib.UserReadableError); ok {
-		c.JSON(ue.StatusCode, gin.H{
-			"error": ue.Msg,
-		})
-	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Failed to %s, please try again later.", action),
-		})
-		log.Printf("Failed to %s: %v\n", action, err)
-	}
 }
 
 func (s *server) debugConfirmEmail(c *gin.Context) {

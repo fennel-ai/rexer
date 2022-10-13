@@ -1,5 +1,6 @@
+import axios, { AxiosError } from "axios";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
-import { MenuProps, Dropdown, Menu, Space, Avatar } from "antd";
+import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
 import Logo from "../assets/logo_color.module.svg";
@@ -59,7 +60,16 @@ function Navbar({ activeTab, user }: Props) {
 
 function AvatarDropdown({ user }: { user: User }) {
     const onLogout = () => {
-        // TODO(xiao);
+        axios.post("/logout")
+            .then(() => {
+                window.location.href = "/signin";
+            })
+            .catch((e: AxiosError<{error: string}>) => {
+                notification.error({
+                    message: e.response?.data.error,
+                    placement: "bottomRight",
+                });
+            });
     };
     const itemStyle = { paddingTop: "6px", paddingBottom: "6px", paddingRight: "20px" }; // default is 12
     const items: MenuProps["items"] = [
