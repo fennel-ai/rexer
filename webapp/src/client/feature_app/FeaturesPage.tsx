@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import SearchBar, { type FilterOption } from "./SearchBar";
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
-import { featuresSearchPath } from "./route";
+import { featureDetailPath, featuresSearchPath } from "./route";
 
 interface Feature {
     id: string,
@@ -64,8 +64,11 @@ function FeatureList({ features }: { features: Feature[] }): JSX.Element {
 }
 
 function SingleFeature({ feature }: { feature: Feature }): JSX.Element {
+    const { tierID } = useParams();
     const navigateToDetail = () => {
-        window.location.assign("/feature/101"); // TODO(xiao)
+        if (tierID) {
+            window.location.replace(featureDetailPath(tierID, feature.id));
+        }
     };
     return (
         <div className={commonStyles.listItem} onClick={navigateToDetail}>

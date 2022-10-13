@@ -140,11 +140,11 @@ func (s *server) setupRouter() {
 	onboarded := auth.Group("/", ginL.Onboarded(s.db))
 	onboarded.GET("/", s.Home)
 	onboarded.GET(TierManagementURL, s.Main)
-	onboarded.GET("/feature/:id", s.Feature)
 
 	tier := onboarded.Group("/tier/:id", ginL.TierPermission(s.db, SignInURL))
 	tier.GET("/", s.Main)
 	tier.GET("/features", s.Main)
+	tier.GET("/feature/:feature_id", s.Main)
 	tier.POST("/features", s.Features)
 
 	// ajax endpoints
@@ -374,15 +374,6 @@ func (s *server) Logout(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
-}
-
-func (s *server) Feature(c *gin.Context) {
-	user, _ := ginL.CurrentUser(c)
-	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
-		"title":                title("Feature"),
-		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 serializerL.User2J(user),
-	})
 }
 
 func (s *server) Features(c *gin.Context) {
