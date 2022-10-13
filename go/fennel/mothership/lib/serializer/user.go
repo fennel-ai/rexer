@@ -1,4 +1,4 @@
-package json
+package serializer
 
 import (
 	"encoding/json"
