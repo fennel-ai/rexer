@@ -6,7 +6,7 @@ import {
 
 import "./styles/App.less";
 import Navbar from "./Navbar";
-import DashboardPage from "./DashboardPage";
+import FeaturesPage from "./FeaturesPage";
 import FeatureDetailPage from "./FeatureDetailPage";
 import OnboardPage from "../onboard/OnboardPage";
 
@@ -30,7 +30,16 @@ function App({ user }: Props) {
                     element={(
                         <>
                             <Navbar user={user} />
-                            <DashboardPage />
+                            <FeaturesPage />
+                        </>
+                    )}
+                />
+                <Route
+                    path="/features"
+                    element={(
+                        <>
+                            <Navbar user={user} />
+                            <FeaturesPage />
                         </>
                     )}
                 />

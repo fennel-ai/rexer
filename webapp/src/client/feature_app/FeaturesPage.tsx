@@ -12,7 +12,7 @@ interface Feature {
     version: number,
 }
 
-function DashboardPage(): JSX.Element {
+function FeaturesPage(): JSX.Element {
     const [features, setFeatures] = useState<Feature[]>([]);
 
     const queryFeatures = (filters: FilterOption[]) => {
@@ -72,4 +72,4 @@ function SingleFeature({ feature }: { feature: Feature }): JSX.Element {
     );
 }
 
-export default DashboardPage;
+export default FeaturesPage;

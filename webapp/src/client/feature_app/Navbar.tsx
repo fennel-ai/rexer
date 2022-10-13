@@ -4,7 +4,7 @@ import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
 import Logo from "../assets/logo_color.module.svg";
-import { dashboardTabPath } from './route';
+import { featuresTabPath } from './route';
 
 export interface Tier {
     id: string,
@@ -146,7 +146,7 @@ function menuItems(tierID: string | undefined): MenuProps["items"] {
     }
     const items: MenuProps["items"] = [
         {
-            label: (<a href={dashboardTabPath(tierID)}>Dashboard</a>),
+            label: (<a href={featuresTabPath(tierID)}>Features</a>),
             key: "dashboard",
         },
         {
