@@ -122,6 +122,9 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+
+        enableTrainingDatasetGenerationJobs: true,
+
         plan: Plan.STARTUP,
         requestLimit: 0,
     },
@@ -215,6 +218,10 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+
+        enableTrainingDatasetGenerationJobs: true,
+        enableOfflineAggregationJobs: true,
+
         plan: Plan.STARTUP,
         requestLimit: 0,
     },
@@ -246,6 +253,10 @@ const tierConfs: Record<number, TierConf> = {
         },
         // enable nitrous
         enableNitrous: true,
+
+        enableTrainingDatasetGenerationJobs: true,
+        enableOfflineAggregationJobs: true,
+
         // enable airbyte
         airbyteConf: {
             publicServer: false,
