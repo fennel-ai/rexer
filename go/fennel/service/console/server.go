@@ -130,11 +130,32 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
+	auth.GET("/onboard", s.Main)
 
+	onboarded := auth.Group("/", ginL.Onboarded(s.db))
+	onboarded.GET("/", s.Main)
+	onboarded.GET("/feature/:id", s.Feature)
+
+	// ajax endpoints
 	auth.POST("/logout", s.Logout)
-	auth.GET("/", s.Dashboard)
-	auth.GET("/feature/:id", s.Feature)
 	auth.POST("/features", s.Features)
+}
+
+func (s *server) SignOnGet(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
+		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
+		"signOnBundlePath": s.signOnBundlePath(),
+	})
+}
+
+func (s *server) Main(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
+		"featureAppBundlePath": s.featureAppBundlePath(),
+		"user":                 jsonL.User2J(user),
+	})
 }
 
 func (s *server) ForgotPassword(c *gin.Context) {
@@ -295,14 +316,6 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func (s *server) SignOnGet(c *gin.Context) {
-	c.Header("Cache-Control", "no-cache")
-	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
-		"signOnBundlePath": s.signOnBundlePath(),
-	})
-}
-
 func (s *server) signOnBundlePath() string {
 	wpManifest := s.wpManifest
 	if s.isDev() {
@@ -326,15 +339,6 @@ func (s *server) Feature(c *gin.Context) {
 	user, _ := ginL.CurrentUser(c)
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("Feature"),
-		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(user),
-	})
-}
-
-func (s *server) Dashboard(c *gin.Context) {
-	user, _ := ginL.CurrentUser(c)
-	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
-		"title":                title("home"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
 		"user":                 jsonL.User2J(user),
 	})
