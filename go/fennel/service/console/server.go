@@ -358,8 +358,8 @@ func (s *server) Feature(c *gin.Context) {
 
 func (s *server) Features(c *gin.Context) {
 	type Filter struct {
-		Type  string `form:"type"`
-		Value string `form:"value"`
+		Type  string `form:"type" json:"type"`
+		Value string `form:"value" json:"value"`
 	}
 	type Feature struct {
 		ID      string `json:"id"`
@@ -368,7 +368,8 @@ func (s *server) Features(c *gin.Context) {
 		Tags    []string
 	}
 	var form struct {
-		Filters []Filter `form:"filters"`
+		Filters           []Filter `form:"filters"`
+		ListFilterOptions bool     `form:"listFilterOptions,default=false"`
 	}
 	if err := c.BindJSON(&form); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -414,6 +415,23 @@ func (s *server) Features(c *gin.Context) {
 		}
 	}
 
+	if form.ListFilterOptions {
+		filterOptions := []Filter{
+			{Type: "tag", Value: "good"},
+			{Type: "tag", Value: "ok"},
+			{Type: "name", Value: "bad"},
+			{Type: "name", Value: "user_avg_rating"},
+			{Type: "name", Value: "movie_avg_rating"},
+			{Type: "name", Value: "user_likes_last_3days"},
+			{Type: "name", Value: "movie_likes_last_3days"},
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"features":      features,
+			"filterOptions": filterOptions,
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"features": features,
 	})
