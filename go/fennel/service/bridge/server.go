@@ -439,7 +439,7 @@ func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
 	return gin.H{
 		"title":               title(page),
 		"user":                serializerL.User2J(user),
-		"tiers":               customerTiers(s.db, user.CustomerID),
+		"tiers":               serializerL.CustomerTiers2J(s.db, user.CustomerID),
 		"clientAppBundlePath": s.clientAppBundlePath(),
 	}
 }

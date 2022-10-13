@@ -1,10 +1,12 @@
 import axios, { AxiosResponse } from "axios";
 import { ProfileOutlined, RightOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 import SearchBar, { type FilterOption } from "./SearchBar";
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
+import { featuresSearchPath } from "./route";
 
 interface Feature {
     id: string,
@@ -13,11 +15,15 @@ interface Feature {
 }
 
 function FeaturesPage(): JSX.Element {
+    const { tierID } = useParams();
     const [features, setFeatures] = useState<Feature[]>([]);
     const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
 
     const queryFeatures = (filters: FilterOption[], listFilterOptions: boolean) => {
-        axios.post("/features", {
+        if (!tierID) {
+            return;
+        }
+        axios.post(featuresSearchPath(tierID), {
             filters,
             listFilterOptions,
         }).then((response: AxiosResponse<{features: Feature[], filterOptions?: FilterOption[]}>) => {

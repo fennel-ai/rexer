@@ -22,14 +22,17 @@ import (
 	"gorm.io/gorm"
 
 	onboardC "fennel/mothership/controller/onboard"
+	tierC "fennel/mothership/controller/tier"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
 	dataplaneL "fennel/mothership/lib/dataplane"
 	ginL "fennel/mothership/lib/gin"
 	serializerL "fennel/mothership/lib/serializer"
+	tierL "fennel/mothership/lib/tier"
 )
 
 const (
+	TierManagementURL  = "/tier_management"
 	SignInURL          = "/signin"
 	WebAppRoot         = "../../webapp"
 	StaticJSMount      = "/assets"
@@ -135,12 +138,17 @@ func (s *server) setupRouter() {
 	auth.GET("/onboard", s.Main)
 
 	onboarded := auth.Group("/", ginL.Onboarded(s.db))
-	onboarded.GET("/", s.Main)
+	onboarded.GET("/", s.Home)
+	onboarded.GET(TierManagementURL, s.Main)
 	onboarded.GET("/feature/:id", s.Feature)
+
+	tier := onboarded.Group("/tier/:id", ginL.TierPermission(s.db, SignInURL))
+	tier.GET("/", s.Main)
+	tier.GET("/features", s.Main)
+	tier.POST("/features", s.Features)
 
 	// ajax endpoints
 	auth.POST("/logout", s.Logout)
-	auth.POST("/features", s.Features)
 
 	// onboard endpoints
 	onboard := auth.Group("/onboard")
@@ -151,6 +159,26 @@ func (s *server) setupRouter() {
 	onboard.POST("/assign_tier", s.OnboardAssignTier)
 	onboard.GET("/tier", s.OnboardTier)
 	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
+}
+
+func (s *server) Home(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+
+	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		ginL.RespondError(c, err, "fetch tiers")
+		return
+	}
+	if len(tiers) == 0 {
+		c.Redirect(http.StatusFound, TierManagementURL)
+		return
+	}
+	tier := tiers[0]
+	c.Redirect(http.StatusFound, tierURL(tier))
+}
+
+func tierURL(tier tierL.Tier) string {
+	return fmt.Sprintf("/tier/%v", tier.ID)
 }
 
 func (s *server) SignOnGet(c *gin.Context) {
@@ -167,6 +195,7 @@ func (s *server) Main(c *gin.Context) {
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"featureAppBundlePath": s.featureAppBundlePath(),
 		"user":                 serializerL.User2J(user),
+		"tiers":                serializerL.CustomerTiers2J(s.db, user.CustomerID),
 	})
 }
 
