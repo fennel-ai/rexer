@@ -19,6 +19,7 @@ import (
 	dataplaneL "fennel/mothership/lib/dataplane"
 	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
+	serializerL "fennel/mothership/lib/serializer"
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
 	"fmt"
@@ -469,7 +470,7 @@ func (s *server) Tiers(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"tiers": lo.Map(tiers, func(tier tierL.Tier, _ int) gin.H {
-			return tierInfo(tier, tier.DataPlane)
+			return serializerL.Tier2M(tier, tier.DataPlane)
 		}),
 	})
 }
@@ -603,7 +604,7 @@ func (s *server) Team(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"team": teamMembers(s.db, customer),
+		"team": serializerL.TeamMembers2M(s.db, customer),
 	})
 }
 
@@ -655,7 +656,7 @@ func (s *server) OnboardTeamMatch(c *gin.Context) {
 	if matched {
 		c.JSON(http.StatusOK, gin.H{
 			"matched":          matched,
-			"team":             teamMembers(s.db, team),
+			"team":             serializerL.TeamMembers2M(s.db, team),
 			"isPersonalDomain": isPersonalDomain,
 		})
 	} else {
@@ -724,7 +725,7 @@ func (s *server) OnboardAssignTier(c *gin.Context) {
 		_ = s.db.Take(&dp, tier.DataPlaneID)
 		c.JSON(http.StatusOK, gin.H{
 			"onboardStatus": user.OnboardStatus,
-			"tier":          tierInfo(tier, dp),
+			"tier":          serializerL.Tier2M(tier, dp),
 		})
 	}
 }
@@ -739,7 +740,7 @@ func (s *server) OnboardTier(c *gin.Context) {
 	var dp dataplaneL.DataPlane
 	_ = s.db.Take(&dp, tier.DataPlaneID)
 	c.JSON(http.StatusOK, gin.H{
-		"tier": tierInfo(tier, dp),
+		"tier": serializerL.Tier2M(tier, dp),
 	})
 }
 
