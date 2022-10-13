@@ -25,7 +25,6 @@ import (
 	"fennel/mothership/lib"
 	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
-	userL "fennel/mothership/lib/user"
 )
 
 const (
@@ -109,6 +108,8 @@ func (s *server) setupMiddlewares() {
 
 	store := cookie.NewStore([]byte(s.args.SessionKey))
 	s.Use(sessions.Sessions("mysession", store))
+
+	s.Use(ginL.WithFlashMessage)
 }
 
 func (s *server) setupRouter() {
@@ -129,6 +130,8 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
+
+	auth.POST("/logout", s.Logout)
 	auth.GET("/", s.Dashboard)
 	auth.GET("/feature/:id", s.Feature)
 	auth.POST("/features", s.Features)
@@ -309,29 +312,31 @@ func (s *server) signOnBundlePath() string {
 	return StaticJSMount + "/" + wpManifest[SignOnJSBundle]
 }
 
-func fakeUser() userL.User {
-	// TODO(xiao) use real user from auth
-	return userL.User{
-		Email:         "xiao@fennel.ai",
-		FirstName:     "Xiao",
-		LastName:      "Jiang",
-		OnboardStatus: userL.OnboardStatusDone,
+func (s *server) Logout(c *gin.Context) {
+	if user, ok := ginL.CurrentUser(c); ok {
+		if _, err := userC.Logout(c.Request.Context(), s.db, user); err != nil {
+			ginL.RespondError(c, err, "log out the user")
+			return
+		}
 	}
+	c.JSON(http.StatusOK, gin.H{})
 }
 
 func (s *server) Feature(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("Feature"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(fakeUser()),
+		"user":                 jsonL.User2J(user),
 	})
 }
 
 func (s *server) Dashboard(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("home"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(fakeUser()),
+		"user":                 jsonL.User2J(user),
 	})
 }
 
