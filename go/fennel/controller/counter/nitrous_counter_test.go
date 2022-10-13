@@ -71,7 +71,8 @@ func TestNitrousBatchValue(t *testing.T) {
 
 	// initially should find nothing
 	exp1, exp2 := value.Int(0), value.Double(0)
-	found, err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+	found := make([]value.Value, 2)
+	err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found[0]))
 	assert.True(t, exp2.Equal(found[1]))
@@ -98,7 +99,7 @@ func TestNitrousBatchValue(t *testing.T) {
 
 	// should find this time
 	exp1, exp2 = value.Int(60*48), value.Double(1.0)
-	found, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(found))
 	assert.GreaterOrEqual(t, found[0], exp1)
@@ -108,18 +109,18 @@ func TestNitrousBatchValue(t *testing.T) {
 	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	exp1, exp2 = value.Int(60*24), value.Double(1.0)
-	found, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, found[0], exp1)
 	assert.GreaterOrEqual(t, found[1], exp2)
 
 	// not specifying a duration in kwargs should return an error
 	kwargs[1] = value.NewDict(nil)
-	_, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
 	assert.Error(t, err)
 
 	// specifying a duration that wasn't registered should also return an error
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)})
-	_, err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
 	assert.Error(t, err)
 }

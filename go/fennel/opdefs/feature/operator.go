@@ -53,7 +53,7 @@ func (f featureLog) Apply(ctx context.Context, static operators.Kwargs, in opera
 		}
 		ts := ftypes.Timestamp(kwargs.GetUnsafe("timestamp").(value.Int))
 		if ts == 0 {
-			ts = ftypes.Timestamp(f.tier.Clock.Now())
+			ts = ftypes.Timestamp(f.tier.Clock.Now().Unix())
 		}
 		msg := libfeature.Row{
 			ContextOType:    ftypes.OType(kwargs.GetUnsafe("context_otype").(value.String)),

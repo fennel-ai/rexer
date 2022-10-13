@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/raulk/clock"
 	"github.com/samber/mo"
 
 	"fennel/gravel"
@@ -49,6 +50,7 @@ func getData(numKey, numIndex int) ([]hangar.Key, []hangar.KeyGroup, []hangar.Va
 func TestBackupRestore(t *testing.T) {
 	planeId := ftypes.RealmID(rand.Uint32())
 	ctx := context.Background()
+	clock := clock.New()
 
 	dbDir := t.TempDir()
 	fsDir := t.TempDir()
@@ -66,7 +68,7 @@ func TestBackupRestore(t *testing.T) {
 		fmt.Printf("Creating DB in iteration %d/%d\n", it+1, numBackups)
 
 		dbOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("testdb")
-		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default())
+		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default(), clock)
 		assert.NoError(t, err)
 
 		for j := 0; j < (6-it)*20000; j++ {
@@ -107,7 +109,7 @@ func TestBackupRestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		dbOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("testdb")
-		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default())
+		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default(), clock)
 		assert.NoError(t, err)
 
 		// validate from the key groups and value groups loaded in the DB
@@ -140,7 +142,7 @@ func TestBackupRestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		dbOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName("testdb")
-		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default())
+		db, err := gravelDB.NewHangar(planeId, dbDir, &dbOpts, encoders.Default(), clock)
 		assert.NoError(t, err)
 
 		kgs := keyGroupByIt[it]

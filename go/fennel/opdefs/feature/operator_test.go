@@ -3,7 +3,9 @@ package feature
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 
 	feature2 "fennel/controller/feature"
@@ -19,10 +21,9 @@ import (
 func TestFeatureLog_Apply(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := uint32(1231231)
-	clock.Set(t0)
+	ck := tier.Clock.(*clock.Mock)
+	ck.Add(1231231 * time.Second)
+	t0 := ck.Now()
 	consumer, err := tier.NewKafkaConsumer(kafka.ConsumerConfig{
 		Scope:        resource.NewTierScope(tier.ID),
 		Topic:        feature.KAFKA_TOPIC_NAME,
@@ -53,7 +54,7 @@ func TestFeatureLog_Apply(t *testing.T) {
 			Features:        f1,
 			Workflow:        "homefeed",
 			RequestID:       "1232",
-			Timestamp:       ftypes.Timestamp(t0),
+			Timestamp:       ftypes.Timestamp(t0.Unix()),
 			ModelName:       "mymodel",
 			ModelVersion:    "0.1.0",
 			ModelPrediction: 0.59,

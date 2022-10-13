@@ -25,7 +25,7 @@ import (
 func TestAggregateStore(t *testing.T) {
 	n := test.NewTestNitrous(t)
 	gravelOpts := gravel.DefaultOptions()
-	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default())
+	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default(), n.Clock)
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	opts := aggregate.Options{
@@ -72,7 +72,7 @@ func TestAggregateStore(t *testing.T) {
 func TestProcess(t *testing.T) {
 	n := test.NewTestNitrous(t)
 	gravelOpts := gravel.DefaultOptions()
-	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default())
+	db, err := gravelDB.NewHangar(n.PlaneID, t.TempDir(), &gravelOpts, encoders.Default(), n.Clock)
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 	opts := aggregate.Options{
@@ -178,7 +178,7 @@ func TestProcess(t *testing.T) {
 func BenchmarkGet(b *testing.B) {
 	n := test.NewTestNitrous(b)
 	gravelOpts := gravel.DefaultOptions()
-	db, err := gravelDB.NewHangar(n.PlaneID, b.TempDir(), &gravelOpts, encoders.Default())
+	db, err := gravelDB.NewHangar(n.PlaneID, b.TempDir(), &gravelOpts, encoders.Default(), n.Clock)
 	b.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(b, err)
 	opts := aggregate.Options{

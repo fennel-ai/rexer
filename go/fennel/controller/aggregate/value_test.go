@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	clock2 "github.com/raulk/clock"
+
 	agg_test "fennel/controller/aggregate/test"
 	"fennel/engine/ast"
 	"fennel/lib/action"
@@ -24,16 +26,14 @@ func TestValueAll(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(0)
-	assert.Equal(t, uint32(t0), tier.Clock.Now())
+	clock := tier.Clock.(*clock2.Mock)
+	t0 := clock.Now()
 
 	agg1 := aggregate.Aggregate{
 		Id:        1,
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
-		Timestamp: t0,
+		Timestamp: ftypes.Timestamp(t0.Unix()),
 		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -44,7 +44,7 @@ func TestValueAll(t *testing.T) {
 		Id:        2,
 		Name:      "minelem",
 		Query:     agg_test.GetDummyAggQuery(),
-		Timestamp: t0,
+		Timestamp: ftypes.Timestamp(t0.Unix()),
 		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "min",
@@ -54,9 +54,13 @@ func TestValueAll(t *testing.T) {
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
 
+	// give some time for aggregate definitions to be stored on nitrous (these are currently communicated
+	// through a kafka topic which makes this behavior non-deterministic without timeouts or sleeps)
+	time.Sleep(2 * time.Second)
+
 	// now create changes
-	t1 := t0 + 3600
-	key := value.Nil
+	t1 := t0.Add(3600 * time.Second)
+	key := value.String("foo")
 
 	actions := []action.Action{
 		{
@@ -66,7 +70,7 @@ func TestValueAll(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(4),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 	}
@@ -87,7 +91,7 @@ func TestValueAll(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(2),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 		{
@@ -97,7 +101,7 @@ func TestValueAll(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(7),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 	}
@@ -119,12 +123,16 @@ func TestValueAll(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(5),
-				"timestamp": value.Int(t1 + 5400),
+				"timestamp": value.Int(t1.Add(5400 * time.Second).Unix()),
 			}),
 		},
 	}
 	err = Update(ctx, tier, actions, agg2)
 	assert.NoError(t, err)
+
+	// Wait for the binlog to be consumed by the binlog to allow values to be updated correctly
+	time.Sleep(10 * time.Second)
+
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name,
 		Key:     key,
@@ -132,7 +140,7 @@ func TestValueAll(t *testing.T) {
 	}
 	exp3 := value.Int(5)
 
-	clock.Set(uint32(t1 + 48*3600))
+	clock.Set(t1.Add(48 * 3600 * time.Second))
 
 	req4 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name,
@@ -143,7 +151,7 @@ func TestValueAll(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(4), found4)
 
-	clock.Set(uint32(t1 + 2*3600))
+	clock.Set(t1.Add(2 * 3600 * time.Second))
 	// Test Value()
 	found1, err := Value(ctx, tier, req1.AggName, req1.Key, req1.Kwargs)
 	assert.NoError(t, err)
@@ -166,19 +174,17 @@ func TestCachedValueAll(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	clock := &test.FakeClock{}
+	clock := clock2.NewMock()
 	tier.Clock = clock
-	t0 := ftypes.Timestamp(0)
-	assert.Equal(t, uint32(t0), tier.Clock.Now())
-	t1 := t0 + 1800
-	clock.Set(uint32(t1))
-	assert.Equal(t, uint32(t1), tier.Clock.Now())
+	t0 := clock.Now()
+	t1 := t0.Add(1800 * time.Second)
+	clock.Set(t1)
 
 	agg := aggregate.Aggregate{
 		Id:        1,
 		Name:      "agg",
 		Query:     agg_test.GetDummyAggQuery(),
-		Timestamp: t0,
+		Timestamp: ftypes.Timestamp(t0.Unix()),
 		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -206,7 +212,7 @@ func TestCachedValueAll(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(1),
-				"timestamp": value.Int(t0),
+				"timestamp": value.Int(t0.Unix()),
 			}),
 		},
 	}

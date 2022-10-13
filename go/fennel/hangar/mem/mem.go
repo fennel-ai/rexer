@@ -14,6 +14,7 @@ import (
 	"github.com/OneOfOne/xxhash"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/raulk/clock"
 	"go.uber.org/zap"
 )
 
@@ -293,7 +294,7 @@ func (m *MemDB) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) erro
 	var valBufs [][]byte = nil
 
 	for i := 0; i < len(eks); i++ {
-		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry, clock.New())
 		if !alive {
 			valBufs = append(valBufs, nil)
 		} else {
@@ -308,7 +309,7 @@ func (m *MemDB) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) erro
 	}
 
 	for i, ek := range eks {
-		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry, clock.New())
 		shardID, sKey := m.keyToShardIDAndString(ek)
 		if !alive {
 			m.shards[shardID].Del(sKey)

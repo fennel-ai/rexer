@@ -2,22 +2,25 @@ package gravel
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"time"
+
 	"fennel/gravel"
 	"fennel/hangar"
 	"fennel/lib/arena"
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
-	"fmt"
-	"io"
-	"time"
 
 	"github.com/detailyang/fastrand-go"
+	"github.com/raulk/clock"
 )
 
 type gravelDb struct {
 	planeID ftypes.RealmID
 	db      *gravel.Gravel
 	enc     hangar.Encoder
+	clock   clock.Clock
 }
 
 func (g *gravelDb) StartCompaction() error {
@@ -32,9 +35,9 @@ func (g *gravelDb) Flush() error {
 	return g.db.Flush()
 }
 
-func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc hangar.Encoder) (*gravelDb, error) {
+func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc hangar.Encoder, clock clock.Clock) (*gravelDb, error) {
 	popts := (*opts).WithDirname(dirname)
-	db, err := gravel.Open(popts)
+	db, err := gravel.Open(popts, clock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open: %w", err)
 	}
@@ -43,6 +46,7 @@ func NewHangar(planeID ftypes.RealmID, dirname string, opts *gravel.Options, enc
 		planeID: planeID,
 		db:      db,
 		enc:     enc,
+		clock:   clock,
 	}, nil
 }
 
@@ -207,7 +211,7 @@ func (g *gravelDb) write(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) er
 	}()
 	for i, ek := range eks {
 		// if ttl is 0, we set the key to never expire, else we set it to expire in ttl duration from now
-		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry, g.clock)
 		if !alive {
 			// if key is not alive, we delete it for good, just to be safe
 			err := batch.Del(ek)

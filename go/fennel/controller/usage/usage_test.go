@@ -2,16 +2,17 @@ package usage
 
 import (
 	"context"
+	"sort"
+	"sync"
+	"testing"
+	"time"
+
 	"fennel/kafka"
 	usagelib "fennel/lib/usage"
 	"fennel/lib/utils"
 	usagemodel "fennel/model/usage"
 	"fennel/resource"
 	"fennel/test"
-	"sort"
-	"sync"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -20,7 +21,7 @@ func TestInsertAndRead(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
-	timestamp := uint64(tier.Clock.Now())
+	timestamp := uint64(tier.Clock.Now().Unix())
 	controller := NewController(ctx, &tier, 1*time.Second, 50, 50, 50)
 	controller.IncCounter(&usagelib.UsageCountersProto{Queries: 3, Actions: 4, Timestamp: timestamp})
 	consumer, err := tier.NewKafkaConsumer(
@@ -47,7 +48,7 @@ func TestInsertBatchAndReadBatchAndTransferToDB(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 	controller := NewController(ctx, &tier, 1*time.Second, 50, 50, 50)
-	startTime := usagelib.HourlyFold(uint64(tier.Clock.Now()))
+	startTime := usagelib.HourlyFold(uint64(tier.Clock.Now().Unix()))
 	for i := 0; i < 10; i++ {
 		controller.IncCounter(&usagelib.UsageCountersProto{
 			Queries:   uint64(i),

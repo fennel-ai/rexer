@@ -4,6 +4,14 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"time"
+
+	"github.com/buger/jsonparser"
+
 	"fennel/controller/counter"
 	"fennel/engine"
 	"fennel/engine/ast"
@@ -17,12 +25,6 @@ import (
 	"fennel/lib/profile"
 	"fennel/lib/value"
 	"fennel/tier"
-	"fmt"
-	"github.com/buger/jsonparser"
-	"io"
-	"os"
-	"os/exec"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -426,7 +428,7 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 				return
 			}
 		}()
-		now := time.Now()
+		now := tier.Clock.Now()
 		year := now.Year()
 		month := now.Month()
 		day := now.Day()

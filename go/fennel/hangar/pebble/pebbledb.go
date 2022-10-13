@@ -14,6 +14,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/raulk/clock"
 )
 
 const (
@@ -228,7 +229,7 @@ func (p *pebbleDB) write(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) er
 	}()
 	for i, ek := range eks {
 		// if ttl is 0, we set the key to never expire, else we set it to expire in ttl duration from now
-		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		_, alive := hangar.ExpiryToTTL(vgs[i].Expiry, clock.New())
 		if !alive {
 			// if key is not alive, we delete it for good, just to be safe
 			err := batch.Delete(ek, pebble.Sync)

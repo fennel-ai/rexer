@@ -15,9 +15,11 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
 	"fennel/lib/utils/parallel"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/raulk/clock"
 	"go.uber.org/zap"
 )
 
@@ -34,8 +36,8 @@ type badgerDB struct {
 	db           *badger.DB
 	readWorkers  *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
 	writeWorkers *parallel.WorkerPool[hangar.KeyGroup, hangar.ValGroup]
-	closeWg    sync.WaitGroup
-	closeCh    chan int
+	closeWg      sync.WaitGroup
+	closeCh      chan int
 }
 
 func (b *badgerDB) StartCompaction() error {
@@ -92,7 +94,7 @@ func NewHangar(planeID ftypes.RealmID, opts badger.Options, enc hangar.Encoder) 
 		readWorkers:  parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_read", READ_PARALLELISM),
 		writeWorkers: parallel.NewWorkerPool[hangar.KeyGroup, hangar.ValGroup]("hangar_db_write", WRITE_PARALLELISM),
 		enc:          enc,
-		closeCh:    make(chan int),
+		closeCh:      make(chan int),
 	}
 	// Start periodic GC of value log.
 	bs.closeWg.Add(1)
@@ -358,7 +360,7 @@ func (b *badgerDB) write(txn *badger.Txn, eks [][]byte, vgs []hangar.ValGroup, d
 	allocated := arena.Bytes2D.Alloc(len(eks), len(eks))
 	for i, ek := range eks {
 		// if ttl is 0, we set the key to never expire, else we set it to expire in ttl duration from now
-		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry, clock.New())
 		if !alive {
 			// if key is not alive, we delete it for good, just to be safe
 			if err := txn.Delete(ek); err != nil {

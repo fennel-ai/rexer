@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/raulk/clock"
+
 	"fennel/glue"
-	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	unleashlib "fennel/lib/unleash"
 	"fennel/modelstore"
@@ -72,7 +73,9 @@ func Tier(t *testing.T) tier.Tier {
 		unleash.WithUrl(faker.Url()))
 	assert.NoError(t, err)
 
-	_, nitrousClient := nitrous.NewLocalClient(t, tierID)
+	clock := clock.NewMock()
+	clock.Set(time.Now())
+	_, nitrousClient := nitrous.NewLocalClient(t, tierID, clock)
 
 	return tier.Tier{
 		ID:               tierID,
@@ -82,7 +85,7 @@ func Tier(t *testing.T) tier.Tier {
 		Redis:            redClient,
 		NitrousClient:    mo.Some(nitrousClient),
 		Producers:        producers,
-		Clock:            clock.Unix{},
+		Clock:            clock,
 		NewKafkaConsumer: consumerCreator,
 		S3Client:         s3Client,
 		GlueClient:       glueClient,

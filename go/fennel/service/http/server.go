@@ -111,7 +111,7 @@ func (s *server) LimitFunc(ctx context.Context, rateLimit int64) bool {
 	if rateLimit <= 0 {
 		return true
 	}
-	endTime := uint64(s.tier.Clock.Now())
+	endTime := uint64(s.tier.Clock.Now().Unix())
 	startTime := usagelib.DailyFold(endTime)
 	return func() int64 {
 		counter, err := usagemodel.GetUsageCounters(ctx, s.tier, startTime, endTime)
@@ -701,7 +701,7 @@ func (m server) GetusageCounters(w http.ResponseWriter, req *http.Request) {
 	}
 	// By default try the best effort of reporting billing for an hourly window.
 	if startTime == 0 && endTime == 0 {
-		startTime = usagelib.HourlyFold(uint64(m.tier.Clock.Now()))
+		startTime = usagelib.HourlyFold(uint64(m.tier.Clock.Now().Unix()))
 		endTime = startTime + usagelib.HourInSeconds()
 	} else if startTime == 0 {
 		startTime = endTime - usagelib.HourInSeconds()

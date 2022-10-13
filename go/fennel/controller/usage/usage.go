@@ -2,14 +2,15 @@ package usage
 
 import (
 	"context"
+	"log"
+	"sort"
+	"time"
+
 	"fennel/kafka"
 	"fennel/lib/timer"
 	usagelib "fennel/lib/usage"
 	"fennel/model/usage"
 	"fennel/tier"
-	"log"
-	"sort"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -27,7 +28,7 @@ type controller struct {
 
 func (c *controller) IncCounter(u *usagelib.UsageCountersProto) {
 	if u.Timestamp == 0 {
-		u.Timestamp = uint64(c.tier.Clock.Now())
+		u.Timestamp = uint64(c.tier.Clock.Now().Unix())
 	}
 	c.inputCh <- u
 }

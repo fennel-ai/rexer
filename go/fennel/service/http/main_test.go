@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
-	usagecontroller "fennel/controller/usage"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	clock2 "github.com/raulk/clock"
+
+	usagecontroller "fennel/controller/usage"
 
 	action2 "fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
@@ -470,11 +473,9 @@ func TestStoreRunQuery(t *testing.T) {
 func TestServer_AggregateValue_Valid(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
-
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(3600 * 10)
-	clock.Set(uint32(t0))
+	clock := tier.Clock.(*clock2.Mock)
+	t0 := clock.Now().Add(3600 * 10 * time.Second)
+	clock.Set(t0)
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
@@ -483,7 +484,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
-		Timestamp: t0,
+		Timestamp: ftypes.Timestamp(t0.Unix()),
 		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -492,13 +493,13 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Id: 1,
 	}
 	key := value.Int(4)
-	assert.Equal(t, uint32(t0), tier.Clock.Now())
+	assert.Equal(t, t0, tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 	// initially count is zero
 	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// now create an increment
-	t1 := t0 + 3600
+	t1 := t0.Add(3600 * time.Second)
 	actions := []action.Action{
 		{
 			ActorID:   "5",
@@ -507,18 +508,18 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(1),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 	}
 	err := aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
 
-	clock.Set(uint32(t1 + 60))
+	clock.Set(t1.Add(60 * time.Second))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
 	// create another increment at a later timestamp
-	t2 := t1 + 3600
+	t2 := t1.Add(3600 * time.Second)
 	actions = []action.Action{
 		{
 			ActorID:   "5",
@@ -527,13 +528,13 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(1),
-				"timestamp": value.Int(t2),
+				"timestamp": value.Int(t2.Unix()),
 			}),
 		},
 	}
 	err = aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
-	clock.Set(uint32(t2 + 60))
+	clock.Set(t2.Add(60 * time.Second))
 	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(120)}))
 }
@@ -542,20 +543,18 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(0)
+	clock := tier.Clock.(*clock2.Mock)
+	t0 := clock.Now()
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	usageController := usagecontroller.NewController(ctx, &tier, 10*time.Second, 50, 50, 1000)
 	holder := NewServer(&tier, usageController)
-	assert.Equal(t, uint32(t0), tier.Clock.Now())
 
 	agg1 := aggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
-		Timestamp: t0,
+		Timestamp: ftypes.Timestamp(t0.Unix()),
 		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
@@ -565,7 +564,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	agg2 := aggregate.Aggregate{
 		Name:      "maxelem",
 		Query:     agg_test.GetDummyAggQuery(),
-		Timestamp: t0,
+		Timestamp: ftypes.Timestamp(t0.Unix()),
 		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "max",
@@ -580,7 +579,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	agg2.Id = 2
 
 	// now create changes
-	t1 := t0 + 3600
+	t1 := t0.Add(3600 * time.Second)
 	key := value.Nil
 
 	actions := []action.Action{
@@ -591,7 +590,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(1),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 		{
@@ -601,7 +600,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(3),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 	}
@@ -619,7 +618,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(2),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 		{
@@ -629,7 +628,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(7),
-				"timestamp": value.Int(t1),
+				"timestamp": value.Int(t1.Unix()),
 			}),
 		},
 	}
@@ -639,12 +638,12 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		AggName: agg2.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
 
-	clock.Set(uint32(t1 + 60))
+	clock.Set(t1.Add(60 * time.Second))
 	batchValueSendReceive(t, holder,
 		[]aggregate.GetAggValueRequest{req1, req2}, []value.Value{value.Int(4), value.Int(7)})
 
 	// create some more changes at a later timestamp
-	t2 := t1 + 3600
+	t2 := t1.Add(3600 * time.Second)
 	actions = []action.Action{
 		{
 			ActorID:   "5",
@@ -653,7 +652,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			Metadata: value.NewDict(map[string]value.Value{
 				"groupkey":  key,
 				"value":     value.Int(9),
-				"timestamp": value.Int(t2),
+				"timestamp": value.Int(t2.Unix()),
 			}),
 		},
 	}
@@ -663,7 +662,7 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),
 	}
 
-	clock.Set(uint32(t2 + 60))
+	clock.Set(t2.Add(60 * time.Second))
 	batchValueSendReceive(t, holder,
 		[]aggregate.GetAggValueRequest{req1, req2, req3}, []value.Value{value.Int(13), value.Int(7), value.Int(9)})
 }

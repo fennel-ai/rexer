@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/raulk/clock"
+
 	"fennel/kafka"
 	"fennel/lib/action"
 	"fennel/lib/aggregate"
@@ -25,10 +27,9 @@ func TestOfflineAggregates(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	clock := test.FakeClock{}
-	tier.Clock = &clock
+	ck := tier.Clock.(*clock.Mock)
 	t1 := ftypes.Timestamp(456)
-	clock.Set(uint32(t1))
+	ck.Add(time.Duration(t1) * time.Second)
 	t0 := ftypes.Timestamp(0)
 
 	agg := aggregate.Aggregate{
