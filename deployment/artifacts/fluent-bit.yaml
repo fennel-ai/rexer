@@ -63,7 +63,7 @@ data:
     [INPUT]
         Name                tail
         Tag                 application.*
-        Exclude_Path        /var/log/containers/cloudwatch-agent*, /var/log/containers/fluent-bit*, /var/log/containers/aws-node*, /var/log/containers/kube-proxy*, /var/log/containers/milvus*, /var/log/containers/linkerd*, /var/log/containers/otel-collector*, /var/log/containers/emissary*,
+        Exclude_Path        /var/log/containers/cloudwatch-agent*, /var/log/containers/fluent-bit*, /var/log/containers/aws-node*, /var/log/containers/kube-proxy*, /var/log/containers/milvus*, /var/log/containers/linkerd*, /var/log/containers/otel-collector*, /var/log/containers/emissary*, /var/log/containers/airbyte*, /var/log/containers/destination-*, /var/log/containers/source-* 
         Path                /var/log/containers/*.log
         Docker_Mode         On
         Docker_Mode_Flush   5
