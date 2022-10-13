@@ -26,7 +26,6 @@ import (
 	"fennel/mothership/lib"
 	dataplaneL "fennel/mothership/lib/dataplane"
 	ginL "fennel/mothership/lib/gin"
-	jsonL "fennel/mothership/lib/json"
 	serializerL "fennel/mothership/lib/serializer"
 )
 
@@ -167,7 +166,7 @@ func (s *server) Main(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(user),
+		"user":                 serializerL.User2J(user),
 	})
 }
 
@@ -353,7 +352,7 @@ func (s *server) Feature(c *gin.Context) {
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("Feature"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(user),
+		"user":                 serializerL.User2J(user),
 	})
 }
 

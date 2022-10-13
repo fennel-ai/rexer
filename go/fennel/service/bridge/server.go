@@ -18,7 +18,6 @@ import (
 	customerL "fennel/mothership/lib/customer"
 	dataplaneL "fennel/mothership/lib/dataplane"
 	ginL "fennel/mothership/lib/gin"
-	jsonL "fennel/mothership/lib/json"
 	serializerL "fennel/mothership/lib/serializer"
 	tierL "fennel/mothership/lib/tier"
 	"fennel/service/common"
@@ -439,7 +438,7 @@ func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
 
 	return gin.H{
 		"title":               title(page),
-		"user":                jsonL.User2J(user),
+		"user":                serializerL.User2J(user),
 		"tiers":               customerTiers(s.db, user.CustomerID),
 		"clientAppBundlePath": s.clientAppBundlePath(),
 	}
