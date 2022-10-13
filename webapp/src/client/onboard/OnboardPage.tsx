@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import OnboardSetupTeam from "./OnboardSetupTeam";
 import OnboardTierProvisioning from "./OnboardTierProvisioning";
@@ -20,6 +20,10 @@ const ONBOARD_STATUS_TIER_PROVISIONED = 3;
 function OnboardPage({user}: {user: User}): JSX.Element {
     const [onboardStatus, setOnboardStatus] = useState<number>(user.onboardStatus);
     const [tier, setTier] = useState<Tier>();
+
+    useEffect(() => {
+        document.title = "Fennel | Onboard";
+    }, []);
 
     const updateStatus = (newStatus: number, tier?: Tier) => {
         if (newStatus === ONBOARD_STATUS_DONE) {

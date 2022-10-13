@@ -8,6 +8,7 @@ import "./styles/App.less";
 import Navbar from "./Navbar";
 import DashboardPage from "./DashboardPage";
 import FeatureDetailPage from "./FeatureDetailPage";
+import OnboardPage from "../onboard/OnboardPage";
 
 interface User {
     email: string,
@@ -40,6 +41,14 @@ function App({ user }: Props) {
                             <Navbar user={user} />
                             <FeatureDetailPage />
                         </>
+                    )}
+                />
+                <Route
+                    path="/onboard"
+                    element={(
+                        <div>
+                            <OnboardPage user={user} />
+                        </div>
                     )}
                 />
             </Routes>

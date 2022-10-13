@@ -21,10 +21,13 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	onboardC "fennel/mothership/controller/onboard"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
+	dataplaneL "fennel/mothership/lib/dataplane"
 	ginL "fennel/mothership/lib/gin"
 	jsonL "fennel/mothership/lib/json"
+	serializerL "fennel/mothership/lib/serializer"
 )
 
 const (
@@ -130,11 +133,42 @@ func (s *server) setupRouter() {
 	s.POST("/resend_confirmation_email", s.ResendConfirmationEmail)
 
 	auth := s.Group("/", ginL.AuthenticationRequired(s.db, SignInURL))
+	auth.GET("/onboard", s.Main)
 
+	onboarded := auth.Group("/", ginL.Onboarded(s.db))
+	onboarded.GET("/", s.Main)
+	onboarded.GET("/feature/:id", s.Feature)
+
+	// ajax endpoints
 	auth.POST("/logout", s.Logout)
-	auth.GET("/", s.Dashboard)
-	auth.GET("/feature/:id", s.Feature)
 	auth.POST("/features", s.Features)
+
+	// onboard endpoints
+	onboard := auth.Group("/onboard")
+	onboard.GET("/team_match", s.OnboardTeamMatch)
+	onboard.POST("/create_team", s.OnboardCreateTeam)
+	onboard.POST("/join_team", s.OnboardJoinTeam)
+
+	onboard.POST("/assign_tier", s.OnboardAssignTier)
+	onboard.GET("/tier", s.OnboardTier)
+	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
+}
+
+func (s *server) SignOnGet(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
+		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
+		"signOnBundlePath": s.signOnBundlePath(),
+	})
+}
+
+func (s *server) Main(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
+		"featureAppBundlePath": s.featureAppBundlePath(),
+		"user":                 jsonL.User2J(user),
+	})
 }
 
 func (s *server) ForgotPassword(c *gin.Context) {
@@ -295,14 +329,6 @@ func (s *server) ResendConfirmationEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func (s *server) SignOnGet(c *gin.Context) {
-	c.Header("Cache-Control", "no-cache")
-	c.HTML(http.StatusOK, "bridge/sign_on.tmpl", gin.H{
-		"flashMsg":         c.GetStringMapString(ginL.FlashMessageKey),
-		"signOnBundlePath": s.signOnBundlePath(),
-	})
-}
-
 func (s *server) signOnBundlePath() string {
 	wpManifest := s.wpManifest
 	if s.isDev() {
@@ -326,15 +352,6 @@ func (s *server) Feature(c *gin.Context) {
 	user, _ := ginL.CurrentUser(c)
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"title":                title("Feature"),
-		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 jsonL.User2J(user),
-	})
-}
-
-func (s *server) Dashboard(c *gin.Context) {
-	user, _ := ginL.CurrentUser(c)
-	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
-		"title":                title("home"),
 		"featureAppBundlePath": s.featureAppBundlePath(),
 		"user":                 jsonL.User2J(user),
 	})
@@ -400,6 +417,111 @@ func (s *server) Features(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"features": features,
+	})
+}
+
+func (s *server) OnboardTeamMatch(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+	matched, team, isPersonalDomain := onboardC.TeamMatch(c.Request.Context(), s.db, user)
+	if matched {
+		c.JSON(http.StatusOK, gin.H{
+			"matched":          matched,
+			"team":             serializerL.TeamMembers2M(s.db, team),
+			"isPersonalDomain": isPersonalDomain,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"matched":          matched,
+			"isPersonalDomain": isPersonalDomain,
+		})
+	}
+}
+
+func (s *server) OnboardCreateTeam(c *gin.Context) {
+	var form struct {
+		Name          string `json:"name"`
+		AllowAutoJoin bool   `json:"allowAutoJoin"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	user, _ := ginL.CurrentUser(c)
+	_, err := onboardC.CreateTeam(c.Request.Context(), s.db, form.Name, form.AllowAutoJoin, &user)
+	if err != nil {
+		ginL.RespondError(c, err, "create team (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": user.OnboardStatus,
+	})
+}
+
+func (s *server) OnboardJoinTeam(c *gin.Context) {
+	var form struct {
+		TeamID uint `json:"teamID"`
+	}
+	if err := c.BindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	user, _ := ginL.CurrentUser(c)
+	err := onboardC.JoinTeam(c.Request.Context(), s.db, form.TeamID, &user)
+	if err != nil {
+		ginL.RespondError(c, err, "join team (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": user.OnboardStatus,
+	})
+}
+
+func (s *server) OnboardAssignTier(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+	tier, available, err := onboardC.AssignTier(c.Request.Context(), s.db, &user)
+	if err == nil && !available {
+		err = errors.New("no available pre-provisioned tier")
+	}
+	if err != nil {
+		ginL.RespondError(c, err, "assign a tier (onboard)")
+		return
+	}
+	if available {
+		var dp dataplaneL.DataPlane
+		_ = s.db.Take(&dp, tier.DataPlaneID)
+		c.JSON(http.StatusOK, gin.H{
+			"onboardStatus": user.OnboardStatus,
+			"tier":          serializerL.Tier2M(tier, dp),
+		})
+	}
+}
+
+func (s *server) OnboardTier(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+	tier, err := onboardC.FetchTier(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		ginL.RespondError(c, err, "assign a tier (onboard)")
+		return
+	}
+	var dp dataplaneL.DataPlane
+	_ = s.db.Take(&dp, tier.DataPlaneID)
+	c.JSON(http.StatusOK, gin.H{
+		"tier": serializerL.Tier2M(tier, dp),
+	})
+}
+
+func (s *server) OnboardTierProvisioned(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+	if err := onboardC.TierProvisioned(c.Request.Context(), s.db, &user); err != nil {
+		ginL.RespondError(c, err, "assign a tier (onboard)")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"onboardStatus": user.OnboardStatus,
 	})
 }
 
