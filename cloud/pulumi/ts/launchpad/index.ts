@@ -189,7 +189,31 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 4,
         },
         enableNitrous: true,
-        airbyteConf: {},
+        airbyteConf: {
+            workerResourceConf: {
+                cpu: {
+                    request: "1000m",
+                    limit: "2000m",
+                },
+                memory: {
+                    request: "1Gi",
+                    limit: "4Gi",
+                }
+            },
+            jobsResourceConf: {
+                cpu: {
+                    request: "1000m",
+                    limit: "2000m",
+                },
+                // TODO(mohit): Reduce requests so that the workers don't require spinning up a new node altogether
+                // since this lies on the production path in the future, this may have to run in a different node
+                // for failure isolations and better reliability
+                memory: {
+                    request: "8Gi",
+                    limit: "12Gi",
+                }
+            }
+        },
         plan: Plan.STARTUP,
         requestLimit: 0,
     },

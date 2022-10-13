@@ -3,6 +3,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as aws from "@pulumi/aws";
 import * as postgresql from "@pulumi/postgresql";
 import {POSTGRESQL_PASSWORD, POSTGRESQL_USERNAME} from "../tier-consts/consts";
+import * as util from "../lib/util";
 
 
 const DEFAULT_AIRBYTE_SERVER_PUBLIC = false;
@@ -23,6 +24,8 @@ export type inputType = {
     kubeconfig: string,
     protect: boolean,
     publicServer?: boolean,
+    workerResourceConf?: util.ResourceConf,
+    jobsResourceConf?: util.ResourceConf,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -43,6 +46,18 @@ const FENNEL_GCP_CREDENTIALS_JSON = "{\"type\": \"service_account\", \"project_i
     "  \"auth_provider_x509_cert_url\": \"https://www.googleapis.com/oauth2/v1/certs\"," +
     "  \"client_x509_cert_url\": \"https://www.googleapis.com/robot/v1/metadata/x509/fennel%40gold-cocoa-356105.iam.gserviceaccount.com\"" +
     "}";
+
+// worker resource constants
+const WORKER_CPU_REQUEST = "200m";
+const WORKER_CPU_LIMIT = "1000m";
+const WORKER_MEMORY_REQUEST = "1Gi";
+const WORKER_MEMORY_LIMIT = "2Gi";
+
+// jobs resource consts
+const JOBS_CPU_REQUEST = "200m";
+const JOBS_CPU_LIMIT = "1000m";
+const JOBS_MEMORY_REQUEST = "1Gi";
+const JOBS_MEMORY_LIMIT = "2Gi";
 
 export const setup = async (input: inputType): Promise<pulumi.Output<outputType>> => {
     // providers
@@ -177,7 +192,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "repo": "https://fennel-ai.github.io/public/helm-charts/airbyte/",
         },
         chart: "airbyte",
-        version: "0.4.6",
+        version: "0.4.10",
         values: {
             "version": imageTag,
 
@@ -306,6 +321,17 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "nodeSelector": {
                     // we should schedule all components of Airbyte on ON_DEMAND instances
                     "eks.amazonaws.com/capacityType": "ON_DEMAND",
+                    "kubernetes.io/arch": "amd64",
+                },
+                "resources": {
+                    "requests": {
+                        "cpu": input.workerResourceConf?.cpu.request || WORKER_CPU_REQUEST,
+                        "memory": input.workerResourceConf?.memory.request || WORKER_MEMORY_REQUEST,
+                    },
+                    "limits": {
+                        "cpu": input.workerResourceConf?.cpu.limit || WORKER_CPU_LIMIT,
+                        "memory": input.workerResourceConf?.memory.limit || WORKER_MEMORY_LIMIT,
+                    },
                 },
                 "extraEnv": [
                     {
@@ -349,20 +375,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     }
                 },
 
-                // set resources for the jobs which reads and writes data from the source to the sink
-                //
-                // TODO(mohit): This should be made specific to the tiers, based on their resource requirements
-                // (amount of data we might potentially read on every sync)
                 "resources": {
                     "requests": {
-                        "cpu": "6500m",
-                        "memory": "12Gi",
+                        "cpu": input.jobsResourceConf?.cpu.request || JOBS_CPU_REQUEST,
+                        "memory": input.jobsResourceConf?.memory.request || JOBS_MEMORY_REQUEST,
                     },
                     "limits": {
-                        "cpu": "7500m",
-                        "memory": "15Gi",
+                        "cpu": input.jobsResourceConf?.cpu.limit || JOBS_CPU_LIMIT,
+                        "memory": input.jobsResourceConf?.memory.limit || JOBS_MEMORY_LIMIT,
                     },
-                }
+                },
             },
 
             // enable s3 logging
