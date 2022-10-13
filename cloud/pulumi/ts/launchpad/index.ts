@@ -713,6 +713,18 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     labels: {
                         "node-group": "p-5-common-ng-arm",
                     },
+                },
+                {
+                    name: "p-5-common-ng-x86-c6i2xlarge",
+                    instanceTypes: ["c6i.2xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                    labels: {
+                        "node-group": "p-5-common-ng-x86",
+                    },
                 }
             ],
             spotReschedulerConf: {
