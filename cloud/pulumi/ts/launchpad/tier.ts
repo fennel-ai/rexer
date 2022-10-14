@@ -61,6 +61,8 @@ export type AirbyteConf = {
     //
     // NOTE: This should be enabled only for test/staging tiers
     publicServer?: boolean,
+    workerResourceConf?: util.ResourceConf,
+    jobsResourceConf?: util.ResourceConf,
 }
 
 export type TierMskConf = {
@@ -417,6 +419,8 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             protect: input.protect,
             publicServer: input.airbyteConf.publicServer,
+            workerResourceConf: input.airbyteConf.workerResourceConf,
+            jobsResourceConf: input.airbyteConf.jobsResourceConf,
         });
         airbyteEndpoint = airbyteOutput.endpoint;
     }
