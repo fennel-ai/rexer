@@ -3,12 +3,7 @@ package backup
 import (
 	"context"
 	"crypto/sha256"
-	"fennel/lib/ftypes"
-	"fennel/lib/timer"
-	"fennel/lib/utils/parallel"
 	"fmt"
-	"github.com/gocarina/gocsv"
-	"go.uber.org/zap"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -16,6 +11,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/gocarina/gocsv"
+	"go.uber.org/zap"
+
+	"fennel/lib/ftypes"
+	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 )
 
 type BackupManager struct {
@@ -174,7 +176,7 @@ func (bm *BackupManager) BackupPath(ctx context.Context, dir string, versionName
 			return nil
 		}
 		trimmedLocalName := strings.Trim(strings.TrimPrefix(path, dir), "/")
-		if (trimmedLocalName == "RexUploadedManifest.csv") || strings.HasSuffix(trimmedLocalName, ".tmp") {
+		if (trimmedLocalName == "RexUploadedManifest.csv") || strings.HasSuffix(trimmedLocalName, ".temp") {
 			return nil
 		}
 		currentItem := &uploadedManifestItem{LocalName: trimmedLocalName, Sha256: "", LocalModifyTime: info.ModTime().UnixNano(), FileSize: info.Size()}
