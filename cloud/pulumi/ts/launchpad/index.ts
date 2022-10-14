@@ -145,12 +145,12 @@ const tierConfs: Record<number, TierConf> = {
                 resourceConf: {
                     // 8x large machine, set requests and limits accordingly
                     cpu: {
-                        request: "3000m",
-                        limit: "7000m",
+                        request: "28000m",
+                        limit: "31000m",
                     },
                     memory: {
-                        request: "2Gi",
-                        limit: "12Gi",
+                        request: "55Gi",
+                        limit: "60Gi",
                     }
                 }
             }
@@ -671,7 +671,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-5-countaggr-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.2xlarge"],
+                    instanceTypes: ["c6g.8xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -785,14 +785,17 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             storageClass: "local",
             blockCacheMB: 1024 * 16,
             kvCacheMB: 1024 * 450,
+            // this needs to be consistent with the node group which this pod is going to get scheduled on
+            //
+            // currently m6gd.8xlarge
             resourceConf: {
                 cpu: {
                     request: "30000m",
                     limit: "32000m"
                 },
                 memory: {
-                    request: "55Gi",
-                    limit: "60Gi",
+                    request: "110Gi",
+                    limit: "120Gi",
                 }
             },
             binlog: {
@@ -826,6 +829,19 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
                 backupFrequencyDuration: "15m",
                 remoteCopiesToKeep: 2,
+                // this needs to be consistent with the node group which this pod is going to get scheduled on
+                //
+                // currently c6gd.8xlarge
+                resourceConf: {
+                    cpu: {
+                        request: "30000m",
+                        limit: "32000m"
+                    },
+                    memory: {
+                        request: "55Gi",
+                        limit: "60Gi",
+                    }
+                },
             },
         },
 

@@ -73,6 +73,7 @@ export type backupConf = {
     nodeLabelsForBackup?: Record<string, string>,
     backupFrequencyDuration?: string,
     remoteCopiesToKeep?: number,
+    resourceConf?: util.ResourceConf,
 }
 
 export type inputType = {
@@ -521,6 +522,7 @@ export const setup = async (input: inputType) => {
 
     if (input.backupConf !== undefined) {
         const appBackupLabels = { app: "nitrous-backup" };
+        const backupMemlimit = input.backupConf.resourceConf?.memory.limit || DEFAULT_MEMORY_LIMIT;
         const appBackupStatefulset = image.imageName.apply(() => {
             return new k8s.apps.v1.StatefulSet("nitrous-backup-statefulset", {
                 metadata: {
@@ -639,7 +641,7 @@ export const setup = async (input: inputType) => {
                                         },
                                         {
                                             name: "GOMEMLIMIT",
-                                            value: memlimit + "B",
+                                            value: backupMemlimit + "B",
                                         },
                                         {
                                             name: "OTEL_SERVICE_NAME",
@@ -660,11 +662,12 @@ export const setup = async (input: inputType) => {
                                     ],
                                     resources: {
                                         requests: {
-                                            "cpu": input.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
-                                            "memory": input.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
+                                            "cpu": input.backupConf?.resourceConf?.cpu.request || DEFAULT_CPU_REQUEST,
+                                            "memory": input.backupConf?.resourceConf?.memory.request || DEFAULT_MEMORY_REQUEST,
                                         },
                                         limits: {
-                                            "memory": memlimit,
+                                            "cpu": input.backupConf?.resourceConf?.cpu.limit || DEFAULT_CPU_LIMIT,
+                                            "memory": backupMemlimit,
                                         }
                                     },
                                     readinessProbe: ReadinessProbe(healthPort),
