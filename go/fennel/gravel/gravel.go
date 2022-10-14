@@ -224,8 +224,14 @@ func (g *Gravel) flush() error {
 		g.memtableLock.Unlock()
 		return nil
 	}
-	g.flushingWg.Wait() // wait for real flushing job finishing
+	g.memtableLock.Unlock()
 
+	for {
+		g.flushingWg.Wait() // wait for real flushing job finishing
+		if g.memtableLock.TryLock() {
+			break
+		}
+	}
 	// now the shadow memtable (1) must be emptied
 	g.flushingWg.Add(1)
 
