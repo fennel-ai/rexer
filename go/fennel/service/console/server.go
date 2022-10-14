@@ -17,6 +17,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"github.com/sendgrid/sendgrid-go"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -150,6 +151,7 @@ func (s *server) setupRouter() {
 	tier.POST("/features", s.Features)
 
 	// ajax endpoints
+	auth.GET("/tiers", s.Tiers)
 	auth.POST("/logout", s.Logout)
 
 	// onboard endpoints
@@ -429,6 +431,21 @@ func (s *server) Feature(c *gin.Context) {
 				{"id": "1001", "name": "num_movies"},
 			},
 		},
+	})
+}
+
+func (s *server) Tiers(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+
+	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		ginL.RespondError(c, err, "fetch tiers")
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"tiers": lo.Map(tiers, func(tier tierL.Tier, _ int) gin.H {
+			return serializerL.Tier2M(tier, tier.DataPlane)
+		}),
 	})
 }
 
