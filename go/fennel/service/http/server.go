@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fennel/controller/usage"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -16,6 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"fennel/controller/usage"
+	"fennel/redis"
 
 	"fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
@@ -316,7 +318,9 @@ func (m server) LogMulti(w http.ResponseWriter, req *http.Request) {
 	}
 
 	for i := range ok {
-		if ok[i] {
+		// if redis set command failed for whatever reason (this seem to be common when any one
+		// of the shard is full), instead of dropping it, use it
+		if ok[i] == redis.NotFoundSet || ok[i] == redis.Error {
 			// If dedup key of an action was not set, add to batch
 			batch = append(batch, actions[ids[i]])
 		} else {
