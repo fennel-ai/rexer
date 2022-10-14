@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import styles from "./styles/SearchBar.module.scss";
 
 export interface FilterOption {
-    type: string,
+    type: "tag" | "name",
     value: string,
 }
 

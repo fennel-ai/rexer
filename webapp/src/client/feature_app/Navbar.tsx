@@ -1,10 +1,11 @@
 import axios, { AxiosError } from "axios";
+import { useParams } from "react-router-dom";
 import { DownOutlined, UserOutlined, TeamOutlined, LogoutOutlined } from '@ant-design/icons';
 import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
 import Logo from "../assets/logo_color.module.svg";
-import { dashboardTabPath } from './route';
+import { featuresTabPath } from './route';
 
 export interface Tier {
     id: string,
@@ -17,12 +18,11 @@ interface User {
 interface Props {
     activeTab?: string,
     user: User,
+    tiers: Tier[],
 }
 
-function Navbar({ activeTab, user }: Props) {
-    const tierID = "1001";
-    const tiers = [{ id: "1001" }, { id: "1002" }]; // TODO(xiao): use real ones
-
+function Navbar({ activeTab, user, tiers }: Props) {
+    const { tierID } = useParams();
     const items = menuItems(tierID);
 
     return (
@@ -108,7 +108,7 @@ function AvatarDropdown({ user }: { user: User }) {
 }
 
 function TierDropdown({ tiers }: { tiers: Tier[] }) {
-    const tierID = "1001"; // TODO(xiao): use real ones
+    const { tierID } = useParams();
 
     const items = tiers.map(tier => ({
         key: tier.id,
@@ -146,7 +146,7 @@ function menuItems(tierID: string | undefined): MenuProps["items"] {
     }
     const items: MenuProps["items"] = [
         {
-            label: (<a href={dashboardTabPath(tierID)}>Dashboard</a>),
+            label: (<a href={featuresTabPath(tierID)}>Features</a>),
             key: "dashboard",
         },
         {

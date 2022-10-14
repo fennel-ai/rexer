@@ -22,14 +22,17 @@ import (
 	"gorm.io/gorm"
 
 	onboardC "fennel/mothership/controller/onboard"
+	tierC "fennel/mothership/controller/tier"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
 	dataplaneL "fennel/mothership/lib/dataplane"
 	ginL "fennel/mothership/lib/gin"
 	serializerL "fennel/mothership/lib/serializer"
+	tierL "fennel/mothership/lib/tier"
 )
 
 const (
+	TierManagementURL  = "/tier_management"
 	SignInURL          = "/signin"
 	WebAppRoot         = "../../webapp"
 	StaticJSMount      = "/assets"
@@ -135,12 +138,17 @@ func (s *server) setupRouter() {
 	auth.GET("/onboard", s.Main)
 
 	onboarded := auth.Group("/", ginL.Onboarded(s.db))
-	onboarded.GET("/", s.Main)
-	onboarded.GET("/feature/:id", s.Feature)
+	onboarded.GET("/", s.Home)
+	onboarded.GET(TierManagementURL, s.Main)
+
+	tier := onboarded.Group("/tier/:id", ginL.TierPermission(s.db, SignInURL))
+	tier.GET("/", s.Main)
+	tier.GET("/features", s.Main)
+	tier.GET("/feature/:feature_id", s.Main)
+	tier.POST("/features", s.Features)
 
 	// ajax endpoints
 	auth.POST("/logout", s.Logout)
-	auth.POST("/features", s.Features)
 
 	// onboard endpoints
 	onboard := auth.Group("/onboard")
@@ -151,6 +159,26 @@ func (s *server) setupRouter() {
 	onboard.POST("/assign_tier", s.OnboardAssignTier)
 	onboard.GET("/tier", s.OnboardTier)
 	onboard.POST("/tier_provisioned", s.OnboardTierProvisioned)
+}
+
+func (s *server) Home(c *gin.Context) {
+	user, _ := ginL.CurrentUser(c)
+
+	tiers, err := tierC.FetchTiers(c.Request.Context(), s.db, user.CustomerID)
+	if err != nil {
+		ginL.RespondError(c, err, "fetch tiers")
+		return
+	}
+	if len(tiers) == 0 {
+		c.Redirect(http.StatusFound, TierManagementURL)
+		return
+	}
+	tier := tiers[0]
+	c.Redirect(http.StatusFound, tierURL(tier))
+}
+
+func tierURL(tier tierL.Tier) string {
+	return fmt.Sprintf("/tier/%v", tier.ID)
 }
 
 func (s *server) SignOnGet(c *gin.Context) {
@@ -167,6 +195,7 @@ func (s *server) Main(c *gin.Context) {
 	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
 		"featureAppBundlePath": s.featureAppBundlePath(),
 		"user":                 serializerL.User2J(user),
+		"tiers":                serializerL.CustomerTiers2J(s.db, user.CustomerID),
 	})
 }
 
@@ -347,19 +376,10 @@ func (s *server) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{})
 }
 
-func (s *server) Feature(c *gin.Context) {
-	user, _ := ginL.CurrentUser(c)
-	c.HTML(http.StatusOK, "console/app.html.tmpl", gin.H{
-		"title":                title("Feature"),
-		"featureAppBundlePath": s.featureAppBundlePath(),
-		"user":                 serializerL.User2J(user),
-	})
-}
-
 func (s *server) Features(c *gin.Context) {
 	type Filter struct {
-		Type  string `form:"type"`
-		Value string `form:"value"`
+		Type  string `form:"type" json:"type"`
+		Value string `form:"value" json:"value"`
 	}
 	type Feature struct {
 		ID      string `json:"id"`
@@ -368,7 +388,8 @@ func (s *server) Features(c *gin.Context) {
 		Tags    []string
 	}
 	var form struct {
-		Filters []Filter `form:"filters"`
+		Filters           []Filter `form:"filters"`
+		ListFilterOptions bool     `form:"listFilterOptions,default=false"`
 	}
 	if err := c.BindJSON(&form); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -414,6 +435,23 @@ func (s *server) Features(c *gin.Context) {
 		}
 	}
 
+	if form.ListFilterOptions {
+		filterOptions := []Filter{
+			{Type: "tag", Value: "good"},
+			{Type: "tag", Value: "ok"},
+			{Type: "name", Value: "bad"},
+			{Type: "name", Value: "user_avg_rating"},
+			{Type: "name", Value: "movie_avg_rating"},
+			{Type: "name", Value: "user_likes_last_3days"},
+			{Type: "name", Value: "movie_likes_last_3days"},
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"features":      features,
+			"filterOptions": filterOptions,
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"features": features,
 	})
@@ -535,10 +573,6 @@ func (s *server) featureAppBundlePath() string {
 
 func (s *server) isDev() bool {
 	return s.args.GINMode == "debug"
-}
-
-func title(name string) string {
-	return fmt.Sprintf("Fennel | %s", name)
 }
 
 func readWebpackManifest() (manifest map[string]string, err error) {
