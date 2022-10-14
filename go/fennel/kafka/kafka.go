@@ -2,9 +2,10 @@ package kafka
 
 import (
 	"context"
+	"time"
+
 	"fennel/airbyte"
 	"fennel/lib/nitrous"
-	"time"
 
 	"fennel/lib/action"
 	"fennel/lib/counter"

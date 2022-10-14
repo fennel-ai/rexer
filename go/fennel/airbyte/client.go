@@ -3,14 +3,15 @@ package airbyte
 import (
 	"bytes"
 	"encoding/json"
-	"fennel/lib/data_integration"
-	"fennel/lib/ftypes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
 	"time"
+
+	"fennel/lib/data_integration"
+	"fennel/lib/ftypes"
 )
 
 const (
@@ -600,7 +601,7 @@ func (c Client) setKafkaDestinationId(tierId ftypes.RealmID, cred KafkaCredentia
 		return fmt.Errorf("failed to set Kafka destination id: %s", err)
 	}
 
-	return fmt.Errorf("no valid kafka destination found")
+	return nil
 }
 
 func (c Client) postJSON(data []byte, url string) ([]byte, error) {
