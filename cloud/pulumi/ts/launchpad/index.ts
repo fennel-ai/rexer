@@ -715,7 +715,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-ng-arm",
-                    instanceTypes: ["c6gd.8xlarge"],
+                    instanceTypes: ["m6gd.8xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
