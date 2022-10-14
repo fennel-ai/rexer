@@ -46,7 +46,6 @@ type Gravel struct {
 	memtables    [2]*Memtable
 	memtableLock sync.RWMutex
 	flushingWg   sync.WaitGroup
-	flushing     bool
 
 	tm                  *TableManager
 	opts                Options
@@ -73,7 +72,6 @@ func Open(opts Options, clock clock.Clock) (ret *Gravel, failure error) {
 	ret = &Gravel{
 		memtableLock:        sync.RWMutex{},
 		flushingWg:          sync.WaitGroup{},
-		flushing:            false,
 		tm:                  tableManager,
 		opts:                opts,
 		stats:               Stats{},
