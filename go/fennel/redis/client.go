@@ -17,8 +17,8 @@ type SetReturnType int32
 
 const (
 	NotFoundSet SetReturnType = 0
-	FoundSkip = 1
-	Error = 2
+	FoundSkip SetReturnType = 1
+	Error SetReturnType = 2
 )
 
 func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
