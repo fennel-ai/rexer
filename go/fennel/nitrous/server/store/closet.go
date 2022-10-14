@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"unsafe"
 
+	"go.uber.org/zap"
+
 	"fennel/hangar"
 	"fennel/lib/aggregate"
 	"fennel/lib/arena"
@@ -355,6 +357,7 @@ func (c *Closet) Process(ctx context.Context, ops []*rpc.NitrousOp, store hangar
 			pvalue := event.GetValue()
 			val, err := value.FromProtoValue(pvalue)
 			if err != nil {
+				zap.L().Error("failed to unmarshal proto value", zap.String("val", val.String()), zap.String("pval", pvalue.String()), zap.Error(err))
 				s, err := protojson.Marshal(pvalue)
 				if err != nil {
 					return nil, nil, fmt.Errorf("error decoding and marshaling value: %w", err)

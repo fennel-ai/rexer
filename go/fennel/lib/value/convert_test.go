@@ -59,6 +59,28 @@ func TestConvert(t *testing.T) {
 	}
 }
 
+func TestConvertWithEmptyMessage(t *testing.T) {
+	v := Nil
+	pv, err := ToProtoValue(v)
+	assert.NoError(t, err)
+	rawop, err := pv.MarshalVT()
+	assert.NoError(t, err)
+
+	actualOp := PValue{}
+	err = actualOp.UnmarshalVT(rawop)
+	assert.NoError(t, err)
+
+	// TODO(mohit): This assertion should pass once Vitess serializes empty messages same as proto
+	//
+	// see - https://github.com/planetscale/vtprotobuf/issues/60
+	// assert.True(t, pv.EqualVT(&actualOp))
+
+	// FromProtoValue now supports handling empty message error from vitess through custom handling
+	val, err := FromProtoValue(&actualOp)
+	assert.NoError(t, err)
+	assert.True(t, val.Equal(v))
+}
+
 func TestInvalidProtoValue(t *testing.T) {
 	empty := PValue{}
 	pvalues := []*PValue{

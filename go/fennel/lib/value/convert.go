@@ -223,6 +223,17 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	if _, ok := pv.Node.(*PValue_Nil); ok {
 		return Nil, nil
 	}
+
+	// TODO(mohit): Remove this hack once Vitess supports consistent marshaling and unmarshaling support as
+	// regular proto
+	//
+	// See -
+	// 	https://github.com/planetscale/vtprotobuf/issues/60
+	// 	https://github.com/planetscale/vtprotobuf/issues/61
+	if pv.Node == nil {
+		return Nil, nil
+	}
+
 	return Nil, fmt.Errorf("unrecognized proto value type: %v", pv.Node)
 }
 
