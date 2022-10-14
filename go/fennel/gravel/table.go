@@ -32,8 +32,6 @@ type Table interface {
 func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable) ([]string, error) {
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.build")
 	defer t.Stop()
-	parallel.Acquire(context.Background(), "nitrous", parallel.OneCPU)
-	defer parallel.Release("nitrous", parallel.OneCPU)
 	// if the directory doesn't exist, create it
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
