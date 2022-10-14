@@ -5,6 +5,15 @@ import (
 	"sort"
 
 	"capnproto.org/go/capnp/v3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var pvalueNilInferred = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "pvalue_nil_inferred",
+		Help: "Number of times pvalue with nil node was inferred as value.Nil",
+	},
 )
 
 func ToCapnValue(v Value) (CapnValue, []byte, error) {
@@ -223,6 +232,18 @@ func FromProtoValue(pv *PValue) (Value, error) {
 	if _, ok := pv.Node.(*PValue_Nil); ok {
 		return Nil, nil
 	}
+
+	// TODO(mohit): Remove this hack once Vitess supports consistent marshaling and unmarshaling support as
+	// regular proto
+	//
+	// See -
+	// 	https://github.com/planetscale/vtprotobuf/issues/60
+	// 	https://github.com/planetscale/vtprotobuf/issues/61
+	if pv.Node == nil {
+		pvalueNilInferred.Inc()
+		return Nil, nil
+	}
+
 	return Nil, fmt.Errorf("unrecognized proto value type: %v", pv.Node)
 }
 

@@ -288,3 +288,42 @@ func TestSerializationVitessProto(t *testing.T) {
 	fmt.Printf("protoActualOp: %v\n", &protoActualOp)
 	assert.Equal(t, protoActualOp.String(), op.String())
 }
+
+func TestSerializationVitessProtoTesting(t *testing.T) {
+	// serialized without vitess
+	v := value.Nil
+	pv, err := value.ToProtoValue(v)
+	assert.NoError(t, err)
+	op := rpc.NitrousOpFromVTPool()
+	op.TierId = uint32(1)
+	op.Type = rpc.OpType_AGG_EVENT
+	op.Op = &rpc.NitrousOp_AggEvent{
+		AggEvent: &rpc.AggEvent{
+			AggId: uint32(2),
+			Groupkey: utils.RandString(5),
+			Timestamp: uint32(10000),
+			Value: &pv,
+		},
+	}
+	rawop, err := op.MarshalVT()
+	assert.NoError(t, err)
+
+	// serialized with vitess
+	actualOp := rpc.NitrousOpFromVTPool()
+	err = actualOp.UnmarshalVT(rawop)
+	assert.NoError(t, err)
+
+	// TODO(mohit): remove this, https://github.com/planetscale/vtprotobuf/issues/60
+	// assert.True(t, actualOp.EqualVT(op))
+
+	val, err := value.FromProtoValue(actualOp.GetAggEvent().Value)
+	assert.NoError(t, err)
+	assert.True(t, val.Equal(value.Nil))
+
+	protoActualOp := rpc.NitrousOp{}
+	err = proto.Unmarshal(rawop, &protoActualOp)
+	assert.NoError(t, err)
+
+	// TODO(mohit): remove this, https://github.com/planetscale/vtprotobuf/issues/60
+	// assert.Equal(t, protoActualOp.String(), op.String())
+}
