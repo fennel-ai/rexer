@@ -6,7 +6,9 @@ on:
 jobs:
   preview:
     name: Preview
-    runs-on: ubuntu-latest
+    
+    runs-on: [linux-x64-cd]
+
     steps:
       - uses: actions/checkout@v2
       
@@ -21,17 +23,47 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Configure AWS CLI
+        run: |
+          sudo apt install unzip
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+
       - name: Install dependencies
         working-directory: cloud/pulumi/ts
         run: npm install
 
-      - name: Pulumi preview
-        uses: pulumi/actions@v3
-        with:
-          work-dir: cloud/pulumi/ts/launchpad
-          comment-on-pr: true
-          command: preview
-          stack-name: plane-3
-          github-token: ${{ secrets.ACCESS_TOKEN }}
+      - name: Preview using Launchpad
+        working-directory: cloud/pulumi/ts/launchpad
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_DEFAULT_REGION: us-west-2
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CONFLUENT_CLOUD_USERNAME: ${{ secrets.CONFLUENT_CLOUD_USERNAME }}
+          CONFLUENT_CLOUD_PASSWORD: ${{ secrets.CONFLUENT_CLOUD_PASSWORD }}
+          FENNEL_ROOT: ${{ github.workspace }}
+        run: |
+          echo "install pulumi"
+          curl -fsSL https://get.pulumi.com | sh
+          echo "setup pulumi; Adding to PATH and logging in using ACCESS TOKEN"
+          export PATH=$PATH:/home/ubuntu/.pulumi/bin
+          pulumi login
+          echo "running launchpad for plane: 3"
+          npm run start 104
+
+      - name: Notify slack channel
+        uses: ravsamhq/notify-slack-action@v1
+        if: always()
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.ACCESS_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
+          mention_users: 'U02T7D98ZP1'  # Mohit, Abhay (U02NC94JJ68)
+          mention_users_when: 'failure,warnings'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RELEASES_SLACK_CHANNEL_WEBHOOK_URL }}
