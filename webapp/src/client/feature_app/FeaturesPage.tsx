@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import SearchBar, { type FilterOption } from "./SearchBar";
 import commonStyles from "./styles/Page.module.scss";
 import styles from "./styles/DashboardPage.module.scss";
-import { featureDetailPath, featuresSearchPath } from "./route";
+import { featureDetailPagePath, featuresSearchPath } from "./route";
 
 interface Feature {
     id: string,
@@ -67,7 +67,7 @@ function SingleFeature({ feature }: { feature: Feature }): JSX.Element {
     const { tierID } = useParams();
     const navigateToDetail = () => {
         if (tierID) {
-            window.location.replace(featureDetailPath(tierID, feature.id));
+            window.location.replace(featureDetailPagePath({ tierID, featureID: feature.id }));
         }
     };
     return (
