@@ -6,9 +6,19 @@ import (
 	"log"
 	"time"
 
+	"go.uber.org/zap"
+
 	"fennel/lib/timer"
 
 	"github.com/go-redis/redis/v8"
+)
+
+type SetReturnType int32
+
+const (
+	NotFoundSet SetReturnType = 0
+	FoundSkip = 1
+	Error = 2
 )
 
 func (c Client) Set(ctx context.Context, k string, v interface{}, ttl time.Duration) error {
@@ -137,11 +147,13 @@ func (c Client) MSet(ctx context.Context, keys []string, values []interface{}, t
 	return err
 }
 
-// SetNXPipelined pipelines and executes multiple SetNX commands and returns their result as a list of bools
-// Returns any error before execution but ignores errors that happen during execution
+// SetNXPipelined pipelines and executes multiple SetNX commands. Returns:
+// 	1. Found - if a key already exists, so the new value was not set
+// 	2. NotFound - key previously did not exist, new value was set
+//  3. Error - Set command failed
 func (c Client) SetNXPipelined(
 	ctx context.Context, keys []string, values []interface{}, ttls []time.Duration,
-) (ok []bool, err error) {
+) (ok []SetReturnType, err error) {
 	ctx, t := timer.Start(ctx, c.ID(), "redis.setnx_pipelined")
 	defer t.Stop()
 
@@ -161,12 +173,19 @@ func (c Client) SetNXPipelined(
 		}
 	}
 	cmds, _ := pipe.Exec(ctx)
-	ok = make([]bool, len(keys))
+	ok = make([]SetReturnType, len(keys))
 	for i, cmd := range cmds {
-		ok[i], err = cmd.(*redis.BoolCmd).Result()
+		set, err := cmd.(*redis.BoolCmd).Result()
 		// Log errors that happened during execution
 		if err != nil {
-			log.Printf("Redis Error: SetNXPipelined(): %v", err)
+			zap.L().Warn("Redis Error: SetNXPipelined()", zap.Error(err))
+			ok[i] = Error
+		} else {
+			if set {
+				ok[i] = NotFoundSet
+			} else {
+				ok[i] = FoundSkip
+			}
 		}
 	}
 	return ok, nil

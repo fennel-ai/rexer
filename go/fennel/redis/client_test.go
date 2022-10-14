@@ -114,7 +114,7 @@ func testSetNXPipelined(t *testing.T, c Client) {
 	ttls := make([]time.Duration, n)
 	keys := make([]string, n)
 	values := make([]interface{}, n)
-	exp := make([]bool, n)
+	exp := make([]SetReturnType, n)
 
 	// try setting with no elements
 	_, err := c.SetNXPipelined(ctx, nil, nil, nil)
@@ -125,7 +125,7 @@ func testSetNXPipelined(t *testing.T, c Client) {
 		ttls[i] = ttl
 		keys[i] = strconv.Itoa(i)
 		values[i] = 1
-		exp[i] = true
+		exp[i] = NotFoundSet
 	}
 	ok, err := c.SetNXPipelined(ctx, keys, values, ttls)
 	assert.NoError(t, err)
@@ -133,7 +133,7 @@ func testSetNXPipelined(t *testing.T, c Client) {
 
 	// try setting the same 5 keys again, should fail because already set
 	for i := 0; i < n; i++ {
-		exp[i] = false
+		exp[i] = FoundSkip
 	}
 	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
 	assert.NoError(t, err)
@@ -141,7 +141,7 @@ func testSetNXPipelined(t *testing.T, c Client) {
 
 	// fastforward until keys expire and try again, should succeed
 	for i := 0; i < n; i++ {
-		exp[i] = true
+		exp[i] = NotFoundSet
 	}
 	c.conf.(MiniRedisConfig).MiniRedis.FastForward(ttl)
 	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
@@ -150,7 +150,7 @@ func testSetNXPipelined(t *testing.T, c Client) {
 
 	// try setting some new keys, only new keys should set successfully
 	keys = []string{"3", "4", "5", "6", "7"}
-	exp = []bool{false, false, true, true, true}
+	exp = []SetReturnType{FoundSkip, FoundSkip, NotFoundSet, NotFoundSet, NotFoundSet}
 	ok, err = c.SetNXPipelined(ctx, keys, values, ttls)
 	assert.NoError(t, err)
 	assert.Equal(t, exp, ok)
@@ -161,7 +161,7 @@ func testSetNXPipelined(t *testing.T, c Client) {
 	assert.NoError(t, err)
 	count := 0
 	for i := range ok {
-		if ok[i] {
+		if ok[i] == NotFoundSet {
 			count++
 		}
 	}

@@ -25,6 +25,7 @@ import (
 	"fennel/lib/timer"
 	"fennel/lib/usage"
 	"fennel/lib/value"
+	"fennel/redis"
 
 	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
@@ -362,7 +363,9 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				}
 				var batch []value.Value
 				for i := range ok {
-					if ok[i] {
+					// if redis set command failed for whatever reason (this seem to be common when any one
+					// of the shard is full), instead of dropping it, use it
+					if ok[i] == redis.NotFoundSet || ok[i] == redis.Error {
 						// If dedup key of an action was not set, add to batch
 						batch = append(batch, values[ids[i]])
 					} else {
