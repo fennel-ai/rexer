@@ -3,16 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fennel/airbyte"
-	"fennel/engine"
-	"fennel/engine/interpreter/bootarg"
-	httplib "fennel/lib/http"
-	"fennel/lib/query"
-	"fennel/lib/timer"
-	"fennel/lib/usage"
-	"fennel/lib/value"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -23,6 +14,17 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/mux"
+
+	"fennel/airbyte"
+	"fennel/engine"
+	"fennel/engine/interpreter/bootarg"
+	httplib "fennel/lib/http"
+	"fennel/lib/query"
+	"fennel/lib/timer"
+	"fennel/lib/usage"
+	"fennel/lib/value"
 
 	action2 "fennel/controller/action"
 	"fennel/controller/aggregate"
@@ -54,6 +56,7 @@ import (
 )
 
 const INT_REST_VERSION = "/internal/v1"
+const CONNECTOR_CONSUMERS = 4
 
 var backlog_stats = promauto.NewGaugeVec(prometheus.GaugeOpts{
 	Name: "aggregator_backlog",
@@ -588,9 +591,17 @@ func startConnectorProcessing(tr tier.Tier) error {
 				if _, ok := processedConnectors[conn.Name]; !ok {
 					log.Printf("Retrieved a new connector: %s", conn.Name)
 					ch := make(chan struct{})
-					err := processConnector(tr, conn, ch)
-					if err != nil {
-						tr.Logger.Error("Could not start connector processing", zap.String("Connector Name", string(conn.Name)), zap.Error(err))
+
+					// streamlog from which each of the connector reads data has multiple partitions, to improve
+					// the throughput, we run multiple consumers in the same consumer group.
+					//
+					// TODO(mohit): This is should be made tier configurable going forward, if we expect
+					// a tier to not ingest a lot of data, we need not throttle the compute
+					for i := 0; i < CONNECTOR_CONSUMERS; i++ {
+						err := processConnector(tr, conn, ch)
+						if err != nil {
+							tr.Logger.Error("Could not start connector processing", zap.String("Connector Name", conn.Name), zap.Int("consumer", i), zap.Error(err))
+						}
 					}
 					processedConnectors[conn.Name] = ch
 				}
