@@ -575,10 +575,6 @@ func (s *server) isDev() bool {
 	return s.args.GINMode == "debug"
 }
 
-func title(name string) string {
-	return fmt.Sprintf("Fennel | %s", name)
-}
-
 func readWebpackManifest() (manifest map[string]string, err error) {
 	bytes, err := os.ReadFile(WebAppRoot + "/dist/manifest.json")
 	if err != nil {
