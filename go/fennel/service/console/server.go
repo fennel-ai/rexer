@@ -144,7 +144,9 @@ func (s *server) setupRouter() {
 	tier := onboarded.Group("/tier/:id", ginL.TierPermission(s.db, SignInURL))
 	tier.GET("/", s.Main)
 	tier.GET("/features", s.Main)
+
 	tier.GET("/feature/:feature_id", s.Main)
+	tier.GET("/feature/:feature_id/detail", s.Feature)
 	tier.POST("/features", s.Features)
 
 	// ajax endpoints
@@ -374,6 +376,60 @@ func (s *server) Logout(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+const CODE = `
+    # Given a movie, users who rated the movie 5 stars
+    @rex.aggregate(
+        name='users_who_liked_movie', aggregate_type='list',
+        action_types=['rating'], config={'durations': [14*DAY, 7*DAY, 1*DAY]},
+    )
+    def users_who_liked_movie(actions):
+        top_rated_events = op.std.filter(actions, var='e', where=var('e').metadata == 5.0)
+        with_key = op.std.set(top_rated_events, var='e', name='groupkey', value=var('e').target_id)
+        return op.std.set(with_key, var='e', name='value', value=var('e').actor_id)
+
+
+    # Given a user, all the movies they have rated with 5 stars
+    @rex.aggregate(
+        name='top_rated_movies_by_user', aggregate_type='list',
+        action_types=['rating'], config={'durations': [14*DAY, 7*DAY, 1*DAY]},
+    )
+    def top_rated_movies_by_user(actions):
+        top_rated_events = op.std.filter(actions, var='e', where=var('e').metadata == 5.0)
+        with_key = op.std.set(top_rated_events, var='e', name='groupkey', value=var('e').actor_id)
+        return op.std.set(with_key, var='e', name='value', value=var('e').target_id)
+`
+
+func (s *server) Feature(c *gin.Context) {
+	var form struct {
+		Version uint `form:"version"`
+	}
+
+	if err := c.ShouldBind(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	version := form.Version
+	if version == 0 {
+		version = 4
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"feature": gin.H{
+			"id":            "103",
+			"name":          "uesrs_likes_in_last_7days",
+			"version":       version,
+			"latestVersion": 4,
+			"tags":          []string{"ok", "prod"},
+			"code":          CODE,
+			"aggregates": []gin.H{
+				{"id": "1001", "name": "num_users_likes"},
+				{"id": "1001", "name": "num_movies"},
+			},
+		},
+	})
 }
 
 func (s *server) Features(c *gin.Context) {
