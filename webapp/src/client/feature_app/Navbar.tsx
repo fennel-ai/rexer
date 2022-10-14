@@ -5,7 +5,7 @@ import { MenuProps, notification, Dropdown, Menu, Space, Avatar } from "antd";
 
 import styles from "./styles/Navbar.module.scss";
 import Logo from "../assets/logo_color.module.svg";
-import { featuresPagePath } from './route';
+import { featuresPagePath, tierPagePath } from './route';
 
 export interface Tier {
     id: string,
@@ -112,7 +112,7 @@ function TierDropdown({ tiers }: { tiers: Tier[] }) {
 
     const items = tiers.map(tier => ({
         key: tier.id,
-        label: (<a href="#">Tier {tier.id}</a>),
+        label: (<a href={tierPagePath(tier.id)}>Tier {tier.id}</a>),
     }));
 
     const menu = <Menu

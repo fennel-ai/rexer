@@ -8,6 +8,7 @@ import "./styles/App.less";
 import Navbar, { type Tier } from "./Navbar";
 import FeaturesPage from "./FeaturesPage";
 import FeatureDetailPage from "./FeatureDetailPage";
+import TierManagementPage from "./TierManagementPage";
 import OnboardPage from "../onboard/OnboardPage";
 
 interface User {
@@ -26,6 +27,23 @@ function App({ user, tiers }: Props) {
     return (
         <BrowserRouter>
             <Routes>
+                <Route
+                    path="/tier_management"
+                    element={(
+                        <div>
+                            <Navbar tiers={tiers} user={user} />
+                            <TierManagementPage />
+                        </div>
+                    )}
+                />
+                <Route
+                    path="/onboard"
+                    element={(
+                        <div>
+                            <OnboardPage user={user} />
+                        </div>
+                    )}
+                />
                 <Route path="/tier/:tierID">
                     <Route
                         index
@@ -55,14 +73,6 @@ function App({ user, tiers }: Props) {
                         )}
                     />
                 </Route>
-                <Route
-                    path="/onboard"
-                    element={(
-                        <div>
-                            <OnboardPage user={user} />
-                        </div>
-                    )}
-                />
             </Routes>
         </BrowserRouter>
     );

@@ -1,5 +1,9 @@
 import { generatePath } from "react-router-dom";
 
+export function tierPagePath(tierID: string): string {
+    return generatePath("/tier/:tierID", { tierID });
+}
+
 export function featuresPagePath(tierID: string): string {
     return generatePath("/tier/:tierID/features", { tierID });
 }
