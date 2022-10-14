@@ -45,7 +45,7 @@ var tablesQueriedReporter = promauto.NewSummaryVec(prometheus.SummaryOpts{
 type Gravel struct {
 	memtables    [2]*Memtable
 	memtableLock sync.RWMutex
-	flushingWg   sync.WaitGroup
+	flushingChan chan struct{}
 
 	tm                  *TableManager
 	opts                Options
@@ -71,7 +71,7 @@ func Open(opts Options, clock clock.Clock) (ret *Gravel, failure error) {
 	opts.NumShards = tableManager.NumShards()
 	ret = &Gravel{
 		memtableLock:        sync.RWMutex{},
-		flushingWg:          sync.WaitGroup{},
+		flushingChan:        make(chan struct{}, 1),
 		tm:                  tableManager,
 		opts:                opts,
 		stats:               Stats{},
@@ -218,6 +218,7 @@ func (g *Gravel) Flush() error {
 // TODO(mohit): Expose Flush as a public method for testing!
 
 func (g *Gravel) flush() error {
+	defer g.periodicFlushTicker.Reset(periodicFlushTickerDur)
 	g.memtableLock.Lock()
 	if g.memtables[0].Size() == 0 {
 		// no valid reason to flush an empty memtable
@@ -226,20 +227,23 @@ func (g *Gravel) flush() error {
 	}
 	g.memtableLock.Unlock()
 
-	for {
-		g.flushingWg.Wait() // wait for real flushing job finishing
-		if g.memtableLock.TryLock() {
-			break
-		}
+	g.flushingChan <- struct{}{}
+	g.memtableLock.Lock()
+	if g.memtables[1].Size() != 0 {
+		panic("failed flush of memtable")
+	}
+
+	if g.memtables[0].Size() == 0 {
+		// no valid reason to flush an empty memtable
+		g.memtableLock.Unlock()
+		<-g.flushingChan
+		return nil
 	}
 	// now the shadow memtable (1) must be emptied
-	g.flushingWg.Add(1)
-
 	g.memtables[0], g.memtables[1] = g.memtables[1], g.memtables[0]
 	g.memtableLock.Unlock()
 
 	go func() {
-		defer g.periodicFlushTicker.Reset(periodicFlushTickerDur)
 		// since a flush is being attempted, reset the periodic flush
 		tablefiles, err := g.memtables[1].Flush(g.opts.TableType, g.opts.Dirname)
 
@@ -262,7 +266,7 @@ func (g *Gravel) flush() error {
 		g.stats.MemtableSizeBytes.Store(g.memtables[0].Size())
 		g.stats.MemtableKeys.Store(g.memtables[0].Len())
 
-		g.flushingWg.Done()
+		<-g.flushingChan
 	}()
 	return nil
 }
