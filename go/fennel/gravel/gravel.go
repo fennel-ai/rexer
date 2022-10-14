@@ -114,9 +114,6 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 			g.memtableLock.RUnlock()
 			return nil, err
 		}
-		if !g.flushing {
-			break
-		}
 	}
 	g.memtableLock.RUnlock()
 	maybeInc(sample, &g.stats.MemtableMisses)
@@ -223,8 +220,6 @@ func (g *Gravel) Flush() error {
 // TODO(mohit): Expose Flush as a public method for testing!
 
 func (g *Gravel) flush() error {
-	defer g.periodicFlushTicker.Reset(periodicFlushTickerDur)
-
 	g.memtableLock.Lock()
 	if g.memtables[0].Size() == 0 {
 		// no valid reason to flush an empty memtable
@@ -240,6 +235,7 @@ func (g *Gravel) flush() error {
 	g.memtableLock.Unlock()
 
 	go func() {
+		defer g.periodicFlushTicker.Reset(periodicFlushTickerDur)
 		// since a flush is being attempted, reset the periodic flush
 		tablefiles, err := g.memtables[1].Flush(g.opts.TableType, g.opts.Dirname)
 

@@ -129,6 +129,11 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 		}
 	}
 
+	gravelOpts := gravel.DefaultOptions().WithMaxTableSize(2 << 30).WithName(fmt.Sprintf("binlog-%d", 0)).WithNumShards(256).WithCompactionWorkerNum(4)
+	gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", 0)), &gravelOpts, encoders.Default())
+	if err != nil {
+		return nil, err
+	}
 	for _, toppar := range requiredToppar {
 		// Instantiate gravel instance per tailer
 		//
@@ -142,11 +147,6 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 		//
 		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
 		// memory to be cost efficient
-		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName(fmt.Sprintf("binlog-%d", toppar.Partition)).WithNumShards(16).WithCompactionWorkerNum(2)
-		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default(), n.Clock)
-		if err != nil {
-			return nil, err
-		}
 		t, err := tailer.NewTailer(n, libnitrous.BINLOG_KAFKA_TOPIC, toppar, gravelDb, ndb.Process, tailer.DefaultPollTimeout, tailer.DefaultTailerBatch)
 		if err != nil {
 			return nil, fmt.Errorf("failed to setup tailer for partition %v: %w", toppar.Partition, err)
