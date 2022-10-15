@@ -49,6 +49,7 @@ type NitrousArgs struct {
 	RemoteBackupsToKeep uint32        `arg:"--remote-backups-to-keep,env:REMOTE_BACKUPS_TO_KEEP" default:"2" json:"remote_backups_to_keep,omitempty"`
 	BackupFrequency     time.Duration `arg:"--backup-frequency,env:BACKUP_FREQUENCY" json:"backup_frequency,omitempty"`
 	ForceLoadFromBackup bool          `arg:"--force-load-from-backup,env:FORCE_LOAD_FROM_BACKUP" json:"force_load_from_backup,omitempty"`
+	NoLoadFromBackup    bool          `arg:"--no-load-from-backup,env:NO_LOAD_FROM_BACKUP" json:"no_load_from_backup,omitempty"`
 	ShardName           string        `arg:"--shard-name,env:SHARD_NAME" default:"default" json:"shard_name,omitempty"`
 }
 
@@ -123,7 +124,7 @@ func restoreBackupOrReuseData(bm *backup.BackupManager, args NitrousArgs) error 
 	}
 
 	// if nitrous is forced to load from the backup, load from it always
-	if dirEmpty || args.ForceLoadFromBackup {
+	if (dirEmpty || args.ForceLoadFromBackup) && !args.NoLoadFromBackup {
 		// clean up the directory
 		purgeOldData(dbDir)
 

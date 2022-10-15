@@ -155,9 +155,9 @@ func (t *Tailer) Stop() {
 }
 
 func (t *Tailer) processBatch(ctx context.Context, rawops [][]byte) error {
-	parallel.Acquire(ctx, "nitrous", 2.2*parallel.OneCPU)
-	// 2.2 is an empirical factor, means one call of the function takes 2.2 units of CPU, since it spawns multiple goroutines in the middle
-	defer parallel.Release("nitrous", 2.2*parallel.OneCPU)
+	parallel.Acquire(ctx, "nitrous", 1.4*parallel.OneCPU)
+	// 1.4 is an empirical factor, means one call of the function takes 1.4 units of CPU, since it spawns multiple goroutines in the middle
+	defer parallel.Release("nitrous", 1.4*parallel.OneCPU)
 	defer numProcessed.Add(float64(len(rawops)))
 
 	ctx, m := timer.Start(context.Background(), t.nitrous.PlaneID, "tailer.processBatch")
