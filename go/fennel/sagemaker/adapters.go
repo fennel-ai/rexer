@@ -341,6 +341,9 @@ func (tfa TensorFlowAdapter) Score(ctx context.Context, in *lib.ScoreRequest) (*
 func fromCSV(csv []byte) ([]value.Value, error) {
 	rows := bytes.Split(csv, []byte("\n"))
 	rows = rows[:len(rows)-1] // ignore empty last line
+	if len(rows) == 0 {
+		rows = bytes.Split(csv, []byte(","))
+	}
 	vals := make([]value.Value, len(rows))
 	for i, row := range rows {
 		v, err := value.FromJSON(row)
