@@ -3,7 +3,9 @@ package aggregate
 import (
 	"context"
 	"testing"
+	"time"
 
+	clock2 "github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 
 	controller_action "fennel/controller/action"
@@ -21,6 +23,7 @@ import (
 func TestAggValue_Apply(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
 
 	ctx := context.Background()
 
@@ -46,9 +49,8 @@ func TestAggValue_Apply(t *testing.T) {
 		Id: 2,
 	}
 	t0 := uint32(24 * 3600)
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(t0)
+	t1 := clock.Now().Add(time.Duration(t0) * time.Second)
+	clock.Set(t1)
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	assert.NoError(t, aggregate.Store(ctx, tier, agg2))
 
@@ -66,7 +68,7 @@ func TestAggValue_Apply(t *testing.T) {
 	actions = append(actions, a)
 	err = controller_action.Insert(ctx, tier, a)
 	assert.NoError(t, err)
-	clock.Set(t0 + 3600)
+	clock.Set(t1.Add(3600 * time.Second))
 	assert.NoError(t, aggregate.Update(ctx, tier, actions, agg))
 	assert.NoError(t, aggregate.Update(ctx, tier, actions, agg2))
 	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))

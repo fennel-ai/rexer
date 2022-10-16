@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
 	libquery "fennel/lib/query"
 	"fennel/model/query"
 	"fennel/tier"
-	"go.uber.org/zap"
 )
 
 const cacheValueDuration = 2 * time.Minute
 
 func Insert(tier tier.Tier, name string, tree ast.Ast) (uint64, error) {
-	ts := ftypes.Timestamp(time.Now().Unix())
+	ts := ftypes.Timestamp(tier.Clock.Now().Unix())
 	treeSer, err := ast.Marshal(tree)
 	if err != nil {
 		return 0, fmt.Errorf("failed to marshal ast: %w", err)

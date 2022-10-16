@@ -36,7 +36,7 @@ func TestTailer(t *testing.T) {
 	// Create the producer first so the topic is initialized.
 	producer := n.NewBinlogProducer(t)
 	gravelOpts := gravel.DefaultOptions()
-	db, err := gravelDB.NewHangar(0, t.TempDir(), &gravelOpts, encoders.Default())
+	db, err := gravelDB.NewHangar(0, t.TempDir(), &gravelOpts, encoders.Default(), n.Clock)
 	t.Cleanup(func() { _ = db.Teardown() })
 	assert.NoError(t, err)
 

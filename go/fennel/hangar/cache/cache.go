@@ -14,6 +14,7 @@ import (
 	"fennel/lib/utils/parallel"
 
 	"github.com/dgraph-io/ristretto"
+	"github.com/raulk/clock"
 )
 
 const (
@@ -216,7 +217,7 @@ func (c *rcache) DelMany(ctx context.Context, keyGroups []hangar.KeyGroup) error
 func (c *rcache) commit(eks [][]byte, vgs []hangar.ValGroup, delks [][]byte) error {
 	// now we have all the deltas, we can set them
 	for i, ek := range eks {
-		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry)
+		ttl, alive := hangar.ExpiryToTTL(vgs[i].Expiry, clock.New())
 		if !alive {
 			c.cache.Del(ek)
 		} else {

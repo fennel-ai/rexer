@@ -35,7 +35,7 @@ func Set(ctx context.Context, tier tier.Tier, request profilelib.ProfileItem) er
 		return err
 	}
 	if request.UpdateTime == 0 {
-		request.UpdateTime = uint64(time.Now().UnixMicro())
+		request.UpdateTime = uint64(tier.Clock.Now().UnixMicro())
 	}
 
 	// write to Kafka to ensure that profile will be written eventually even if the set call here fails;
@@ -59,7 +59,7 @@ func SetMulti(ctx context.Context, tier tier.Tier, request []profilelib.ProfileI
 			return err
 		}
 		if profile.UpdateTime == 0 {
-			profile.UpdateTime = uint64(time.Now().UnixMicro())
+			profile.UpdateTime = uint64(tier.Clock.Now().UnixMicro())
 		}
 		protoVal, err := profilelib.ToProtoProfileItem(&profile)
 		if err != nil {

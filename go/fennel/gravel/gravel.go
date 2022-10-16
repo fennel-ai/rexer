@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/raulk/clock"
 	"go.uber.org/zap"
 )
 
@@ -50,9 +51,10 @@ type Gravel struct {
 	closeCh             chan struct{}
 	periodicFlushTicker *time.Ticker
 	logger              *zap.Logger
+	clock               clock.Clock
 }
 
-func Open(opts Options) (ret *Gravel, failure error) {
+func Open(opts Options, clock clock.Clock) (ret *Gravel, failure error) {
 	if opts.TableType == testTable {
 		// testTable is only for testing, not for prod use cases
 		return nil, fmt.Errorf("invalid table type: %d", testTable)
@@ -74,6 +76,7 @@ func Open(opts Options) (ret *Gravel, failure error) {
 		closeCh:             make(chan struct{}, 1),
 		periodicFlushTicker: time.NewTicker(periodicFlushTickerDur),
 		logger:              logger,
+		clock:               clock,
 	}
 	go ret.periodicallyFlush()
 	go ret.reportStats()
@@ -87,7 +90,7 @@ func (g *Gravel) Get(key []byte) ([]byte, error) {
 	sample := shouldSample()
 
 	maybeInc(sample, &g.stats.Gets)
-	now := Timestamp(time.Now().Unix())
+	now := Timestamp(g.clock.Now().Unix())
 	val, err := g.memtable.Get(key, shard)
 	switch err {
 	case ErrNotFound:

@@ -2,19 +2,21 @@ package gravel
 
 import (
 	"encoding/binary"
-	"fennel/lib/utils"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
+	"fennel/lib/utils"
+
+	"github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGravel(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 	dirname := fmt.Sprintf("/tmp/gravel-%d", rand.Uint32())
-	g, err := Open(DefaultOptions().WithDirname(dirname).WithMaxTableSize(1000))
+	g, err := Open(DefaultOptions().WithDirname(dirname).WithMaxTableSize(1000), clock.New())
 	assert.NoError(t, err)
 	defer func() {
 		if err := g.Teardown(); err != nil {
@@ -52,7 +54,7 @@ func TestGravelTooLargeBatch(t *testing.T) {
 	canWrite := func(batch int) error {
 		rand.Seed(time.Now().Unix())
 		dirname := fmt.Sprintf("/tmp/gravel-%d", rand.Uint32())
-		g, err := Open(DefaultOptions().WithDirname(dirname).WithMaxTableSize(1000))
+		g, err := Open(DefaultOptions().WithDirname(dirname).WithMaxTableSize(1000), clock.New())
 		assert.NoError(t, err)
 		defer func() {
 			if err := g.Teardown(); err != nil {
@@ -119,7 +121,7 @@ func testCore(t *testing.T, level int) {
 		panic("level must be in 1,2,3")
 	}
 
-	g, err := Open(opt)
+	g, err := Open(opt, clock.New())
 	assert.NoError(t, err)
 
 	key := make([]byte, 8)
@@ -184,7 +186,7 @@ func testCore(t *testing.T, level int) {
 	err = g.Close()
 	assert.NoError(t, err)
 	opt.NumShards = 1
-	g, err = Open(opt)
+	g, err = Open(opt, clock.New())
 	assert.NoError(t, err)
 	fmt.Println("Reopened databased")
 

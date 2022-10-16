@@ -3,6 +3,11 @@ package counter
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"fennel/lib/aggregate"
 	"fennel/lib/arena"
@@ -14,9 +19,15 @@ import (
 	nitrous "fennel/nitrous/client"
 	"fennel/tier"
 
-	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/samber/mo"
 	"go.uber.org/zap"
+)
+
+var (
+	nitrousComparison = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "nitrous_comparison_timeout",
+		Help: "Number of timeouts during nitrous and counter comparisons",
+	}, []string{"type"})
 )
 
 func Value(
@@ -32,11 +43,10 @@ func Value(
 }
 
 func NitrousBatchValue(
-	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict,
-) ([]value.Value, error) {
+	ctx context.Context, tier tier.Tier, aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict, ret []value.Value,
+) error {
 	ctx, t := timer.Start(ctx, tier.ID, "counter.NitrousBatchValue")
 	defer t.Stop()
-	ret := make([]value.Value, len(keys))
 	idxByAgg := make(map[ftypes.AggId][]int)
 	for i, aggId := range aggIds {
 		idxByAgg[aggId] = append(idxByAgg[aggId], i)
@@ -59,13 +69,29 @@ func NitrousBatchValue(
 		// TODO(mohit): We should send the Get request based on the groupkey ('aggkeys') since the binlog is sharded
 		err := tier.NitrousClient.MustGet().GetMulti(ctx, aggId, aggkeys, aggkwargs, output)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		for i, index := range indices {
 			ret[index] = output[i]
 		}
 	}
-	return ret, nil
+	return nil
+}
+
+func waitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+		case <-c:
+			// finished normally
+			return false
+		case <-time.After(timeout):
+			// timed out
+			return true
+	}
 }
 
 // TODO(Mohit): Fix this code if we decide to still use BucketStore
@@ -74,8 +100,11 @@ func BatchValue(
 	ctx context.Context, tier tier.Tier,
 	aggIds []ftypes.AggId, aggOptions []aggregate.Options, keys []value.Value, kwargs []value.Dict,
 ) ([]value.Value, error) {
+	ret := make([]value.Value, len(aggIds))
+	retNitrous := make([]value.Value, len(aggIds))
+	wg := sync.WaitGroup{}
 	// Send a shadow request to nitrous if client has been initialized.
-	if tier.NitrousClient.IsPresent() && unleash.IsEnabled("nitrous_shadow_requests") {
+	if tier.NitrousClient.IsPresent() {
 		// Copy the input arrays to allow the original to be returned to the
 		// arena in case they were arena allocated without causing a race
 		// condition.
@@ -85,20 +114,22 @@ func BatchValue(
 		copy(keysDup, keys)
 		kwargsDup := arena.DictValues.Alloc(len(kwargs), len(kwargs))
 		copy(kwargsDup, kwargs)
-		go func(aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict) {
+
+		wg.Add(1)
+		go func(aggIds []ftypes.AggId, keys []value.Value, kwargs []value.Dict, ret []value.Value, wg *sync.WaitGroup) {
 			defer arena.Values.Free(keys)
 			defer arena.DictValues.Free(kwargs)
+			defer wg.Done()
 			ctx := context.Background()
-			_, err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs)
+			err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, ret)
 			if err != nil {
 				tier.Logger.Warn("Nitrous read error", zap.Error(err))
 			}
-		}(aggIdsDup, keysDup, kwargsDup)
+		}(aggIdsDup, keysDup, kwargsDup, retNitrous, &wg)
 	}
 	histograms := make([]counter.Histogram, len(aggIds))
-	end := ftypes.Timestamp(tier.Clock.Now())
+	end := ftypes.Timestamp(tier.Clock.Now().Unix())
 	unique := make(map[counter.BucketStore][]int)
-	ret := make([]value.Value, len(aggIds))
 	for i, aggId := range aggIds {
 		h, err := counter.ToHistogram(aggId, aggOptions[i])
 		if err != nil {
@@ -143,6 +174,27 @@ func BatchValue(
 			arena.Buckets.Free(buckets[i])
 		}
 	}
+
+	// wait with a timeout here for the comparison
+	timeout := waitGroupTimeout(&wg, 500 * time.Millisecond)
+	if timeout {
+		// timed out sadly
+		nitrousComparison.WithLabelValues("timeout").Inc()
+	} else {
+		// we can compare the results
+		if len(ret) != len(retNitrous) {
+			nitrousComparison.WithLabelValues("len").Inc()
+			zap.L().Warn("nitrous returned values and memoryDb computed values are different in length", zap.Int("memoryDb", len(ret)), zap.Int("nitrous", len(retNitrous)))
+		} else {
+			for i, v := range ret {
+				if !v.Equal(retNitrous[i]) {
+					nitrousComparison.WithLabelValues("value").Inc()
+					zap.L().Info("memorydb counter value and nitrous counter value are different", zap.Any("memoryDb", v), zap.Any("nitrous", retNitrous[i]))
+				}
+			}
+		}
+	}
+
 	return ret, nil
 }
 

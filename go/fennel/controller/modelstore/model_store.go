@@ -414,7 +414,7 @@ func EnsureEndpointExists(ctx context.Context, tier tier.Tier) error {
 	}
 	var sagemakerModelName string
 	if len(coveringModels) == 0 {
-		sagemakerModelName = fmt.Sprintf("t-%d-model-%s", tier.ID, time.Now().Format("20060102150405"))
+		sagemakerModelName = fmt.Sprintf("t-%d-model-%s", tier.ID, tier.Clock.Now().Format("20060102150405"))
 		hostedModels := make([]lib.SagemakerHostedModel, len(activeModels))
 		for i, model := range activeModels {
 			hostedModels[i] = lib.SagemakerHostedModel{

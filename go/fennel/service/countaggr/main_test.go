@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
-	profile2 "fennel/controller/profile"
-	profilelib "fennel/lib/profile"
-	"fennel/resource"
 	"strconv"
 	"sync"
 	"testing"
+	"time"
+
+	clock2 "github.com/raulk/clock"
+
+	profile2 "fennel/controller/profile"
+	profilelib "fennel/lib/profile"
+	"fennel/resource"
 
 	"fennel/controller/action"
 	"fennel/controller/aggregate"
@@ -185,10 +189,10 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				)},
 		},
 	}
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(3600 * 24 * 15)
-	clock.Set(uint32(t0))
+	clock := tier.Clock.(*clock2.Mock)
+	t0 := clock.Now()
+	t1 := t0.Add(3600 * 24 * 15 * time.Second)
+	clock.Set(t1)
 
 	for _, scenario := range scenarios {
 		// first store all aggregates
@@ -200,12 +204,12 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	}
 
 	// now fire a few actions
-	actions1 := logAction(t, tier, ftypes.OidType(strconv.Itoa(uid)), t0+ftypes.Timestamp(1), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
-	actions2 := logAction(t, tier, ftypes.OidType(strconv.Itoa(uid)), t0+ftypes.Timestamp(4000), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
+	actions1 := logAction(t, tier, ftypes.OidType(strconv.Itoa(uid)), ftypes.Timestamp(t1.Unix())+ftypes.Timestamp(1), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
+	actions2 := logAction(t, tier, ftypes.OidType(strconv.Itoa(uid)), ftypes.Timestamp(t1.Unix())+ftypes.Timestamp(4000), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
 	actions := append(actions1, actions2...)
 
-	t1 := t0 + 7200
-	clock.Set(uint32(t1))
+	t2 := t1.Add(7200 * time.Second)
+	clock.Set(t2)
 	// counts don't change until we run process, after which, they do
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
@@ -278,10 +282,10 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 			[]value.Value{value.Int(1), value.Int(2)},
 		},
 	}
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	t0 := ftypes.Timestamp(3600 * 24 * 15)
-	clock.Set(uint32(t0))
+	clock := tier.Clock.(*clock2.Mock)
+	t0 := clock.Now()
+	t1 := t0.Add(3600 * 24 * 15 * time.Second)
+	clock.Set(t1)
 
 	for _, scenario := range scenarios {
 		// first store all aggregates
@@ -293,12 +297,12 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	}
 
 	// now fire a few profiles
-	p1 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(t0+ftypes.Timestamp(1)), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
-	p2 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(t0+ftypes.Timestamp(4000)), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
+	p1 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(ftypes.Timestamp(t1.Unix())+ftypes.Timestamp(1)), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
+	p2 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(ftypes.Timestamp(t1.Unix())+ftypes.Timestamp(4000)), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
 	profiles := append(p1, p2...)
 
-	t1 := t0 + 7200
-	clock.Set(uint32(t1))
+	t2 := t1.Add(7200 * time.Second)
+	clock.Set(t2)
 	// counts don't change until we run process, after which, they do
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {

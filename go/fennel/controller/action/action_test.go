@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/raulk/clock"
+
 	"fennel/kafka"
 	actionlib "fennel/lib/action"
 	"fennel/lib/ftypes"
@@ -22,16 +24,15 @@ func TestDBInsertFetch(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
+	ck := tier.Clock.(*clock.Mock)
 
 	// initially fetching is empty
 	actions, err := Fetch(ctx, tier, actionlib.ActionFetchRequest{})
 	assert.NoError(t, err)
 	assert.Empty(t, actions)
 
-	clock := test.FakeClock{}
-	tier.Clock = &clock
 	t1 := ftypes.Timestamp(456)
-	clock.Set(uint32(t1))
+	ck.Add(time.Duration(t1) * time.Second)
 
 	a1 := getAction(1, "12", 0, "like")
 	a2 := getAction(2, "22", t1+1, "like")
@@ -64,10 +65,9 @@ func testKafkaInsertRead(t *testing.T, batch bool) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	clock := test.FakeClock{}
-	tier.Clock = &clock
+	ck := tier.Clock.(*clock.Mock)
 	t1 := ftypes.Timestamp(456)
-	clock.Set(uint32(t1))
+	ck.Add(time.Duration(t1) * time.Second)
 
 	a1 := getAction(1, "12", 0, "like")
 	a2 := getAction(2, "22", t1, "like")

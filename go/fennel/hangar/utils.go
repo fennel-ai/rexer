@@ -5,13 +5,15 @@ import (
 	"time"
 
 	"fennel/lib/utils/slice"
+
+	"github.com/raulk/clock"
 )
 
-func ExpiryToTTL(expiry int64) (time.Duration, bool) {
+func ExpiryToTTL(expiry int64, clock clock.Clock) (time.Duration, bool) {
 	if expiry == 0 {
 		return time.Duration(0), true
 	}
-	now := time.Now().Unix()
+	now := clock.Now().Unix()
 	if expiry < now {
 		return time.Duration(0), false
 	}

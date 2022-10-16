@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/raulk/clock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +18,7 @@ func TestGravelDB(t *testing.T) {
 	maker := func(t *testing.T) hangar.Hangar {
 		planeID := ftypes.RealmID(rand.Uint32())
 		opts := gravel.DefaultOptions()
-		db, err := NewHangar(planeID, t.TempDir(), &opts, encoders.Default())
+		db, err := NewHangar(planeID, t.TempDir(), &opts, encoders.Default(), clock.New())
 		assert.NoError(t, err)
 		return db
 	}

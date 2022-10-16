@@ -3,9 +3,10 @@ package bootarg
 import (
 	"testing"
 
+	"github.com/raulk/clock"
+
 	"fennel/db"
 	"fennel/redis"
-	"fennel/test"
 	"fennel/tier"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func Test_Create_GetInstance(t *testing.T) {
 		Cache:            nil,
 		Producers:        nil,
 		NewKafkaConsumer: nil,
-		Clock:            &test.FakeClock{},
+		Clock:            clock.NewMock(),
 	}
 	b := Create(tier)
 	assert.Len(t, b, 1)

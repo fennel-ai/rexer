@@ -143,7 +143,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 		// The value here is selected taking into consideration that Nitrous could run on a machine with <= 100GB of
 		// memory to be cost efficient
 		gravelOpts := gravel.DefaultOptions().WithMaxTableSize(128 << 20).WithName(fmt.Sprintf("binlog-%d", toppar.Partition)).WithNumShards(16).WithCompactionWorkerNum(2)
-		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default())
+		gravelDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, fmt.Sprintf("%d", toppar.Partition)), &gravelOpts, encoders.Default(), n.Clock)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func InitDB(n nitrous.Nitrous) (*NitrousDB, error) {
 	// Create gravel for aggregate definitions, we don't expect a lot of data to be here, so we use a small ~10MB
 	// memtable
 	aggOpts := gravel.DefaultOptions().WithMaxTableSize(10 << 20).WithName("aggdef").WithCompactionWorkerNum(1) // 10 MB
-	aggregatesDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, "aggdef"), &aggOpts, encoders.Default())
+	aggregatesDb, err := gravelDB.NewHangar(n.PlaneID, path.Join(n.DbDir, "aggdef"), &aggOpts, encoders.Default(), n.Clock)
 	if err != nil {
 		return nil, err
 	}

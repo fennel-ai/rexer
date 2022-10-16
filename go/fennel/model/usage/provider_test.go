@@ -15,7 +15,7 @@ func testInsertAndQuery(t *testing.T, p provider) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	startTime := uint64(tier.Clock.Now())
+	startTime := uint64(tier.Clock.Now().Unix())
 	endTime := startTime + 1
 	items := make([]*usagelib.UsageCountersProto, 4)
 	for i := 0; i < 4; i++ {

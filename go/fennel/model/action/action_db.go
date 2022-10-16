@@ -36,7 +36,7 @@ func InsertBatch(ctx context.Context, tier tier.Tier, actions []action.Action) e
 			return fmt.Errorf("invalid action: %v", err)
 		}
 		if a.Timestamp == 0 {
-			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
+			a.Timestamp = ftypes.Timestamp(tier.Clock.Now().Unix())
 		}
 		actionSers[i] = serializeAction(a)
 	}

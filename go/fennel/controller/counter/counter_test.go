@@ -3,6 +3,9 @@ package counter
 import (
 	"context"
 	"testing"
+	"time"
+
+	clock2 "github.com/raulk/clock"
 
 	"fennel/engine/ast"
 	libaggregate "fennel/lib/aggregate"
@@ -20,9 +23,11 @@ import (
 func TestRolling(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*30
+	t0 := clock.Now()
+	t1 := t0.Add((24*3600*12 + 60*30) * time.Second)
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -39,7 +44,7 @@ func TestRolling(t *testing.T) {
 	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
-		ts := ftypes.Timestamp(start + i*60 + 30)
+		ts := ftypes.Timestamp(int(t1.Unix()) + i*60 + 30)
 		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
@@ -49,10 +54,8 @@ func TestRolling(t *testing.T) {
 	}
 	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
-
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(uint32(start + 24*3600*2))
+	clock.Set(t1)
+	clock.Add(24 * 3600 * 2 * time.Second)
 	// at the end of 2 days, rolling counter should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -68,6 +71,7 @@ func TestRolling(t *testing.T) {
 func TestTimeseries(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
 
 	ctx := context.Background()
 	start := 24*3600*12 + 60
@@ -101,9 +105,10 @@ func TestTimeseries(t *testing.T) {
 	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(uint32(start + 24*3600*2))
+	t0 := clock.Now()
+	clock.Set(t0.Add(time.Duration(start) * time.Second))
+	t1 := clock.Now()
+	clock.Set(t1.Add(24 * 3600 * 2 * time.Second))
 	// at the end of 2 days, we should get one data point each for 9 days
 	f, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(nil))
 	assert.NoError(t, err)
@@ -120,7 +125,7 @@ func TestTimeseries(t *testing.T) {
 
 	// but if we set time to just at 6 hours from start, we will still 9 entries, but few will be zero padded
 	// and since our start time is 1 min delayed, the 4th entry will be one short of 60
-	clock.Set(uint32(start + 6*3600))
+	clock.Set(t1.Add(6 * 3600 * time.Second))
 	f, err = Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(nil))
 	assert.NoError(t, err)
 	found, ok = f.(value.List)
@@ -144,9 +149,11 @@ func TestTimeseries(t *testing.T) {
 func TestRollingAverage(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*30
+	t0 := clock.Now()
+	t1 := t0.Add((24*3600*12 + 60*30) * time.Second)
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -162,7 +169,7 @@ func TestRollingAverage(t *testing.T) {
 	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
-		ts := ftypes.Timestamp(start + i*60 + 30)
+		ts := ftypes.Timestamp(int(t1.Unix()) + i*60 + 30)
 		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
@@ -173,9 +180,8 @@ func TestRollingAverage(t *testing.T) {
 	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(uint32(start + 24*3600*2))
+	clock.Set(t1)
+	clock.Add(24 * 3600 * 2 * time.Second)
 	// at the end of 2 days, rolling average should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -193,9 +199,11 @@ func TestRollingAverage(t *testing.T) {
 func TestStream(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*30
+	t0 := clock.Now()
+	t1 := t0.Add((24*3600*12 + 60*30) * time.Second)
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -213,7 +221,7 @@ func TestStream(t *testing.T) {
 	expected2 := make([]value.Value, 0)
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
-		ts := ftypes.Timestamp(start + i*60 + 30)
+		ts := ftypes.Timestamp(int(t1.Unix()) + i*60 + 30)
 		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
@@ -230,9 +238,8 @@ func TestStream(t *testing.T) {
 	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(uint32(start + 24*3600*2))
+	clock.Set(t1)
+	clock.Add(24 * 3600 * 2 * time.Second)
 	// at the end of 2 days, stream should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -256,9 +263,11 @@ func slice(l value.List) []value.Value {
 func TestRate(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
 
 	ctx := context.Background()
-	start := 24*3600*12 + 60*30
+	t0 := clock.Now()
+	t1 := t0.Add((24*3600*12 + 60*30) * time.Second)
 	agg := libaggregate.Aggregate{
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
@@ -277,7 +286,7 @@ func TestRate(t *testing.T) {
 	var num, den int64 = 0, 0
 	var num2, den2 int64 = 0, 0
 	for i := 0; i < 60*24*2; i++ {
-		ts := ftypes.Timestamp(start + i*60 + 30)
+		ts := ftypes.Timestamp(int(t1.Unix()) + i*60 + 30)
 		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
@@ -296,9 +305,8 @@ func TestRate(t *testing.T) {
 	err := Update(ctx, tier, agg.Id, agg.Options, table)
 	assert.NoError(t, err)
 
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(uint32(start + 24*3600*2))
+	clock.Set(t1)
+	clock.Add(24 * 3600 * 2 * time.Second)
 	// at the end of 2 days, rate should only be worth 28 hours, not full 48 hours
 	found, err := Value(ctx, tier, agg.Id, agg.Options, key, value.NewDict(map[string]value.Value{"duration": value.Int(28 * 3600)}))
 	assert.NoError(t, err)
@@ -332,13 +340,16 @@ func TestBatchValue(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
+	clock := tier.Clock.(*clock2.Mock)
 
-	start := 0
+	// set some non-zero time so that on the first `BatchValue` call, during bucketizer, the timestamp used is not ZERO
+	t0 := clock.Now().Add(3600 * time.Second)
+	clock.Set(t0)
 	key := value.Int(0)
 	table := value.NewList()
 	// create an event every minute for 2 days
 	for i := 0; i < 60*24*2; i++ {
-		ts := ftypes.Timestamp(start + i*60 + 30)
+		ts := ftypes.Timestamp(int(t0.Unix()) + i*60 + 30)
 		row := value.NewDict(map[string]value.Value{
 			"timestamp": value.Int(ts),
 			"groupkey":  key,
@@ -386,9 +397,7 @@ func TestBatchValue(t *testing.T) {
 	assert.NoError(t, err)
 
 	// should find this time
-	clock := &test.FakeClock{}
-	tier.Clock = clock
-	clock.Set(uint32(start + 24*3600*2))
+	clock.Set(t0.Add(24 * 3600 * 2 * time.Second))
 
 	exp1, exp2 = value.Int(60*48), value.Double(1.0)
 	found, err = BatchValue(ctx, tier, aggIds, aggOptions, keys, kwargs)
@@ -398,7 +407,7 @@ func TestBatchValue(t *testing.T) {
 
 	// now go forward 2 more days and check with duration of 1 day
 	// should find nothing
-	clock.Set(uint32(start + 24*3600*4))
+	clock.Set(t0.Add(24 * 3600 * 4 * time.Second))
 	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	exp1, exp2 = value.Int(0), value.Double(0.0)
@@ -421,6 +430,9 @@ func TestBatchValue(t *testing.T) {
 func TestDurations(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
+	// set a non-zero time so that when `Value` is called in the bucketizer logic, it does not crash
+	clock.Add(1 * time.Second)
 	ctx := context.Background()
 
 	durations := []uint32{7 * 24 * 3600, 14 * 24 * 3600}

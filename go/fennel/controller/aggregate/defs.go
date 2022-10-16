@@ -3,6 +3,11 @@ package aggregate
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"fennel/lib/aggregate"
 	"fennel/lib/automl/vae"
 	"fennel/lib/ftypes"
@@ -10,10 +15,6 @@ import (
 	modelAgg "fennel/model/aggregate"
 	nitrous "fennel/nitrous/client"
 	"fennel/tier"
-	"fmt"
-	"strconv"
-	"strings"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -93,7 +94,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 
 			tier.Logger.Debug("Storing new aggregate")
 			if agg.Timestamp == 0 {
-				agg.Timestamp = ftypes.Timestamp(time.Now().Unix())
+				agg.Timestamp = ftypes.Timestamp(tier.Clock.Now().Unix())
 			}
 			agg.Active = true
 			if agg.Options.AggType == "knn" {

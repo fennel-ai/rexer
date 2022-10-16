@@ -30,7 +30,7 @@ func Insert(ctx context.Context, tier tier.Tier, a actionlib.Action) error {
 	ctx, t := timer.Start(ctx, tier.ID, "controller.action.insert")
 	defer t.Stop()
 	if a.Timestamp == 0 {
-		a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
+		a.Timestamp = ftypes.Timestamp(tier.Clock.Now().Unix())
 	}
 	pa, err := actionlib.ToProtoAction(a)
 	if err != nil {
@@ -68,7 +68,7 @@ func BatchInsert(ctx context.Context, tier tier.Tier, actions []actionlib.Action
 			return fmt.Errorf("invalid action: %v", err)
 		}
 		if a.Timestamp == 0 {
-			a.Timestamp = ftypes.Timestamp(tier.Clock.Now())
+			a.Timestamp = ftypes.Timestamp(tier.Clock.Now().Unix())
 		}
 		pa, err := actionlib.ToProtoAction(a)
 		if err != nil {
