@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"fennel/kafka"
@@ -299,14 +300,15 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 	rpcclient := rpc.NewNitrousClient(conn)
 	// Channel to send requests to workers.
 	reqCh := make(chan getRequest, 16)
-	// Channel to initite creation of a worker.
-	runWorkerCh := make(chan struct{})
-	runWorker := func() {
+	// Channel to initiate creation of a worker.
+	runWorkerCh := make(chan int, 1)
+	runWorker := func(workerId int) {
 		numStreamsGauge.Inc()
 		// When terminating, trigger creation of a new worker.
 		defer func() {
+			zap.L().Warn("closing stream...", zap.Int("workerId", workerId))
 			numStreamsGauge.Dec()
-			runWorkerCh <- struct{}{}
+			runWorkerCh <- workerId
 		}()
 		ctx := context.Background()
 		ctx, cancelFn := context.WithCancel(ctx)
@@ -315,27 +317,54 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 		defer cancelFn()
 		worker, err := rpcclient.GetAggregateValues(ctx)
 		if err != nil {
-			zap.L().Error("Failed to create getter", zap.Error(err))
+			zap.L().Error("Failed to create getter", zap.Error(err), zap.Int("workerId", workerId))
 			return
 		}
+
+		// The following cases are not yet covered properly:
+		//
+		// 1. Client sends a request over the stream. The request was received by the server and is processing. During
+		// 	this time, a worker could have sent at most 16 more requests. Say, before receiving response from the
+		// 	server, the stream is closed or broken. Currently, the worker closes the "reader" and the "writer" and
+		// 	tries to re-initiate a stream. Due to the status of the in-flight requests is lost. This in the upstream
+		// 	is realized through a timeout (currently context based timeout)
+		// 2. gRPC "write" could be a non-blocking call, which could mean queuing at the networking layer, which leads
+		// 	to a similar as earlier, just that the request was never sent to the server. This needs to be confirmed
+		//  since the documentation is all-over the place and behavior for different programming languages is different.
+
+		// respChCh is a channel to send channels through the responses will be sent back to the caller. Also:
+		// 	1. Making it a buffered channel of 16, helps with "throttling" on the client side, limiting in-flight
+		// 		requests to at most 16.
+		//	2. As the means for the writer to inform the reader that it has closed
 		respChCh := make(chan chan<- mo.Result[[]*value.PValue], 16)
+
+		// readerSignalCh is a channel used by the reader to inform the writer that it has closed, so the writer
+		// should stop sending requests to the worker
+		readerSignalCh := make(chan struct{}, 1)
+
 		// Start a go-routine to collect responses from the server and send
 		// them to the appropriate caller.
 		go func() {
 			for {
 				respCh, ok := <-respChCh
 				if !ok {
+					zap.L().Info("Closing reader", zap.Int("workerId", workerId))
 					return
 				}
 				resp, err := worker.Recv()
 				if err != nil {
-					zap.L().Warn("Failed to receive response", zap.Error(err))
-					// This request has faield, so send an error to the caller.
 					respCh <- mo.Err[[]*value.PValue](err)
-					// Return from the receiving go-routine. The worker should
-					// also terminate since the stream is broken.
-					cancelFn()
-					return
+					if err == io.EOF {
+						// stream is closed, close the reader here, the writer should ideally stop as well
+						zap.L().Error("Stream is closed or broken", zap.Int("workerId", workerId))
+						// Return from the receiving go-routine.
+						cancelFn()
+						close(readerSignalCh)
+						return
+					} else {
+						// some other error, don't have to close the reader
+						zap.L().Error("Failed to receive response", zap.Error(err), zap.Int("workerId", workerId))
+					}
 				} else {
 					if codes.Code(resp.Status.Code) != codes.OK {
 						respCh <- mo.Err[[]*value.PValue](fmt.Errorf("server error: [Code: %v, Message: %s]", resp.Status.Code, resp.Status.Message))
@@ -349,7 +378,8 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 			req, ok := <-reqCh
 			if !ok {
 				// Channel closed, no more requests expected.
-				return
+				zap.L().Info("Request channel closed, closing writer", zap.Int("workerId", workerId))
+				break
 			}
 			aggValueQueue.WithLabelValues("outOfQueue").Inc()
 			// If request has already been cancelled, don't bother sending it.
@@ -362,29 +392,51 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 				Timestamp: uint32(time.Now().UnixMilli()),
 			}
 			if err := cfg.ReqsLogProducer.LogProto(ctx, reqLog, nil); err != nil {
-				zap.L().Warn("Could not log nitrous request", zap.Error(err))
+				zap.L().Warn("Could not log nitrous request", zap.Error(err), zap.Int("workerId", workerId))
 			}
 			err := worker.Send(req.msg)
 			if err != nil {
-				zap.L().Warn("Stream with Nitrous server closed", zap.Error(err))
 				// Return an error to the caller
 				req.respCh <- mo.Err[[]*value.PValue](fmt.Errorf("could not send request: %w", err))
-				close(respChCh)
-				cancelFn()
-				return
+				if err == io.EOF {
+					zap.L().Error("Stream closed or broken, failed to send the request to server", zap.Error(err), zap.Int("workerId", workerId))
+					close(respChCh)
+					break
+				} else {
+					zap.L().Error("Sending message to stream failed", zap.Error(err), zap.Int("workerId", workerId))
+				}
 			} else {
-				respChCh <- req.respCh
+				// It is possible that the writer was able to send 16+ messages over the stream. If the channel
+				// is not read quickly, following write to it will block.
+				//
+				// While waiting for the responses on the stream, the stream could break or close. Since on stream
+				// break, the reader stops, there are no readers so this blocks the writer and bloats up `reqCh`
+				closingWriter := false
+				select {
+				case <-readerSignalCh:
+					zap.L().Info("Reader closed, closing the writer", zap.Int("workerId", workerId))
+					closingWriter = true
+				case respChCh <- req.respCh:
+				}
+				if closingWriter {
+					break
+				}
 			}
+		}
+
+		// close the worker if not already closed
+		if err := worker.CloseSend(); err != nil {
+			zap.L().Error("worker.CloseSend()", zap.Error(err), zap.Int("workerId", workerId))
 		}
 	}
 	go func() {
 		for {
-			<-runWorkerCh
-			go runWorker()
+			workerId := <-runWorkerCh
+			go runWorker(workerId)
 		}
 	}()
 	for i := 0; i < 16; i++ {
-		runWorkerCh <- struct{}{}
+		runWorkerCh <- i
 	}
 	return NitrousClient{
 		Scope:  resource.NewPlaneScope(cfg.TierID),
