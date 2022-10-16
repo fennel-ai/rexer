@@ -74,7 +74,6 @@ func Tier(t *testing.T) tier.Tier {
 	assert.NoError(t, err)
 
 	clock := clock.NewMock()
-	clock.Set(time.Now())
 	_, nitrousClient := nitrous.NewLocalClient(t, tierID, clock)
 
 	return tier.Tier{

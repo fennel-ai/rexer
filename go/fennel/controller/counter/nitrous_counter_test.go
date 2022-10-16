@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	clock2 "github.com/raulk/clock"
+
 	"fennel/engine/ast"
 	libaggregate "fennel/lib/aggregate"
 	"fennel/lib/ftypes"
@@ -19,6 +21,9 @@ func TestNitrousBatchValue(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 	ctx := context.Background()
+
+	clock := tier.Clock.(*clock2.Mock)
+	clock.Set(time.Now())
 
 	wait := func() {
 		count := 0
