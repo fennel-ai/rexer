@@ -29,7 +29,8 @@ export OFFLINE_AGG_BUCKET="t-106-offline-aggregate-output"
 
 # TODO: Configure these for tier 106 correctly
 export MODEL_STORE_S3_BUCKET="my-xgboost-test-bucket-2"
-export MODEL_STORE_ENDPOINT="integration-test-endpoint"
+#export MODEL_STORE_ENDPOINT="integration-test-endpoint"
+export MODEL_STORE_ENDPOINT="t-118"
 
 # TODO: Add SageMakerArgs
 export SAGEMAKER_INSTANCE_TYPE="ml.c5.large"

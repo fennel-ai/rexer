@@ -200,6 +200,16 @@ func FromValueDict(dict value.Dict) (Action, error) {
 				return action, fmt.Errorf("timestamp must be an integer")
 			}
 			action.Timestamp = ftypes.Timestamp(tsCast)
+		} else if ts, ok := timestamp.(value.String); ok {
+			timeParsed, err := time.Parse(time.RFC3339, string(ts))
+			if err != nil {
+				timeParsed, err = time.Parse(time.RFC3339, string(ts+"Z"))
+			}
+			if err != nil {
+				return action, fmt.Errorf("timestamp must be an integer or RFC3339 formatted string: %w", err)
+			}
+			action.Timestamp = ftypes.Timestamp(timeParsed.Unix())
+			return action, nil
 		} else {
 			return action, fmt.Errorf("action timestamp must be an integer")
 		}
