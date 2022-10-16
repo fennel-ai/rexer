@@ -106,7 +106,7 @@ func (bm *BackupManager) PurgeAllExceptVersions(ctx context.Context, versionsToK
 		versionSet[manifestPrefix+version] = struct{}{}
 	}
 
-	pool := parallel.NewWorkerPool[string, struct{}]("backup_deleter", 50 /*nWorkers=*/)
+	pool := parallel.NewWorkerPool[string, struct{}]("backup_deleter", 250 /*nWorkers=*/)
 	_, err = pool.Process(ctx, allRemoteFiles, func(m []string, f []struct{}) error {
 		for _, fileName := range m {
 			// delete the irrelevant version manifests from the remote
@@ -192,7 +192,7 @@ func (bm *BackupManager) BackupPath(ctx context.Context, dir string, versionName
 	// Each local sharded file could be in the order of XX MB (currently capped at 2GB). Since most of the instance
 	// types are limited by 1.5 GBps network bandwidth, we configure the parallel workers and the batch size for
 	// each accordingly
-	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("shard_uploader", 50 /*nWorkers=*/)
+	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("shard_uploader", 250 /*nWorkers=*/)
 	_, err = pool.Process(ctx, newManifest, func(m []*uploadedManifestItem, f []struct{}) error {
 		for _, item := range m {
 			previousItem, ok := lastUploaded[item.LocalName]
@@ -306,7 +306,7 @@ func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionN
 
 	// Each remote file could be in the order of XX MB (currently capped at 2GB). Since most of the instance types are
 	// limited by 1.5 GBps, we configure the parallel workers and the batch size for each accordingly
-	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("backup_downloader", 50 /*nWorkers=*/)
+	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("backup_downloader", 250 /*nWorkers=*/)
 	_, err = pool.Process(ctx, manifest, func(m []*uploadedManifestItem, f []struct{}) error {
 		for _, i := range m {
 			localDownloadedName := filepath.Join(dir, i.LocalName)

@@ -186,9 +186,10 @@ func BatchValue(
 			nitrousComparison.WithLabelValues("len").Inc()
 			zap.L().Warn("nitrous returned values and memoryDb computed values are different in length", zap.Int("memoryDb", len(ret)), zap.Int("nitrous", len(retNitrous)))
 		} else {
+			nitrousComparison.WithLabelValues("total_values").Add(float64(len(ret)))
 			for i, v := range ret {
 				if !v.Equal(retNitrous[i]) {
-					nitrousComparison.WithLabelValues("value").Inc()
+					nitrousComparison.WithLabelValues("value_mismatch").Inc()
 					zap.L().Info("memorydb counter value and nitrous counter value are different", zap.Any("memoryDb", v), zap.Any("nitrous", retNitrous[i]))
 				}
 			}
