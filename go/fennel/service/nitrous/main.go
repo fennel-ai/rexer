@@ -72,6 +72,7 @@ func main() {
 	arg.MustParse(&flags)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	parallel.InitQuota("nitrous", parallel.AllCPUs)
+	parallel.InitQuota("gravel_compaction", 3) // at most 3 running compactions globally to mitigate OOM risk
 
 	// Start a prometheus server.
 	common.StartPromMetricsServer(flags.MetricsPort)
