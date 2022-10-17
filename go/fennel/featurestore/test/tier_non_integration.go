@@ -12,11 +12,11 @@ import (
 	"fennel/featurestore/test/kafka"
 	"fennel/featurestore/test/nitrous"
 	"fennel/featurestore/tier"
-	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	unleashlib "fennel/lib/unleash"
 	"fennel/pcache"
 	"fennel/s3"
+	"github.com/raulk/clock"
 
 	"github.com/Unleash/unleash-client-go/v3"
 	"github.com/samber/mo"
@@ -59,7 +59,7 @@ func Tier(t *testing.T) tier.Tier {
 		PCache:           PCache,
 		NitrousClient:    mo.Some(nitrousClient),
 		Producers:        producers,
-		Clock:            clock.Unix{},
+		Clock:            clock.New(),
 		NewKafkaConsumer: tier.KafkaConsumerCreator(consumerCreator),
 		S3Client:         s3Client,
 		Logger:           logger,

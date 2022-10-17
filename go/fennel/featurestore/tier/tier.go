@@ -9,6 +9,7 @@ import (
 
 	"fennel/airbyte"
 	"fennel/lib/instancemetadata"
+	"github.com/raulk/clock"
 
 	"github.com/Unleash/unleash-client-go/v3"
 
@@ -16,7 +17,6 @@ import (
 	libkafka "fennel/kafka"
 	"fennel/lib/aggregate"
 	"fennel/lib/cache"
-	"fennel/lib/clock"
 	"fennel/lib/ftypes"
 	libnitrous "fennel/lib/nitrous"
 	"fennel/lib/timer"
@@ -317,7 +317,7 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 	return Tier{
 		DB:               sqlConn.(db.Connection),
 		Producers:        producers,
-		Clock:            clock.Unix{},
+		Clock:            clock.New(),
 		ID:               tierID,
 		Logger:           logger,
 		PCache:           pCache,
