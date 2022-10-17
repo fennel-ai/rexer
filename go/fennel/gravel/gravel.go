@@ -46,6 +46,7 @@ type Gravel struct {
 	memtables    [2]*Memtable
 	memtableLock sync.RWMutex
 	flushingChan chan struct{}
+	flushingWg   sync.WaitGroup
 
 	tm                  *TableManager
 	opts                Options
@@ -72,6 +73,7 @@ func Open(opts Options, clock clock.Clock) (ret *Gravel, failure error) {
 	ret = &Gravel{
 		memtableLock:        sync.RWMutex{},
 		flushingChan:        make(chan struct{}, 1),
+		flushingWg:          sync.WaitGroup{},
 		tm:                  tableManager,
 		opts:                opts,
 		stats:               Stats{},
@@ -202,6 +204,7 @@ func (g *Gravel) Close() error {
 	if err := g.Flush(); err != nil {
 		return err
 	}
+	g.flushingWg.Wait()
 	// notify that the db has been closed
 	g.closeCh <- struct{}{}
 	return g.tm.Close()
@@ -243,7 +246,9 @@ func (g *Gravel) flush() error {
 	g.memtables[0], g.memtables[1] = g.memtables[1], g.memtables[0]
 	g.memtableLock.Unlock()
 
+	g.flushingWg.Add(1)
 	go func() {
+		defer g.flushingWg.Done()
 		// since a flush is being attempted, reset the periodic flush
 		tablefiles, err := g.memtables[1].Flush(g.opts.TableType, g.opts.Dirname)
 
