@@ -106,11 +106,11 @@ func TestNitrousBatchValue(t *testing.T) {
 
 	// not specifying a duration in kwargs should return an error
 	kwargs[1] = value.NewDict(nil)
-	found, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
+	_, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.Error(t, err)
 
 	// specifying a duration that wasn't registered should also return an error
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)})
-	found, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
+	_, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.Error(t, err)
 }

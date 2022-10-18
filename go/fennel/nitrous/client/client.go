@@ -139,7 +139,6 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 				Timestamp: uint32(timestamp),
 			},
 		}
-		fmt.Printf("op: %v\n", op)
 		// compute the hash and push to that specific partition
 		//
 		// we could have relied on Kafka key partitioner, but we need to perform a similar operation on the read path
