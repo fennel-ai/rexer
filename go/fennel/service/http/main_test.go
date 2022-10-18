@@ -498,7 +498,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
 
 	// wait for the aggregate to be consumed
-	time.Sleep(2 * time.Second)
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	// initially count is zero
 	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
@@ -521,7 +521,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.NoError(t, err)
 
 	// wait for the actions to be consumed
-	time.Sleep(2 * time.Second)
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	clock.Set(t1.Add(60 * time.Second))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
@@ -544,7 +544,7 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	assert.NoError(t, err)
 
 	// wait for the actions to be consumed
-	time.Sleep(2 * time.Second)
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	clock.Set(t2.Add(60 * time.Second))
 	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
