@@ -192,7 +192,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "repo": "https://fennel-ai.github.io/public/helm-charts/airbyte/",
         },
         chart: "airbyte",
-        version: "0.4.10",
+        version: "0.4.11",
         values: {
             "version": imageTag,
 
@@ -240,6 +240,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 "podAnnotations": {
                     "linkerd.io/inject": "disabled",
                 },
+                "temporal_dbname": `t_${input.tierId}_temporal`,
+                "temporal_visibility_dbname": `t_${input.tierId}_temporal_visibility`
             },
 
             "server": {
