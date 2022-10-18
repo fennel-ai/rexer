@@ -60,3 +60,16 @@ func Drain(t *testing.T, c client.NitrousClient) {
 	// that happening.
 	time.Sleep(1 * time.Second)
 }
+
+func WaitForMessagesToBeConsumed(t *testing.T, ctx context.Context, client client.NitrousClient) {
+	count := 0
+	for count < 3 {
+		// Assuming that nitrous tails the log every 1s in tests.
+		time.Sleep(1 * time.Second)
+		lag, err := client.GetLag(ctx)
+		assert.NoError(t, err)
+		if lag == 0 {
+			count++
+		}
+	}
+}

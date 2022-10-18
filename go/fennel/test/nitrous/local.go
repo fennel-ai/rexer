@@ -21,7 +21,6 @@ func NewLocalClient(t *testing.T, tierId ftypes.RealmID, clock clock.Clock) (*rp
 		ServerAddr:            addr.String(),
 		BinlogProducer:        n.NewBinlogProducer(t),
 		BinlogPartitions:      1,
-		ReqsLogProducer:       n.NewReqLogProducer(t),
 		AggregateConfProducer: n.NewAggregateConfProducer(t),
 	}
 	r, err := config.Materialize()

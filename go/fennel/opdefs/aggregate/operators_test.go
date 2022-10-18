@@ -54,6 +54,9 @@ func TestAggValue_Apply(t *testing.T) {
 	assert.NoError(t, aggregate.Store(ctx, tier, agg))
 	assert.NoError(t, aggregate.Store(ctx, tier, agg2))
 
+	// wait for the aggregates to be consumed
+	time.Sleep(2 * time.Second)
+
 	uids := []ftypes.OidType{"1", "2", "1"}
 	var actions []action.Action
 	var err error
@@ -71,6 +74,10 @@ func TestAggValue_Apply(t *testing.T) {
 	clock.Set(t1.Add(3600 * time.Second))
 	assert.NoError(t, aggregate.Update(ctx, tier, actions, agg))
 	assert.NoError(t, aggregate.Update(ctx, tier, actions, agg2))
+
+	// wait for the actions to be consumed
+	time.Sleep(2 * time.Second)
+
 	found, err := aggregate.Value(ctx, tier, agg.Name, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	assert.NoError(t, err)
 	assert.Equal(t, value.Int(2), found)

@@ -38,10 +38,10 @@ var aggValueQueue = promauto.NewCounterVec(
 type NitrousClient struct {
 	resource.Scope
 
-	binlog kafka.FProducer
-	aggregateConf kafka.FProducer
+	binlog           kafka.FProducer
+	aggregateConf    kafka.FProducer
 	binlogPartitions uint32
-	reader rpc.NitrousClient
+	reader           rpc.NitrousClient
 
 	reqCh chan<- getRequest
 }
@@ -139,6 +139,7 @@ func (nc NitrousClient) Push(ctx context.Context, aggId ftypes.AggId, updates va
 				Timestamp: uint32(timestamp),
 			},
 		}
+		fmt.Printf("op: %v\n", op)
 		// compute the hash and push to that specific partition
 		//
 		// we could have relied on Kafka key partitioner, but we need to perform a similar operation on the read path
@@ -228,11 +229,10 @@ func (nc NitrousClient) GetLag(ctx context.Context) (uint64, error) {
 }
 
 type NitrousClientConfig struct {
-	TierID         ftypes.RealmID
-	ServerAddr     string
-	BinlogPartitions uint32
-	BinlogProducer kafka.FProducer
-	ReqsLogProducer kafka.FProducer
+	TierID                ftypes.RealmID
+	ServerAddr            string
+	BinlogPartitions      uint32
+	BinlogProducer        kafka.FProducer
 	AggregateConfProducer kafka.FProducer
 }
 
@@ -387,13 +387,6 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 				req.respCh <- mo.Err[[]*value.PValue](err)
 				continue
 			}
-			reqLog := &rpc.ReqLog{
-				Req: req.msg,
-				Timestamp: uint32(time.Now().UnixMilli()),
-			}
-			if err := cfg.ReqsLogProducer.LogProto(ctx, reqLog, nil); err != nil {
-				zap.L().Warn("Could not log nitrous request", zap.Error(err), zap.Int("workerId", workerId))
-			}
 			err := worker.Send(req.msg)
 			if err != nil {
 				// Return an error to the caller
@@ -439,11 +432,11 @@ func (cfg NitrousClientConfig) Materialize() (resource.Resource, error) {
 		runWorkerCh <- i
 	}
 	return NitrousClient{
-		Scope:  resource.NewPlaneScope(cfg.TierID),
-		reader: rpcclient,
-		reqCh:  reqCh,
-		binlog: cfg.BinlogProducer,
+		Scope:            resource.NewPlaneScope(cfg.TierID),
+		reader:           rpcclient,
+		reqCh:            reqCh,
+		binlog:           cfg.BinlogProducer,
 		binlogPartitions: cfg.BinlogPartitions,
-		aggregateConf: cfg.AggregateConfProducer,
+		aggregateConf:    cfg.AggregateConfProducer,
 	}, nil
 }

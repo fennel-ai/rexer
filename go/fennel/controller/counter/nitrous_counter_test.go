@@ -12,9 +12,9 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 	"fennel/test"
+	"fennel/test/nitrous"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestNitrousBatchValue(t *testing.T) {
@@ -24,20 +24,6 @@ func TestNitrousBatchValue(t *testing.T) {
 
 	clock := tier.Clock.(*clock2.Mock)
 	clock.Set(time.Now())
-
-	wait := func() {
-		count := 0
-		for count < 3 {
-			// Assuming that nitrous tails the log every 1s in tests.
-			time.Sleep(1 * time.Second)
-			lag, err := tier.NitrousClient.MustGet().GetLag(ctx)
-			assert.NoError(t, err)
-			tier.Logger.Info("Lag", zap.Uint64("value", lag))
-			if lag == 0 {
-				count++
-			}
-		}
-	}
 
 	aggs := []libaggregate.Aggregate{{
 		Name:      "mycounter",
@@ -60,11 +46,11 @@ func TestNitrousBatchValue(t *testing.T) {
 	}}
 
 	for _, agg := range aggs {
-		err := tier.NitrousClient.MustGet().CreateAggregate(ctx, agg.Id, agg.Options)
+		err := tier.NitrousClient.CreateAggregate(ctx, agg.Id, agg.Options)
 		assert.NoError(t, err)
 	}
 	// Wait for nitrous to finish consuming from binlog.
-	wait()
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	aggIds := []ftypes.AggId{aggs[0].Id, aggs[1].Id}
 	key := value.Int(0)
@@ -76,8 +62,7 @@ func TestNitrousBatchValue(t *testing.T) {
 
 	// initially should find nothing
 	exp1, exp2 := value.Int(0), value.Double(0)
-	found := make([]value.Value, 2)
-	err := NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
+	found, err := BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.NoError(t, err)
 	assert.True(t, exp1.Equal(found[0]))
 	assert.True(t, exp2.Equal(found[1]))
@@ -95,16 +80,16 @@ func TestNitrousBatchValue(t *testing.T) {
 		})
 		table.Append(row)
 	}
-	err = Update(ctx, tier, aggs[0].Id, aggs[0].Options, table)
+	err = Update(ctx, tier, aggs[0].Id, table)
 	assert.NoError(t, err)
-	err = Update(ctx, tier, aggs[1].Id, aggs[1].Options, table)
+	err = Update(ctx, tier, aggs[1].Id, table)
 	assert.NoError(t, err)
 	// Wait for nitrous to finish consuming from binlog.
-	wait()
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	// should find this time
 	exp1, exp2 = value.Int(60*48), value.Double(1.0)
-	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
+	found, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(found))
 	assert.GreaterOrEqual(t, found[0], exp1)
@@ -114,18 +99,18 @@ func TestNitrousBatchValue(t *testing.T) {
 	kwargs[0] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(24 * 3600)})
 	exp1, exp2 = value.Int(60*24), value.Double(1.0)
-	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
+	found, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, found[0], exp1)
 	assert.GreaterOrEqual(t, found[1], exp2)
 
 	// not specifying a duration in kwargs should return an error
 	kwargs[1] = value.NewDict(nil)
-	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
+	found, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.Error(t, err)
 
 	// specifying a duration that wasn't registered should also return an error
 	kwargs[1] = value.NewDict(map[string]value.Value{"duration": value.Int(7 * 24 * 3600)})
-	err = NitrousBatchValue(ctx, tier, aggIds, keys, kwargs, found)
+	found, err = BatchValue(ctx, tier, aggIds, keys, kwargs)
 	assert.Error(t, err)
 }

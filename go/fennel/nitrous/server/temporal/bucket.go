@@ -76,6 +76,7 @@ func (fwb FixedWidthBucketizer) BucketizeMoment(mr counter.MergeReduce, ts uint3
 		buckets := []TimeBucket{
 			{Width: d, Index: ts / d},
 		}
+		// TODO(mohit): TTL should be ts + d*opts.Limit
 		ttls := []int64{int64(d * opts.Limit)}
 		return buckets, ttls, nil
 	} else {

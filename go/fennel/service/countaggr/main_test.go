@@ -12,6 +12,7 @@ import (
 	profile2 "fennel/controller/profile"
 	profilelib "fennel/lib/profile"
 	"fennel/resource"
+	"fennel/test/nitrous"
 
 	"fennel/controller/action"
 	"fennel/controller/aggregate"
@@ -38,6 +39,8 @@ type scenario struct {
 func TestEndToEndActionAggregates(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
+	clock := tier.Clock.(*clock2.Mock)
+	clock.Set(time.Now())
 
 	ctx := context.Background()
 	uid := 1312
@@ -59,24 +62,11 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		},
 		{
 			libaggregate.Aggregate{
-				Name: "agg_2", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
-				Mode:    "rql",
-				Options: libaggregate.Options{AggType: libaggregate.TIMESERIES_SUM, Window: ftypes.Window_HOUR, Limit: 4},
-				Id:      2,
-			},
-			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
-			value.Int(uid),
-			[]value.Dict{value.NewDict(nil)},
-			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
-		},
-		{
-			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
 				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "list", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
-				Id:      3,
+				Id:      2,
 			},
 			value.NewList(),
 			value.Int(uid),
@@ -92,7 +82,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				Source:  libaggregate.SOURCE_ACTION,
 				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "min", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
-				Id:      4,
+				Id:      3,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -107,7 +97,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				Source:  libaggregate.SOURCE_ACTION,
 				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "max", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
-				Id:      5,
+				Id:      4,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -122,7 +112,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				Source:  libaggregate.SOURCE_ACTION,
 				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "stddev", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
-				Id:      6,
+				Id:      5,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -137,7 +127,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				Source:  libaggregate.SOURCE_ACTION,
 				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "average", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
-				Id:      7,
+				Id:      6,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -156,7 +146,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 					Durations: []uint32{3 * 3600, 6 * 3600, 3600},
 					Normalize: true,
 				},
-				Id: 8,
+				Id: 7,
 			},
 			value.Double(0),
 			value.Int(uid),
@@ -171,7 +161,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 				Source:  libaggregate.SOURCE_ACTION,
 				Mode:    "rql",
 				Options: libaggregate.Options{AggType: "topk", Durations: []uint32{3 * 3600, 6 * 3600, 3600}, Limit: 1},
-				Id:      9,
+				Id:      8,
 			},
 			value.NewList(),
 			value.Int(uid),
@@ -188,8 +178,22 @@ func TestEndToEndActionAggregates(t *testing.T) {
 					value.NewList(value.String("share"), value.Double(0.5)),
 				)},
 		},
+		// TODO(mohit): Support for TIMESERIES_SUM is not well handled in Nitrous. Enable this once there is a good
+		// support for it
+		// {
+		// 	libaggregate.Aggregate{
+		// 		Name: "agg_2", Query: getQuery(), Timestamp: 123,
+		// 		Source:  libaggregate.SOURCE_ACTION,
+		// 		Mode:    "rql",
+		// 		Options: libaggregate.Options{AggType: libaggregate.TIMESERIES_SUM, Window: ftypes.Window_HOUR, Limit: 4},
+		// 		Id:      9,
+		// 	},
+		// 	value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
+		// 	value.Int(uid),
+		// 	[]value.Dict{value.NewDict(nil)},
+		// 	[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
+		// },
 	}
-	clock := tier.Clock.(*clock2.Mock)
 	t0 := clock.Now()
 	t1 := t0.Add(3600 * 24 * 15 * time.Second)
 	clock.Set(t1)
@@ -197,6 +201,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	for _, scenario := range scenarios {
 		// first store all aggregates
 		assert.NoError(t, aggregate.Store(ctx, tier, scenario.agg))
+		nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 		// and verify initial value is right
 		for i := range scenario.kwargs {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
@@ -217,6 +222,7 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		}
 	}
 	processInParallel(t, tier, scenarios, actions)
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 	// now the counts should have updated
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
@@ -290,6 +296,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	for _, scenario := range scenarios {
 		// first store all aggregates
 		assert.NoError(t, aggregate.Store(ctx, tier, scenario.agg))
+		nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 		// and verify initial value is right
 		for i := range scenario.kwargs {
 			verify(t, tier, scenario.agg, scenario.key, scenario.kwargs[i], scenario.initial)
@@ -300,6 +307,7 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 	p1 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(ftypes.Timestamp(t1.Unix())+ftypes.Timestamp(1)), value.NewDict(map[string]value.Value{"value": value.Int(1)}))
 	p2 := logProfile(t, tier, ftypes.OidType(strconv.Itoa(uid)), uint64(ftypes.Timestamp(t1.Unix())+ftypes.Timestamp(4000)), value.NewDict(map[string]value.Value{"value": value.Int(2)}))
 	profiles := append(p1, p2...)
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	t2 := t1.Add(7200 * time.Second)
 	clock.Set(t2)
@@ -310,6 +318,8 @@ func TestEndToEndProfileAggregates(t *testing.T) {
 		}
 	}
 	processInParallel(t, tier, scenarios, profiles)
+	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
+
 	// now the counts should have updated
 	for _, scenario := range scenarios {
 		for i := range scenario.kwargs {
