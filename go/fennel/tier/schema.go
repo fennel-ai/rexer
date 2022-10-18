@@ -191,7 +191,7 @@ var Schema = db.Schema{
 			PRIMARY KEY (name),
 			FOREIGN KEY (name) REFERENCES source(name) ON DELETE CASCADE
 		);`,
-	26: `CREATE TABLE IF NOT EXISTS snowflake_source (
+	25: `CREATE TABLE IF NOT EXISTS snowflake_source (
 			name VARCHAR(255) NOT NULL,	
 			source_id VARCHAR(255) NOT NULL,
 			db_name VARCHAR(255) NOT NULL,

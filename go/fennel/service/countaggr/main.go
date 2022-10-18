@@ -339,7 +339,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				if len(values) == 0 {
 					continue
 				}
-				tr.Logger.Debug("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
+				tr.Logger.Info("Processing connector", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("values", len(values)))
 
 				// increment by batch size of the streams consumed
 				metricLabelName := fmt.Sprintf("%s:%s", conn.Name, conn.Destination)
@@ -374,7 +374,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 				}
 
 				if len(batch) == 0 {
-					tr.Logger.Debug("No stream logs after dedup", zap.String("name", conn.Name))
+					tr.Logger.Info("No stream logs after dedup", zap.String("name", conn.Name))
 					continue
 				}
 
@@ -384,7 +384,7 @@ func processConnector(tr tier.Tier, conn data_integration.Connector, stopCh <-ch
 					tr.Logger.Error("Error while transforming stream", zap.Error(err))
 					continue
 				}
-				tr.Logger.Debug("Processing connector after transform", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("transformed values", table.Len()))
+				tr.Logger.Info("Processing connector after transform", zap.String("name", conn.Name), zap.Int("run", run), zap.Int("transformed values", table.Len()))
 
 				// fwd to controller
 				switch conn.Destination {
