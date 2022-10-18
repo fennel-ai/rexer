@@ -172,11 +172,9 @@ func TestCachedValueAll(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	clock := clock2.NewMock()
-	tier.Clock = clock
+	clock := tier.Clock.(*clock2.Mock)
+	clock.Set(time.Now())
 	t0 := clock.Now()
-	t1 := t0.Add(1800 * time.Second)
-	clock.Set(t1)
 
 	agg := aggregate.Aggregate{
 		Id:        1,
