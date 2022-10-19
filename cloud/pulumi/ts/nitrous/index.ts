@@ -92,8 +92,6 @@ export type inputType = {
 
     storageClass?: pulumi.Input<string>,
     storageCapacityGB: number
-    blockCacheMB: number
-    kvCacheMB: number
 
     forceLoadBackup?: boolean,
 
@@ -376,10 +374,6 @@ export const setup = async (input: inputType) => {
                                     `${input.planeId}`,
                                     "--gravel_dir",
                                     "/oxide/gravel",
-                                    "--badger_block_cache_mb",
-                                    `${input.blockCacheMB}`,
-                                    "--ristretto_max_cost",
-                                    (input.kvCacheMB * 1024 * 1024).toString(),
                                     "--otlp-endpoint",
                                     input.otlpEndpoint,
                                     "--dev=false",
@@ -578,10 +572,6 @@ export const setup = async (input: inputType) => {
                                         `${input.planeId}`,
                                         "--gravel_dir",
                                         "/oxide/gravel",
-                                        "--badger_block_cache_mb",
-                                        `${input.blockCacheMB}`,
-                                        "--ristretto_max_cost",
-                                        (input.kvCacheMB * 1024 * 1024).toString(),
                                         "--otlp-endpoint",
                                         input.otlpEndpoint,
                                         "--dev=false",

@@ -567,8 +567,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             replicas: 1,
             storageCapacityGB: 100,
             storageClass: "local",
-            blockCacheMB: 512,
-            kvCacheMB: 1024,
             binlog: {
                 partitions: 10,
             },
@@ -783,11 +781,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             useAmd64: false,
             storageCapacityGB: 1700,
             storageClass: "local",
-            blockCacheMB: 1024 * 16,
-            kvCacheMB: 1024 * 450,
-            // this needs to be consistent with the node group which this pod is going to get scheduled on
-            //
-            // currently m6gd.8xlarge
             resourceConf: {
                 cpu: {
                     request: "30000m",

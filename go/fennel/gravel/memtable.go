@@ -50,7 +50,10 @@ func (mt *Memtable) Iter(shard uint64) map[string]Value {
 // Note that the return of this function may be smaller than the actual memory footprint
 // of this memtable
 func (mt *Memtable) Size() uint64 {
-	return mt.size
+	mt.writelock.RLock()
+	ret := mt.size
+	mt.writelock.RUnlock()
+	return ret
 }
 
 func (mt *Memtable) Len() uint64 {
@@ -61,8 +64,8 @@ func (mt *Memtable) Len() uint64 {
 }
 
 func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
-	mt.writelock.Lock()
-	defer mt.writelock.Unlock()
+	sizeDiff := int64(0)
+	lenDiff := int64(0)
 	for _, e := range entries {
 		hash := Hash(e.key)
 		shard := Shard(hash, mt.numShards)
@@ -74,15 +77,15 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 		// and save one allocation
 		s := *(*string)(unsafe.Pointer(&e.key))
 		if v, found := map_[s]; found {
-			mt.size -= uint64(sizeof(Entry{
+			sizeDiff -= int64(sizeof(Entry{
 				key: e.key,
 				val: v,
 			}))
-			mt.len -= 1
+			lenDiff -= 1
 		}
 		map_[s] = e.val
-		mt.size += uint64(sizeof(e))
-		mt.len += 1
+		sizeDiff += int64(sizeof(e))
+		lenDiff++
 		if e.val.deleted {
 			maybeInc(shouldSample(), &stats.Dels)
 		} else {
@@ -90,25 +93,31 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 		}
 		mt.shardLocks[shard].Unlock()
 	}
-	stats.MemtableSizeBytes.Store(mt.Size())
+
+	mt.writelock.Lock()
+	defer mt.writelock.Unlock()
+	mt.size = uint64(int64(mt.size) + sizeDiff)
+	mt.len = uint64(int64(mt.len) + lenDiff)
+	stats.MemtableSizeBytes.Store(mt.size)
 	stats.MemtableKeys.Store(mt.len)
 	maybeInc(shouldSample(), &stats.Commits)
 	return nil
 }
 
 func (mt *Memtable) Clear() error {
-	mt.writelock.Lock()
-	defer mt.writelock.Unlock()
 
-	for _, m := range mt.maps {
+	for idx, m := range mt.maps {
 		// erase by deletion instead of creating a new map, only to reduce GC burden
 		// downside is blocking the read due to locking.
-		// TODO: shadow memtable to avoid long lock holding
+		mt.shardLocks[idx].Lock()
 		for k := range m {
 			delete(m, k)
 		}
+		mt.shardLocks[idx].Unlock()
 	}
 
+	mt.writelock.Lock()
+	defer mt.writelock.Unlock()
 	mt.size = 0
 	mt.len = 0
 	return nil

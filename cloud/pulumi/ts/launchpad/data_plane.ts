@@ -69,8 +69,6 @@ type NitrousConf = {
     nodeLabels?: Record<string, string>,
     storageClass: string
     storageCapacityGB: number
-    blockCacheMB: number,
-    kvCacheMB: number,
     forceLoadBackup?: boolean,
     binlog: nitrous.binlogConfig,
     mskBinlog?: nitrous.binlogConfig,
@@ -367,8 +365,6 @@ const setupResources = async () => {
 
             storageCapacityGB: input.nitrousConf.storageCapacityGB,
             storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],
-            blockCacheMB: input.nitrousConf.blockCacheMB,
-            kvCacheMB: input.nitrousConf.kvCacheMB,
 
             forceLoadBackup: input.nitrousConf.forceLoadBackup,
 

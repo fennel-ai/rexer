@@ -32,8 +32,6 @@ type Table interface {
 func BuildTable(dirname string, numShards uint64, type_ TableType, mt *Memtable) ([]string, error) {
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.build")
 	defer t.Stop()
-	parallel.Acquire(context.Background(), "nitrous", parallel.OneCPU)
-	defer parallel.Release("nitrous", parallel.OneCPU)
 	// if the directory doesn't exist, create it
 	if err := os.MkdirAll(dirname, os.ModePerm); err != nil {
 		return nil, err
@@ -126,6 +124,8 @@ func PickTablesToCompact(tables []Table) []Table {
 // tables slice should strictly follow the rule that newer table comes later
 // if compacting to the final(oldest) file in the shard, deletion markers will be removed
 func CompactTables(dirname string, tables []Table, shardId uint64, type_ TableType, compactToFinal bool) (string, error) {
+	parallel.Acquire(context.Background(), "gravel_compaction", 1)
+	defer parallel.Release("gravel_compaction", 1)
 	parallel.Acquire(context.Background(), "nitrous", parallel.OneCPU)
 	defer parallel.Release("nitrous", parallel.OneCPU)
 	_, t := timer.Start(context.TODO(), 1, "gravel.table.compaction")

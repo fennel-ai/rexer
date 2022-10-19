@@ -25,19 +25,16 @@ import (
 )
 
 type NitrousArgs struct {
-	s3.S3Args          `json:"s3_._s3_args"`
-	PlaneID            ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
-	MskKafkaServer     string         `arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
-	MskKafkaUsername   string         `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
-	MskKafkaPassword   string         `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
-	BadgerDir          string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
-	PebbleDir          string         `arg:"--pebble_dir,env:PEBBLE_DIR" json:"pebble_dir,omitempty"`
-	GravelDir          string         `arg:"--gravel_dir,env:GRAVEL_DIR" json:"gravel_dir,omitempty"`
-	Partitions 		   []int32 	  	  `arg:"--partitions,env:PARTITIONS" json:"partitions,omitempty"`
-	BinPartitions 	   uint32 		  `arg:"--binlog_partitions,env:BINLOG_PARTITIONS" json:"bin_partitions,omitempty"`
-	BadgerBlockCacheMB int64          `arg:"--badger_block_cache_mb,env:BADGER_BLOCK_CACHE_MB" json:"badger_block_cache_mb,omitempty"`
-	RistrettoMaxCost   uint64         `arg:"--ristretto_max_cost,env:RISTRETTO_MAX_COST" json:"ristretto_max_cost,omitempty"`
-	RistrettoAvgCost   uint64         `arg:"--ristretto_avg_cost,env:RISTRETTO_AVG_COST" json:"ristretto_avg_cost,omitempty" default:"1000"`
+	s3.S3Args        `json:"s3_._s3_args"`
+	PlaneID          ftypes.RealmID `arg:"--plane-id,env:PLANE_ID" json:"plane_id,omitempty"`
+	MskKafkaServer   string         `arg:"--msk-kafka-server,env:MSK_KAFKA_SERVER_ADDRESS" json:"msk_kafka_server,omitempty"`
+	MskKafkaUsername string         `arg:"--msk-kafka-user,env:MSK_KAFKA_USERNAME" json:"msk_kafka_username,omitempty"`
+	MskKafkaPassword string         `arg:"--msk-kafka-password,env:MSK_KAFKA_PASSWORD" json:"msk_kafka_password,omitempty"`
+	BadgerDir        string         `arg:"--badger_dir,env:BADGER_DIR" json:"badger_dir,omitempty"`
+	PebbleDir        string         `arg:"--pebble_dir,env:PEBBLE_DIR" json:"pebble_dir,omitempty"`
+	GravelDir        string         `arg:"--gravel_dir,env:GRAVEL_DIR" json:"gravel_dir,omitempty"`
+	Partitions       []int32        `arg:"--partitions,env:PARTITIONS" json:"partitions,omitempty"`
+	BinPartitions    uint32         `arg:"--binlog_partitions,env:BINLOG_PARTITIONS" json:"bin_partitions,omitempty"`
 
 	InstanceMetadataServiceAddr string `arg:"--instance-metadata-service-addr,env:INSTANCE_METADATA_SERVICE_ADDR" json:"instance_metadata_service_Addr,omitempty"`
 
@@ -45,14 +42,15 @@ type NitrousArgs struct {
 	// variable should be unique for each replica of a StatefulSet in k8s.
 	Identity string `arg:"--identity,env:IDENTITY" json:"identity" default:"localhost"`
 	// Flag to enable data compression.
-	Compress bool `arg:"--compress,env:COMPRESS" json:"compress" default:"false"`
-	Dev      bool `arg:"--dev" default:"true" json:"dev,omitempty"`
-	BackupNode   bool   `arg:"--backup-node,env:BACKUP_NODE" json:"backup_node,omitempty"`
-	BackupBucket string `arg:"--backup-bucket,env:BACKUP_BUCKET" json:"backup_bucket,omitempty"`
-	RemoteBackupsToKeep uint32 `arg:"--remote-backups-to-keep,env:REMOTE_BACKUPS_TO_KEEP" default:"2" json:"remote_backups_to_keep,omitempty"`
-	BackupFrequency time.Duration `arg:"--backup-frequency,env:BACKUP_FREQUENCY" json:"backup_frequency,omitempty"`
-	ForceLoadFromBackup bool `arg:"--force-load-from-backup,env:FORCE_LOAD_FROM_BACKUP" json:"force_load_from_backup,omitempty"`
-	ShardName    string `arg:"--shard-name,env:SHARD_NAME" default:"default" json:"shard_name,omitempty"`
+	Compress            bool          `arg:"--compress,env:COMPRESS" json:"compress" default:"false"`
+	Dev                 bool          `arg:"--dev" default:"true" json:"dev,omitempty"`
+	BackupNode          bool          `arg:"--backup-node,env:BACKUP_NODE" json:"backup_node,omitempty"`
+	BackupBucket        string        `arg:"--backup-bucket,env:BACKUP_BUCKET" json:"backup_bucket,omitempty"`
+	RemoteBackupsToKeep uint32        `arg:"--remote-backups-to-keep,env:REMOTE_BACKUPS_TO_KEEP" default:"2" json:"remote_backups_to_keep,omitempty"`
+	BackupFrequency     time.Duration `arg:"--backup-frequency,env:BACKUP_FREQUENCY" json:"backup_frequency,omitempty"`
+	ForceLoadFromBackup bool          `arg:"--force-load-from-backup,env:FORCE_LOAD_FROM_BACKUP" json:"force_load_from_backup,omitempty"`
+	NoLoadFromBackup    bool          `arg:"--no-load-from-backup,env:NO_LOAD_FROM_BACKUP" json:"no_load_from_backup,omitempty"`
+	ShardName           string        `arg:"--shard-name,env:SHARD_NAME" default:"default" json:"shard_name,omitempty"`
 }
 
 func (args NitrousArgs) Valid() error {
@@ -66,9 +64,9 @@ type Nitrous struct {
 	PlaneID              ftypes.RealmID
 	Identity             string
 	Clock                clock.Clock
-	Partitions 			 []int32
-	BinlogPartitions 	 uint32
-	DbDir				 string
+	Partitions           []int32
+	BinlogPartitions     uint32
+	DbDir                string
 	KafkaConsumerFactory KafkaConsumerFactory
 	backupManager        *backup.BackupManager
 }
@@ -126,7 +124,7 @@ func restoreBackupOrReuseData(bm *backup.BackupManager, args NitrousArgs) error 
 	}
 
 	// if nitrous is forced to load from the backup, load from it always
-	if dirEmpty || args.ForceLoadFromBackup {
+	if (dirEmpty || args.ForceLoadFromBackup) && !args.NoLoadFromBackup {
 		// clean up the directory
 		purgeOldData(dbDir)
 
@@ -221,9 +219,9 @@ func CreateFromArgs(args NitrousArgs) (Nitrous, error) {
 		Identity:             args.Identity,
 		KafkaConsumerFactory: consumerFactory,
 		Clock:                clock.New(),
-		Partitions: 		  args.Partitions,
-		BinlogPartitions: 	  args.BinPartitions,
-		DbDir: 				  args.GravelDir,
+		Partitions:           args.Partitions,
+		BinlogPartitions:     args.BinPartitions,
+		DbDir:                args.GravelDir,
 		backupManager:        bm,
 	}, nil
 }
