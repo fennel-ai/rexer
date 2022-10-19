@@ -820,7 +820,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 nodeLabelsForBackup: {
                     "node-group": "p-5-nitrous-backup-ng",
                 },
-                backupFrequencyDuration: "15m",
+                backupFrequencyDuration: "60m",
                 remoteCopiesToKeep: 2,
                 // this needs to be consistent with the node group which this pod is going to get scheduled on
                 //
