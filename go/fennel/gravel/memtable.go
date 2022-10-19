@@ -50,7 +50,10 @@ func (mt *Memtable) Iter(shard uint64) map[string]Value {
 // Note that the return of this function may be smaller than the actual memory footprint
 // of this memtable
 func (mt *Memtable) Size() uint64 {
-	return mt.size
+	mt.writelock.RLock()
+	ret := mt.size
+	mt.writelock.RUnlock()
+	return ret
 }
 
 func (mt *Memtable) Len() uint64 {
@@ -95,7 +98,7 @@ func (mt *Memtable) SetMany(entries []Entry, stats *Stats) error {
 	defer mt.writelock.Unlock()
 	mt.size = uint64(int64(mt.size) + sizeDiff)
 	mt.len = uint64(int64(mt.len) + lenDiff)
-	stats.MemtableSizeBytes.Store(mt.Size())
+	stats.MemtableSizeBytes.Store(mt.size)
 	stats.MemtableKeys.Store(mt.len)
 	maybeInc(shouldSample(), &stats.Commits)
 	return nil
