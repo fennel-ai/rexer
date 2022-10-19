@@ -714,8 +714,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-5-nitrous-ng-arm",
                     instanceTypes: ["m6gd.8xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
+                    minSize: 2,
+                    maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
@@ -777,7 +777,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         // Run nitrous on the plane.
         nitrousConf: {
-            replicas: 1,
+            replicas: 2,
             useAmd64: false,
             storageCapacityGB: 1700,
             storageClass: "local",
@@ -820,7 +820,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 nodeLabelsForBackup: {
                     "node-group": "p-5-nitrous-backup-ng",
                 },
-                backupFrequencyDuration: "15m",
+                backupFrequencyDuration: "60m",
                 remoteCopiesToKeep: 2,
                 // this needs to be consistent with the node group which this pod is going to get scheduled on
                 //

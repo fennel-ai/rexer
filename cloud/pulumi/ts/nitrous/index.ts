@@ -469,7 +469,7 @@ export const setup = async (input: inputType) => {
                                 readinessProbe: ReadinessProbe(healthPort),
                                 volumeMounts: [
                                     {
-                                        name: "badgerdb",
+                                        name: "graveldb",
                                         mountPath: "/oxide",
                                     }
                                 ],
@@ -480,7 +480,7 @@ export const setup = async (input: inputType) => {
                 volumeClaimTemplates: [
                     {
                         metadata: {
-                            name: "badgerdb",
+                            name: "graveldb",
                         },
                         spec: {
                             accessModes: ["ReadWriteOnce"],
@@ -663,7 +663,7 @@ export const setup = async (input: inputType) => {
                                     readinessProbe: ReadinessProbe(healthPort),
                                     volumeMounts: [
                                         {
-                                            name: "badgerdb-backup",
+                                            name: "graveldb-backup",
                                             mountPath: "/oxide",
                                         }
                                     ],
@@ -674,7 +674,7 @@ export const setup = async (input: inputType) => {
                     volumeClaimTemplates: [
                         {
                             metadata: {
-                                name: "badgerdb-backup",
+                                name: "graveldb-backup",
                             },
                             spec: {
                                 accessModes: ["ReadWriteOnce"],
