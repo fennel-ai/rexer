@@ -153,6 +153,14 @@ function Graph({ query, startTime, endTime, step, unit}: GraphProps) {
                     value: Math.round(parseFloat(scalar[1]) * 10 + Number.EPSILON) / 10,
                     series: seriesName,
                 }));
+            }).sort((x, y) => {
+                if (x.series < y.series) {
+                    return -1;
+                }
+                if (x.series > y.series) {
+                    return 1;
+                }
+                return x.time - y.time;
             });
             setData(newData);
         }).catch(()=> {
