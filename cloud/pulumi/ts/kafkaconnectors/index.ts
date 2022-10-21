@@ -176,6 +176,8 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
             "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
             "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
             "flush.size": "1000000",  // 1M
+            // rotate the files every 5 minutes so that the data is flushed constantly
+            "rotate.schedule.interval.ms": "300000", // 5M
             "rotate.interval.ms": "3600000",  // 1H
             "topics.dir": "daily",
 
