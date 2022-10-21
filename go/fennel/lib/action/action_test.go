@@ -173,6 +173,29 @@ func TestActionTimestampResolved(t *testing.T) {
 			Metadata:   value.Int(8),
 		},
 	}, {
+		// Timestamp in the buffer is fine
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(ts.Add(1 *  time.Hour).Unix()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}), a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like",
+			Timestamp:  ftypes.Timestamp(ts.Add(1 *  time.Hour).Unix()),
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}, {
 		v: value.NewDict(map[string]value.Value{
 			"action_id":   value.Int(1),
 			"actor_id":    value.String("aditya"),
@@ -247,7 +270,7 @@ func TestActionTimestampResolved(t *testing.T) {
 }
 
 func TestActionFromFutureFails(t *testing.T) {
-	ts := time.Now().Add(1 * time.Hour)
+	ts := time.Now().Add(60 * 24 * time.Hour)
 	tests := []struct {
 		v value.Dict
 	}{{

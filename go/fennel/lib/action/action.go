@@ -213,6 +213,8 @@ func FromValueDict(dict value.Dict) (Action, error) {
 
 			// TODO(mohit): Remove this hack when we should standardize the expectations around the timestamp format
 			now := time.Now()
+			// Add buffer to avoid clock skew, 1 month
+			now = now.Add(30 * 86400 * time.Second)
 			ts64 := int64(ts)
 			if ts64 > now.Unix() {
 				// ts in seconds could be in future or milliseconds past
