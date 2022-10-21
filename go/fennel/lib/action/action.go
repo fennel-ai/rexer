@@ -148,9 +148,9 @@ func (a Action) ToValueDict() (value.Dict, error) {
 	}), nil
 }
 
-func acceptablePastTimestamp(tsNow, ts int64) bool {
+func acceptablePastTimestamp(tsNow, ts, multiplier int64) bool {
 	// 2 years
-	return tsNow - ts <= 2 * 365 * 12 * 30 * 24 * 60 * 60
+	return tsNow - ts <= 63072000 * multiplier
 }
 
 func FromValueDict(dict value.Dict) (Action, error) {
@@ -215,13 +215,13 @@ func FromValueDict(dict value.Dict) (Action, error) {
 			now := time.Now()
 			ts64 := int64(ts)
 			if ts64 > now.Unix() {
-				// ts is in the future
-				if ts64 <= now.UnixMilli() && acceptablePastTimestamp(now.UnixMilli(), ts64)  {
+				// ts in seconds could be in future or milliseconds past
+				if ts64 <= now.UnixMilli() && acceptablePastTimestamp(now.UnixMilli(), ts64, 1_000)  {
 					// this is milliseconds mostly
 					action.Timestamp = ftypes.Timestamp(ts64 / 1_000)
-				} else if ts64 <= now.UnixMicro() && acceptablePastTimestamp(now.UnixMicro(), ts64) {
+				} else if ts64 <= now.UnixMicro() && acceptablePastTimestamp(now.UnixMicro(), ts64, 1_000_000) {
 					action.Timestamp = ftypes.Timestamp(ts64 / 1_000_000)
-				} else if ts64 <= now.UnixNano() && acceptablePastTimestamp(now.UnixNano(), ts64) {
+				} else if ts64 <= now.UnixNano() && acceptablePastTimestamp(now.UnixNano(), ts64, 1_000_000_000) {
 					action.Timestamp = ftypes.Timestamp(ts64 / 1_000_000_000)
 				} else {
 					totalActionsFutureEventTs.Inc()
