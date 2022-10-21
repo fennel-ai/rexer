@@ -22,7 +22,9 @@ from pyspark.sql import DataFrame
 
 success_file_name = "_SUCCESS-"
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT', 'HYPERPARAMETERS'])
+args = getResolvedOptions(sys.argv,
+    ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME',
+     'DURATION', 'AGGREGATE_TYPE', 'LIMIT', 'HYPERPARAMETERS'])
 print("All args", args)
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -73,21 +75,37 @@ while True:
     else:
         paths.append(path)
 
+
 def unionAll(dfs):
     return reduce(DataFrame.unionAll, dfs)
 
+
 dfs = []
 for path in paths:
-    dfs.append(spark.read.json(path))
+    filtered_df = spark.read.json(path).filter(
+        "aggregate='{}'".format(args["AGGREGATE_NAME"]))
+    if filtered_df.count() != 0:
+        dfs.append(filtered_df)
+
+if len(dfs) == 0:
+    print("No data to process, exiting")
+    sys.exit(1)
+
 actions = unionAll(dfs)
-actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
+print("Union post filtering is done:", actions.count())
+
+# actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
 time_filter = "timestamp>{}".format(lower_time_bound)
 actions = actions.filter(time_filter)
+print("Time filter: ", actions.count())
 
 if actions.filter(col("groupkey").cast("int").isNull()).count() == 0:
-    actions = actions.withColumn("groupkey", actions["groupkey"].cast(IntegerType()))
+    actions = actions.withColumn("groupkey",
+        actions["groupkey"].cast(IntegerType()))
 
-actions = actions.withColumn("vlist", F.col("value.context")).withColumn("weight", F.col("value.weight")).withColumn("context", concat_ws("::", "vlist")).select("groupkey", "context", "weight")
+actions = actions.withColumn("vlist", F.col("value.context")).withColumn(
+    "weight", F.col("value.weight")).withColumn("context",
+    concat_ws("::", "vlist")).select("groupkey", "context", "weight")
 actions.createOrReplaceTempView("ACTIONS")
 
 # Condense actions
@@ -97,73 +115,84 @@ from ACTIONS
 group by groupkey, context
 """
 actions = spark.sql(sql_str)
+actions.createOrReplaceTempView("ACTIONS")
 
-## Overall idea - 
+## Overall idea -
 ## P(O1, O2) = Sum across Movies P(O1 | C) * P(C | O2 ) = P(C, O)/P(C) * P(O2,C) / P(O2)
-
-
 
 ## Sum of weight for objects -> P(O)
 
-if params["object_normalization_func"] == "none":
+if params["object_normalization_func"] == "identity":
     normalization_func = ""
 else:
     normalization_func = params["object_normalization_func"]
-sql_str = """
-select groupkey, p_obj from
-(
-select groupkey, count(context) as obj_cnt, {}(DOUBLE(sum(weight))) as p_obj
-from ACTIONS
-group by groupkey
-) where obj_cnt > {}
-""".format(normalization_func, params["min_co_occurence"])
-p_obj = spark.sql(sql_str)
-p_obj.createOrReplaceTempView("P_OBJ")
 
-## Sum of weight for context -> P(OBJ)
+if normalization_func != "none":
+    sql_str = """
+    select groupkey, p_obj from
+    (
+    select groupkey, count(context) as obj_cnt, {}(DOUBLE(sum(weight))) as p_obj
+    from ACTIONS
+    group by groupkey
+    ) where obj_cnt > {}
+    """.format(normalization_func, params["min_co_occurence"])
+    p_obj = spark.sql(sql_str)
+    p_obj.createOrReplaceTempView("P_OBJ")
 
-sql_str = """
-select * from
-(
-select context, DOUBLE(sum(weight)) as p_context
-from ACTIONS
-group by context
-)
-"""
-p_context = spark.sql(sql_str)
-p_context.createOrReplaceTempView("P_CONTEXT")
+    ## Sum of weight for context -> P(OBJ)
+
+    sql_str = """
+    select * from
+    (
+    select context, DOUBLE(sum(weight)) as p_context
+    from ACTIONS
+    group by context
+    )
+    """
+    p_context = spark.sql(sql_str)
+    p_context.createOrReplaceTempView("P_CONTEXT")
 
 ## O2C P(O1, C)/P(C) (  Normalized by Context )
 
-sql_str = """
-select  a.context, a.groupkey , weight/b.p_context as p_o2c
-from ACTIONS as a
-inner join P_CONTEXT as b
-ON a.context = b.context
-"""
+if normalization_func == "none":
+    sql_str = """
+        select  context, groupkey , weight as p_o2c
+        from ACTIONS
+        """
+else:
+    sql_str = """
+    select  a.context, a.groupkey , weight/b.p_context as p_o2c
+    from ACTIONS as a
+    inner join P_CONTEXT as b
+    ON a.context = b.context
+    """
 
 p_o2c = spark.sql(sql_str)
 p_o2c.createOrReplaceTempView("P_O2C")
 
 ## C2O P(O2,C) / P(O2) ( Normalized by Object)
 
-sql_str = """
 
-select a.context, a.groupkey, weight/b.p_obj as p_c2o
-from ACTIONS as a
-inner join P_OBJ as b
-ON a.groupkey = b.groupkey
-
-"""
+if normalization_func == "none":
+    sql_str = """
+        select context, groupkey, weight as p_c2o
+        from ACTIONS
+    """
+else:
+    sql_str = """
+    select a.context, a.groupkey, weight/b.p_obj as p_c2o
+    from ACTIONS as a
+    inner join P_OBJ as b
+    ON a.groupkey = b.groupkey
+    
+    """
 
 p_c2o = spark.sql(sql_str)
 p_c2o.createOrReplaceTempView("P_C2O")
 
-
-## Cross Join within context and spit out O2O pairs 
+## Cross Join within context and spit out O2O pairs
 
 sql_str = """
-
 select o1, o2, sum(p) as score
 from (
 select a.groupkey as o1, b.groupkey as o2, p_o2c * p_c2o as p
@@ -195,7 +224,8 @@ group by o1
 cf = spark.sql(sql_str)
 cf.createOrReplaceTempView("CF")
 
-zip_cf = cf.withColumn("value", arrays_zip("item","score")).select("key","value")
+zip_cf = cf.withColumn("value", arrays_zip("item", "score")).select("key",
+    "value")
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
 cur_time = datetime.utcnow()
@@ -209,4 +239,5 @@ zip_cf.write.mode('overwrite').json(aggregate_path)
 client = boto3.client('s3')
 some_binary_data = b'Here we have some data'
 cur_timestamp = int(cur_time.timestamp())
-client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"], Key=f't_{args["TIER_ID"]}/{folder_name}/month={month}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')
+client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"],
+    Key=f't_{args["TIER_ID"]}/{folder_name}/month={month}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')

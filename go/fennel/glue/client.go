@@ -16,7 +16,7 @@ import (
 var supportedHyperParameters = hp.HyperParamRegistry{
 	"cf": map[string]hp.HyperParameterInfo{
 		"min_co_occurence":          {Default: 3, Type: reflect.Int, Options: []string{}},
-		"object_normalization_func": {Default: "sqrt", Type: reflect.String, Options: []string{"none", "log", "sqrt"}},
+		"object_normalization_func": {Default: "sqrt", Type: reflect.String, Options: []string{"none", "log", "sqrt", "identity"}},
 	},
 }
 
