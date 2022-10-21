@@ -21,7 +21,9 @@ from functools import reduce  # For Python 3.x
 from pyspark.sql import DataFrame
 
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME', 'DURATION', 'AGGREGATE_TYPE', 'LIMIT'])
+args = getResolvedOptions(sys.argv,
+    ['JOB_NAME', 'INPUT_BUCKET', 'OUTPUT_BUCKET', 'TIER_ID', 'AGGREGATE_NAME',
+     'DURATION', 'AGGREGATE_TYPE', 'LIMIT'])
 print("All args", args)
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -69,20 +71,32 @@ while True:
     else:
         paths.append(path)
 
+
 def unionAll(dfs):
     return reduce(DataFrame.unionAll, dfs)
 
+
 dfs = []
+print("Going to union")
+print(paths)
 for path in paths:
-    dfs.append(spark.read.json(path))
+    filtered_df = spark.read.json(path).filter(
+        "aggregate='{}'".format(args["AGGREGATE_NAME"]))
+    if filtered_df.count() != 0:
+        dfs.append(filtered_df)
 actions = unionAll(dfs)
+print("Union post filtering is done:", actions.count())
 
-actions = actions.filter("aggregate='{}'".format(args["AGGREGATE_NAME"]))
 actions = actions.filter(time_filter)
+print("Time filter: ", actions.count())
 if actions.filter(col("groupkey").cast("int").isNull()).count() == 0:
-    actions = actions.withColumn("groupkey", actions["groupkey"].cast(IntegerType()))
+    actions = actions.withColumn("groupkey",
+        actions["groupkey"].cast(IntegerType()))
 
-ca_df = actions.withColumn("key", F.col("value.item")).withColumn("score", F.col("value.score")).select("key", "score", "groupkey")
+ca_df = actions.withColumn("key", F.col("value.item")).withColumn("score",
+    F.col("value.score")).select("key", "score", "groupkey")
+
+print("Num rows: ", ca_df.count())
 ca_df.createOrReplaceTempView("ACTIONS")
 
 sql_str = """
@@ -101,7 +115,8 @@ group by groupkey
 """.format(args["LIMIT"])
 
 topk = spark.sql(sql_str)
-zip_topk = topk.withColumn("value", arrays_zip("item","score")).select("key","value")
+zip_topk = topk.withColumn("value", arrays_zip("item", "score")).select("key",
+    "value")
 
 folder_name = f'{args["AGGREGATE_NAME"]}-{args["DURATION"]}'
 
@@ -116,4 +131,5 @@ zip_topk.write.mode('overwrite').json(topk_aggregate_path)
 client = boto3.client('s3')
 some_binary_data = b'data'
 cur_timestamp = int(cur_time.timestamp())
-client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"], Key=f't_{args["TIER_ID"]}/{folder_name}/month={month}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')
+client.put_object(Body=some_binary_data, Bucket=args["OUTPUT_BUCKET"],
+    Key=f't_{args["TIER_ID"]}/{folder_name}/month={month}/day={day}/{now_utc.strftime("%H:%M")}/{args["AGGREGATE_TYPE"]}/_SUCCESS-{cur_timestamp}')
