@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"fennel/lib/ftypes"
 	"fennel/lib/value"
 
@@ -15,6 +18,13 @@ const (
 	ACTIONLOG_KAFKA_TOPIC = "actionlog"
 	// NOTE: `actionlog_json` is used to log actions as "labels" of the training dataset;
 	ACTIONLOG_JSON_KAFKA_TOPIC = "actionlog_json"
+)
+
+var totalActionsFutureEventTs = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "future_action_events_total",
+		Help: "Number of actions with event timestamp in the future.",
+	},
 )
 
 type Action struct {
@@ -138,6 +148,11 @@ func (a Action) ToValueDict() (value.Dict, error) {
 	}), nil
 }
 
+func acceptablePastTimestamp(tsNow, ts int64) bool {
+	// 2 years
+	return tsNow - ts <= 2 * 365 * 12 * 30 * 24 * 60 * 60
+}
+
 func FromValueDict(dict value.Dict) (Action, error) {
 	var action Action
 	if actionID, ok := dict.Get("action_id"); ok {
@@ -193,7 +208,29 @@ func FromValueDict(dict value.Dict) (Action, error) {
 	if timestamp, ok := dict.Get("timestamp"); ok {
 
 		if ts, ok := timestamp.(value.Int); ok {
-			action.Timestamp = ftypes.Timestamp(ts)
+			// parse the given timestamp as unix seconds, it is possible that the given timestamp is milliseconds,
+			// microseconds or nanoseconds
+
+			// TODO(mohit): Remove this hack when we should standardize the expectations around the timestamp format
+			now := time.Now()
+			ts64 := int64(ts)
+			if ts64 > now.Unix() {
+				// ts is in the future
+				if ts64 <= now.UnixMilli() && acceptablePastTimestamp(now.UnixMilli(), ts64)  {
+					// this is milliseconds mostly
+					action.Timestamp = ftypes.Timestamp(ts64 / 1_000)
+				} else if ts64 <= now.UnixMicro() && acceptablePastTimestamp(now.UnixMicro(), ts64) {
+					action.Timestamp = ftypes.Timestamp(ts64 / 1_000_000)
+				} else if ts64 <= now.UnixNano() && acceptablePastTimestamp(now.UnixNano(), ts64) {
+					action.Timestamp = ftypes.Timestamp(ts64 / 1_000_000_000)
+				} else {
+					totalActionsFutureEventTs.Inc()
+					return action, fmt.Errorf("timestamp is potentially from the future which is now allowed: %v, now unixSec: %v", ts64, now.Unix())
+				}
+			} else {
+				// the timestamp is from the past which is allowed and is okay
+				action.Timestamp = ftypes.Timestamp(ts)
+			}
 		} else if ts, ok := timestamp.(value.Double); ok {
 			tsCast := int64(ts)
 			if float64(tsCast)-float64(ts) > 0.0001 {
