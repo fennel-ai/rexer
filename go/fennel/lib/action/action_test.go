@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math"
 	"testing"
+	"time"
 
+	"fennel/lib/ftypes"
 	"fennel/lib/value"
 
 	"github.com/stretchr/testify/assert"
@@ -140,6 +142,167 @@ func TestActionFromValueDict(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, test.v, d)
 		assert.Equal(t, test.a, a)
+	}
+}
+
+func TestActionTimestampResolved(t *testing.T) {
+	ts := time.Now()
+	tests := []struct {
+		v value.Dict
+		a Action
+	}{{
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(ts.Unix()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}), a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like",
+			Timestamp:  ftypes.Timestamp(ts.Unix()),
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like2"),
+			"timestamp":   value.Int(ts.UnixMilli()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}), a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like2",
+			Timestamp:  ftypes.Timestamp(ts.Unix()),
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like3"),
+			"timestamp":   value.Int(ts.UnixMicro()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}), a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like3",
+			Timestamp:  ftypes.Timestamp(ts.Unix()),
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		},
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like4"),
+			"timestamp":   value.Int(ts.UnixNano()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}), a: Action{
+			ActionID:   1,
+			ActorID:    `"aditya"`,
+			ActorType:  "user",
+			TargetID:   `"f9rp2"`,
+			TargetType: "video",
+			ActionType: "like4",
+			Timestamp:  ftypes.Timestamp(ts.Unix()),
+			RequestID:  "10",
+			Metadata:   value.Int(8),
+		}},
+	}
+	for _, test := range tests {
+		a, err := FromValueDict(test.v)
+		assert.NoError(t, err)
+		assert.Equal(t, a, test.a)
+	}
+}
+
+func TestActionFromFutureFails(t *testing.T) {
+	ts := time.Now().Add(1 * time.Hour)
+	tests := []struct {
+		v value.Dict
+	}{{
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(ts.Unix()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}),
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(ts.UnixMilli()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}),
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(ts.UnixMicro()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}),
+	}, {
+		v: value.NewDict(map[string]value.Value{
+			"action_id":   value.Int(1),
+			"actor_id":    value.String("aditya"),
+			"actor_type":  value.String("user"),
+			"target_id":   value.String("f9rp2"),
+			"target_type": value.String("video"),
+			"action_type": value.String("like"),
+			"timestamp":   value.Int(ts.UnixNano()),
+			"request_id":  value.Int(10),
+			"metadata":    value.Int(8),
+		}),
+	}}
+
+	for _, test := range tests {
+		_, err := FromValueDict(test.v)
+		assert.Error(t, err)
 	}
 }
 
