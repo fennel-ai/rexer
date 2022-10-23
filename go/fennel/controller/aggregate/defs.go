@@ -13,10 +13,7 @@ import (
 	"fennel/lib/ftypes"
 	"fennel/lib/phaser"
 	modelAgg "fennel/model/aggregate"
-	nitrous "fennel/nitrous/client"
 	"fennel/tier"
-
-	"go.uber.org/zap"
 )
 
 // Data is kept in redis OFFLINE_AGG_TTL_MULTIPLIER times the update frequency
@@ -41,6 +38,8 @@ func getUpdateFrequency(cron string) (time.Duration, error) {
 	}
 	return 0, fmt.Errorf("cron schedule is not valid, reached end of function")
 }
+
+// TODO(mohit): Handle partial success and failure scenarios here with the DB and Nitrous to keep them consistent
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if err := agg.Validate(); err != nil {
@@ -121,7 +120,9 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 				if err != nil {
 					return fmt.Errorf("failed to retrieve aggregate %s after creating: %w", agg.Name, err)
 				}
-				go createOnNitrous(ctx, tier, agg.Id, agg.Options)
+				if err := tier.NitrousClient.CreateAggregate(ctx, agg.Id, agg.Options); err != nil {
+					return fmt.Errorf("failed to create aggregate in nitrous: %v", err)
+				}
 			}
 			return nil
 		} else {
@@ -147,38 +148,13 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			}
 			// Forward online aggregates to nitrous if the client has been initialized.
 			// We do this even if the aggregate has been previously defined.
-			if !agg.IsOffline() && !agg.IsAutoML() && !agg.IsForever() {
-				// Note: we send agg2.Id since agg.Id is not initialized yet.
-				go createOnNitrous(ctx, tier, agg2.Id, agg.Options)
+			if err := tier.NitrousClient.CreateAggregate(ctx, agg.Id, agg.Options); err != nil {
+				return fmt.Errorf("failed to create aggregate in nitrous: %v", err)
 			}
 			return nil
 		} else {
 			return fmt.Errorf("already present but with different query/options")
 		}
-	}
-}
-
-func createOnNitrous(ctx context.Context, tier tier.Tier, aggId ftypes.AggId, aggOptions aggregate.Options) {
-	var err error
-	tier.NitrousClient.ForEach(func(nc nitrous.NitrousClient) {
-		err = nc.CreateAggregate(ctx, aggId, aggOptions)
-	})
-	if err != nil {
-		tier.Logger.Warn("Failed to forward aggregate definition to nitrous", zap.Error(err))
-	} else {
-		tier.Logger.Debug("Forwarded aggregate definition to nitrous", zap.Int("aggId", int(aggId)))
-	}
-}
-
-func deleteFromNitrous(ctx context.Context, tier tier.Tier, aggId ftypes.AggId) {
-	var err error
-	tier.NitrousClient.ForEach(func(nc nitrous.NitrousClient) {
-		err = nc.DeleteAggregate(ctx, aggId)
-	})
-	if err != nil {
-		tier.Logger.Warn("Failed to forward aggregate deletion to nitrous", zap.Error(err))
-	} else {
-		tier.Logger.Debug("Forwarded aggregate deletion to nitrous")
 	}
 }
 
@@ -194,10 +170,9 @@ func Retrieve(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) (aggr
 		if err != nil {
 			return empty, fmt.Errorf("failed to get aggregate: %w", err)
 		}
-		// TODO(mohit): Remove this once Nitrous replay traffic effort is done
-		//if !agg.Active {
-		//	return agg, aggregate.ErrNotActive
-		//}
+		if !agg.Active {
+			return agg, aggregate.ErrNotActive
+		}
 		tier.AggregateDefs.Store(aggname, agg)
 	} else {
 		agg = def.(aggregate.Aggregate)
@@ -247,7 +222,9 @@ func Deactivate(ctx context.Context, tier tier.Tier, aggname ftypes.AggName) err
 
 	// Forward online aggregate deletions to nitrous.
 	if !agg.IsOffline() {
-		go deleteFromNitrous(ctx, tier, agg.Id)
+		if err := tier.NitrousClient.DeleteAggregate(ctx, agg.Id); err != nil {
+			return fmt.Errorf("failed to create aggregate in nitrous: %v", err)
+		}
 	}
 
 	// If it is present and inactive, do nothing
