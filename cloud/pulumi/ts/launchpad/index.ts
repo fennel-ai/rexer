@@ -18,7 +18,6 @@ import * as milvus from "../milvus";
 import { nameof, Plan } from "../lib/util";
 import * as msk from "../msk";
 
-import * as assert from "assert";
 import { DEFAULT_ARM_AMI_TYPE, DEFAULT_X86_AMI_TYPE, ON_DEMAND_INSTANCE_TYPE, SPOT_INSTANCE_TYPE } from "../eks";
 import { OutputMap } from "@pulumi/pulumi/automation";
 import { MothershipDBUpdater, Customer } from "../mothership-updates"
@@ -143,14 +142,14 @@ const tierConfs: Record<number, TierConf> = {
                     "node-group": "p-5-countaggr-ng"
                 },
                 resourceConf: {
-                    // 8x large machine, set requests and limits accordingly
+                    // c6g.2xlarge machine, set requests and limits accordingly
                     cpu: {
-                        request: "28000m",
-                        limit: "31000m",
+                        request: "6000m",
+                        limit: "8000m",
                     },
                     memory: {
-                        request: "55Gi",
-                        limit: "60Gi",
+                        request: "10Gi",
+                        limit: "14Gi",
                     }
                 }
             }
@@ -163,13 +162,14 @@ const tierConfs: Record<number, TierConf> = {
                 minReplicas: 2,
                 maxReplicas: 10,
                 resourceConf: {
+                    // c6g.xlarge machines, set requests and limits accordingly
                     cpu: {
-                        request: "28000m",
-                        limit: "31000m"
+                        request: "2500m",
+                        limit: "3000m"
                     },
                     memory: {
-                        request: "58G",
-                        limit: "63G",
+                        request: "5G",
+                        limit: "7G",
                     }
                 },
                 nodeLabels: {
@@ -205,12 +205,9 @@ const tierConfs: Record<number, TierConf> = {
                     request: "1000m",
                     limit: "2000m",
                 },
-                // TODO(mohit): Reduce requests so that the workers don't require spinning up a new node altogether
-                // since this lies on the production path in the future, this may have to run in a different node
-                // for failure isolations and better reliability
                 memory: {
-                    request: "8Gi",
-                    limit: "12Gi",
+                    request: "2Gi",
+                    limit: "4Gi",
                 }
             }
         },
@@ -628,7 +625,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         controlPlaneConf: controlPlane,
         redisConf: {
-            numShards: 45,
+            // keep 1 shard for the existing users of redis - phaser and action dedup check logic
+            numShards: 1,
             nodeType: "db.r6g.large",
             numReplicasPerShard: 1,
         },
@@ -669,7 +667,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-5-countaggr-ng-arm64",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.8xlarge"],
+                    instanceTypes: ["c6g.2xlarge"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -693,13 +691,31 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     },
                 },
                 {
-                    name: "p-5-query-ng-32c-64G-arm-spot",
+                    name: "p-5-query-ng-4c-8G-arm",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
                     //
                     // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
                     // query servers which are "stateless" anyways. However we do run few binaries which are stateful
                     // and should not be scheduled on these nodes
-                    instanceTypes: ["c6g.8xlarge", "c6gn.8xlarge"],
+                    instanceTypes: ["c6g.xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "on-demand",
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-query-ng-4c-8G-arm-spot",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
                     minSize: 1,
                     maxSize: 10,
                     amiType: DEFAULT_ARM_AMI_TYPE,
