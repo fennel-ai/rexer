@@ -34,9 +34,9 @@ func TestActionDBBasic(t *testing.T) {
 	found, err = Fetch(ctx, tier, request)
 	assert.NoError(t, err)
 	// Just copy the action ids since those are only assigned after insert.
-	action1.ActionID = found[0].ActionID
-	action2.ActionID = found[1].ActionID
-	assert.ElementsMatch(t, []action.Action{action1, action2}, found)
+	action2.ActionID = found[0].ActionID
+	action1.ActionID = found[1].ActionID
+	assert.ElementsMatch(t, []action.Action{action2, action1}, found)
 
 	// and each of the following queries should work
 	request = action.ActionFetchRequest{ActorID: action1.ActorID}
@@ -79,11 +79,11 @@ func TestInsertBatch(t *testing.T) {
 
 	found, err = Fetch(ctx, tier, request)
 	// Just copy the action ids since those are only assigned after insert.
-	action1.ActionID = found[0].ActionID
-	action2.ActionID = found[1].ActionID
+	action2.ActionID = found[0].ActionID
+	action1.ActionID = found[1].ActionID
 	assert.NoError(t, err)
 	assert.Len(t, found, 2)
-	assert.Equal(t, []action.Action{action1, action2}, found)
+	assert.Equal(t, []action.Action{action2, action1}, found)
 }
 
 func TestAction_ToActionSer(t *testing.T) {
