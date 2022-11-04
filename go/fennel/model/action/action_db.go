@@ -100,7 +100,7 @@ func Fetch(ctx context.Context, tier tier.Tier, request action.ActionFetchReques
 	if len(clauses) > 0 {
 		query = fmt.Sprintf("%s WHERE %s", query, strings.Join(clauses, " AND "))
 	}
-	query = fmt.Sprintf("%s ORDER BY timestamp LIMIT 1000;", query)
+	query = fmt.Sprintf("%s ORDER BY timestamp DESC LIMIT 1000;", query)
 	actions := make([]actionSer, 0)
 	statement, err := tier.DB.PrepareNamedContext(ctx, query)
 	if err != nil {

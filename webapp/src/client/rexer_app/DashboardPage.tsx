@@ -86,7 +86,7 @@ function DashboardPage() {
                 </Collapse.Panel>
                 <Collapse.Panel header="Aggregate Lag" key="lag">
                     <Graph
-                        query='sum by (Namespace, aggregate_name) (label_replace(aggregator_backlog{consumer_group!~"^locustfennel.*"}, "aggregate_name", "$1", "consumer_group", "(.*)"))'
+                        query='sum by (Namespace, aggregate_name) (label_replace(aggregator_backlog{consumer_group!~"^locustfennel.*"}, "aggregate_name", "$1", "consumer_group", "(.*)")) > 0'
                         startTime={startTime}
                         endTime={endTime}
                         step={step}
