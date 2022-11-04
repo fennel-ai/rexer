@@ -43,8 +43,8 @@ func TestDBInsertFetch(t *testing.T) {
 	found, err := Fetch(ctx, tier, actionlib.ActionFetchRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, found, 2)
-	assert.True(t, a1.Equals(found[0], true))
-	assert.True(t, a2.Equals(found[1], true))
+	assert.True(t, a1.Equals(found[1], true))
+	assert.True(t, a2.Equals(found[0], true))
 
 	// insert couple more
 	a3 := getAction(1, "12", t1+5, "like")
@@ -54,10 +54,10 @@ func TestDBInsertFetch(t *testing.T) {
 	found, err = Fetch(ctx, tier, actionlib.ActionFetchRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, found, 4)
-	assert.True(t, a1.Equals(found[0], true))
-	assert.True(t, a2.Equals(found[1], true))
-	assert.True(t, a3.Equals(found[2], true))
-	assert.True(t, a4.Equals(found[3], true))
+	assert.True(t, a1.Equals(found[3], true))
+	assert.True(t, a2.Equals(found[2], true))
+	assert.True(t, a3.Equals(found[1], true))
+	assert.True(t, a4.Equals(found[0], true))
 }
 
 func testKafkaInsertRead(t *testing.T, batch bool) {
