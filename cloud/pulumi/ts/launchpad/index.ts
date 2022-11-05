@@ -332,6 +332,8 @@ const tierConfs: Record<number, TierConf> = {
         airbyteConf: {
             publicServer: false,
         },
+        plan: Plan.STARTUP,
+        requestLimit: 0,
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
