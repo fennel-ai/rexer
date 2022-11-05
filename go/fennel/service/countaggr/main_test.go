@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -245,6 +247,10 @@ func TestEndToEndActionAggregates(t *testing.T) {
 	assert.NoError(t, action.TransferToDB(ctx, tier, consumer))
 	found, err = action.Fetch(ctx, tier, actionlib.ActionFetchRequest{})
 	assert.NoError(t, err)
+	fmt.Printf("found: %v actions: %v\n", found, actions)
+	sort.Slice(actions, func(i, j int) bool {
+		return actions[i].Timestamp > actions[j].Timestamp
+	})
 	for i, a := range actions {
 		assert.True(t, a.Equals(found[i], true))
 	}
