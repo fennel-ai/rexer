@@ -120,7 +120,7 @@ func TestLogFetchServerClient(t *testing.T) {
 		ActorType: "22", ActorID: "23", ActionType: "23", TargetType: "24", TargetID: "25", RequestID: "26", Timestamp: 27, Metadata: value.Nil}
 	addBatch(t, c, []action.Action{a2, a3})
 	assert.NoError(t, action2.TransferToDB(ctx, tier, consumer))
-	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a1, a2, a3})
+	verifyFetch(t, c, action.ActionFetchRequest{}, []action.Action{a3, a2, a1})
 
 	// test duplicate behaviour without dedup_key
 	d1 := action.Action{
