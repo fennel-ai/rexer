@@ -124,7 +124,7 @@ func unitValue(
 	if err != nil {
 		return value.Nil, err
 	}
-	return counter.Value(ctx, tier, agg.Id, key, kwargs)
+	return counter.Value(ctx, tier, agg.Id, agg.Options, key, kwargs)
 }
 
 func getDuration(kwargs value.Dict) (int, error) {
@@ -221,6 +221,7 @@ func fetchAutoMLAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 	autoMLPtr := make([]int, 0, len(batch))
 	ids := make([]ftypes.AggId, 0, numSlotsLeft)
 	aggNames := make([]ftypes.AggName, 0, numSlotsLeft)
+	options := make([]aggregate.Options, 0, numSlotsLeft)
 	keys := make([]value.Value, 0, numSlotsLeft)
 	kwargs := make([]value.Dict, 0, numSlotsLeft)
 
@@ -236,12 +237,13 @@ func fetchAutoMLAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 		autoMLPtr = append(autoMLPtr, i)
 		aggNames = append(aggNames, agg.Name)
 		ids = append(ids, derivedUserHistoryAggregate.Id)
+		options = append(options, derivedUserHistoryAggregate.Options)
 		keys = append(keys, req.Key)
 		kwargs = append(kwargs, req.Kwargs)
 	}
 
 	if len(autoMLPtr) > 0 {
-		userHistories, err := counter.BatchValue(ctx, tier, ids, keys, kwargs)
+		userHistories, err := counter.BatchValue(ctx, tier, ids, options, keys, kwargs)
 		if err != nil {
 			return 0, fmt.Errorf("error: failed to retrieve auto-ml user history: %w", err)
 		}
@@ -312,6 +314,7 @@ func fetchForeverAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftyp
 
 func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftypes.AggName]aggregate.Aggregate, batch []aggregate.GetAggValueRequest, ret []value.Value, numSlotsLeft int) error {
 	ids := make([]ftypes.AggId, 0, numSlotsLeft)
+	options := make([]aggregate.Options, 0, numSlotsLeft)
 	keys := make([]value.Value, 0, numSlotsLeft)
 	kwargs := make([]value.Dict, 0, numSlotsLeft)
 
@@ -324,12 +327,13 @@ func fetchOnlineAggregates(ctx context.Context, tier tier.Tier, aggMap map[ftype
 		}
 		onlinePtr = append(onlinePtr, i)
 		ids = append(ids, agg.Id)
+		options = append(options, agg.Options)
 		keys = append(keys, req.Key)
 		kwargs = append(kwargs, req.Kwargs)
 	}
 
 	if len(onlinePtr) > 0 {
-		onlineValues, err := counter.BatchValue(ctx, tier, ids, keys, kwargs)
+		onlineValues, err := counter.BatchValue(ctx, tier, ids, options, keys, kwargs)
 		if err != nil {
 			return err
 		}
@@ -439,7 +443,7 @@ func Update[I action.Action | profile.ProfileItem](ctx context.Context, tier tie
 		}
 	} else { // Online duration based aggregates
 		tier.Logger.Info(fmt.Sprintf("found %d new items, %d transformed %s for online aggregate: %s", len(items), table.Len(), agg.Source, agg.Name))
-		if err = counter.Update(ctx, tier, agg.Id, table); err != nil {
+		if err = counter.Update(ctx, tier, agg.Id, agg.Options, table); err != nil {
 			return fmt.Errorf("failed to update counter: %w", err)
 		}
 		return err

@@ -26,10 +26,11 @@ func TestPush(t *testing.T) {
 
 	// Create client.
 	cfg := client.NitrousClientConfig{
-		TierID:                0,
-		ServerAddr:            addr.String(),
-		BinlogProducer:        n.NewBinlogProducer(t),
-		BinlogPartitions:      1,
+		TierID:         0,
+		ServerAddr:     addr.String(),
+		BinlogProducer: n.NewBinlogProducer(t),
+		BinlogPartitions: 1,
+		ReqsLogProducer: n.NewReqLogProducer(t),
 		AggregateConfProducer: n.NewAggregateConfProducer(t),
 	}
 	res, err := cfg.Materialize()
@@ -107,10 +108,11 @@ func TestPushWithDifferentMarshalingCode(t *testing.T) {
 
 	// Create client.
 	cfg := client.NitrousClientConfig{
-		TierID:                0,
-		ServerAddr:            addr.String(),
-		BinlogProducer:        n.NewBinlogProducer(t),
-		BinlogPartitions:      1,
+		TierID:         0,
+		ServerAddr:     addr.String(),
+		BinlogProducer: n.NewBinlogProducer(t),
+		BinlogPartitions: 1,
+		ReqsLogProducer: n.NewReqLogProducer(t),
 		AggregateConfProducer: n.NewAggregateConfProducer(t),
 	}
 	res, err := cfg.Materialize()
@@ -225,13 +227,13 @@ func TestSerializationProto(t *testing.T) {
 	assert.NoError(t, err)
 	op := rpc.NitrousOp{
 		TierId: uint32(1),
-		Type:   rpc.OpType_AGG_EVENT,
+		Type: rpc.OpType_AGG_EVENT,
 		Op: &rpc.NitrousOp_AggEvent{
 			AggEvent: &rpc.AggEvent{
-				AggId:     uint32(2),
-				Groupkey:  utils.RandString(5),
+				AggId: uint32(2),
+				Groupkey: utils.RandString(5),
 				Timestamp: uint32(10000),
-				Value:     &pv,
+				Value: &pv,
 			},
 		},
 	}
@@ -263,10 +265,10 @@ func TestSerializationVitessProto(t *testing.T) {
 	op.Type = rpc.OpType_AGG_EVENT
 	op.Op = &rpc.NitrousOp_AggEvent{
 		AggEvent: &rpc.AggEvent{
-			AggId:     uint32(2),
-			Groupkey:  utils.RandString(5),
+			AggId: uint32(2),
+			Groupkey: utils.RandString(5),
 			Timestamp: uint32(10000),
-			Value:     &pv,
+			Value: &pv,
 		},
 	}
 	fmt.Printf("op: %v\n", op)
@@ -297,10 +299,10 @@ func TestSerializationVitessProtoTesting(t *testing.T) {
 	op.Type = rpc.OpType_AGG_EVENT
 	op.Op = &rpc.NitrousOp_AggEvent{
 		AggEvent: &rpc.AggEvent{
-			AggId:     uint32(2),
-			Groupkey:  utils.RandString(5),
+			AggId: uint32(2),
+			Groupkey: utils.RandString(5),
 			Timestamp: uint32(10000),
-			Value:     &pv,
+			Value: &pv,
 		},
 	}
 	rawop, err := op.MarshalVT()
