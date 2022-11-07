@@ -328,6 +328,8 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
+        // enable nitrous
+        enableNitrous: true,
         // enable airbyte
         airbyteConf: {
             publicServer: false,
