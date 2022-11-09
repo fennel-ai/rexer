@@ -177,6 +177,7 @@ func (s *server) setupRouter() {
 	tier.GET("/profiles", s.Profiles)
 	tier.GET("/actions", s.Actions)
 	tier.GET("/features", s.Features)
+	tier.GET("/stored_queries", s.StoredQueries)
 	metrics := tier.Group("/metrics")
 	metrics.GET("/query_range", s.QueryRangeMetrics)
 
@@ -550,6 +551,19 @@ func (s *server) Actions(c *gin.Context) {
 				"Metadata":   action.Metadata.String(),
 			}
 		}),
+	})
+}
+
+func (s *server) StoredQueries(c *gin.Context) {
+	// TODO(xiao) call http server
+	query := gin.H{"name": "assumenda", "description": "Enim ducimus qui consequuntur.", "updatedAt": time.Now().UnixMicro()}
+	queries := make([]gin.H, 20)
+	for i := range queries {
+		queries[i] = query
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"queries": queries,
 	})
 }
 

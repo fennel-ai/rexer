@@ -69,7 +69,7 @@ function ActionsTab() {
             setLoading(false);
         });
     };
-    useEffect(() => queryActions(), []);
+    useEffect(queryActions, []);
 
     const onReset = () => {
         setActionType("");
