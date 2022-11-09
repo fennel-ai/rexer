@@ -149,6 +149,7 @@ func (s server) setHandlers(router *mux.Router) {
 	router.HandleFunc("/store_query", s.StoreQuery)
 	router.HandleFunc("/get_operators", s.GetOperators)
 	router.HandleFunc("/run_query", s.SetRateLimit(s.RunQuery))
+	router.HandleFunc("/queries", s.ListQueries)
 
 	// Endpoints used by aggregate
 	router.HandleFunc("/store_aggregate", s.StoreAggregate)
@@ -633,6 +634,20 @@ func (m server) QueryPandas(w http.ResponseWriter, req *http.Request) {
 	}
 
 	m.usageController.IncCounter(&usagelib.UsageCountersProto{Queries: 1})
+}
+
+func (m server) ListQueries(w http.ResponseWriter, req *http.Request) {
+	queries, err := query2.List(m.tier)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	bytes, err := json.Marshal(queries)
+	if err != nil {
+		handleInternalServerError(w, "", err)
+		return
+	}
+	_, _ = w.Write(bytes)
 }
 
 func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {

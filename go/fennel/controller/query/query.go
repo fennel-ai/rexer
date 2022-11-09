@@ -50,6 +50,11 @@ func Get(tier tier.Tier, name string) (ast.Ast, error) {
 	return tree, nil
 }
 
+func List(tier tier.Tier) ([]libquery.QuerySer, error) {
+	req := libquery.QueryRequest{}
+	return query.Get(tier, req)
+}
+
 func fromCacheValue(tier tier.Tier, v interface{}) (ast.Ast, bool) {
 	switch v := v.(type) {
 	case ast.Ast:
