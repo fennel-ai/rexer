@@ -9,6 +9,7 @@ import Navbar, { type Tier } from "./Navbar";
 import DataPage from "./DataPage";
 import SettingsPage from "./SettingsPage";
 import DashboardPage from "./DashboardPage";
+import EndpointsPage from "./EndpointsPage";
 import OnboardPage from "../onboard/OnboardPage";
 import TierManagementPage from "./TierManagementPage";
 
@@ -62,6 +63,15 @@ function App({user, tiers}: Props) {
                             <div>
                                 <Navbar tiers={tiers} activeTab="dashboard" user={user} />
                                 <DashboardPage />
+                            </div>
+                        )}
+                    />
+                    <Route
+                        path="endpoints"
+                        element={(
+                            <div>
+                                <Navbar tiers={tiers} activeTab="endpoints" user={user} />
+                                <EndpointsPage />
                             </div>
                         )}
                     />

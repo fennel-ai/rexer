@@ -173,6 +173,7 @@ func (s *server) setupRouter() {
 	tier.GET("/", s.Dashboard)
 	tier.GET("/dashboard", s.Dashboard)
 	tier.GET("/data", s.Data)
+	tier.GET("/endpoints", s.Endpoints)
 	tier.GET("/profiles", s.Profiles)
 	tier.GET("/actions", s.Actions)
 	tier.GET("/features", s.Features)
@@ -447,6 +448,11 @@ func (s *server) bootstrapData(c *gin.Context, page string) gin.H {
 func (s *server) Data(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Data"))
+}
+
+func (s *server) Endpoints(c *gin.Context) {
+	c.Header("Cache-Control", "no-cache")
+	c.HTML(http.StatusOK, "bridge/index.tmpl", s.bootstrapData(c, "Endpoints"))
 }
 
 func (s *server) Settings(c *gin.Context) {

@@ -34,6 +34,10 @@ function Navbar({ activeTab, tiers, user }: Props) {
                 label: (<a href={generatePath("/tier/:tierID/data", { tierID })}>Data</a>),
                 key: "data",
             },
+            {
+                label: (<a href={generatePath("/tier/:tierID/endpoints", { tierID })}>Endpoints</a>),
+                key: "endpoints",
+            },
         );
     }
 
