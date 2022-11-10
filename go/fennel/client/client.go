@@ -68,6 +68,12 @@ func (c Client) getProfileURL() string {
 	return url.String()
 }
 
+func (c Client) storedQueriesURL() string {
+	url := *c.url
+	url.Path = url.Path + "/queries"
+	return url.String()
+}
+
 func (c Client) recentFeaturesURL() string {
 	url := *c.url
 	url.Path = url.Path + "/features"
@@ -166,6 +172,19 @@ func (c Client) Get(url string) ([]byte, error) {
 		return nil, fmt.Errorf("%s: %s", http.StatusText(response.StatusCode), string(body))
 	}
 	return body, nil
+}
+
+func (c Client) FetchStoredQueries() ([]query.QuerySer, error) {
+	url := c.storedQueriesURL()
+	response, err := c.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	queries := make([]query.QuerySer, 0)
+	if err := json.Unmarshal(response, &queries); err != nil {
+		return nil, fmt.Errorf("error parsing json, %v", err)
+	}
+	return queries, nil
 }
 
 func (c Client) FetchRecentFeatures() ([]feature.Row, error) {
