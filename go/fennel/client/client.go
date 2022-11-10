@@ -268,13 +268,14 @@ func (c *Client) Query(reqAst ast.Ast, reqArgs value.Dict, reqMock mock.Data) (v
 	return v, nil
 }
 
-func (c *Client) StoreQuery(name string, tree ast.Ast) error {
+func (c *Client) StoreQuery(name string, tree ast.Ast, description string) error {
 	if tree == nil {
 		return fmt.Errorf("'tree' cannot be nil")
 	}
 	type ReqObject struct {
 		Name  string `json:"name"`
 		Query string `json:"query"`
+		Desc  string `json:"description"`
 	}
 	qStr, err := query.ToString(tree)
 	if err != nil {
@@ -283,6 +284,7 @@ func (c *Client) StoreQuery(name string, tree ast.Ast) error {
 	reqObj := ReqObject{
 		Name:  name,
 		Query: qStr,
+		Desc:  description,
 	}
 	req, err := json.Marshal(reqObj)
 	if err != nil {

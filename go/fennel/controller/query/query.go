@@ -1,30 +1,42 @@
 package query
 
 import (
+	"context"
+	libquery "fennel/lib/query"
 	"fmt"
-	"time"
-
 	"go.uber.org/zap"
+	"time"
 
 	"fennel/engine/ast"
 	"fennel/lib/ftypes"
-	libquery "fennel/lib/query"
 	"fennel/model/query"
 	"fennel/tier"
 )
 
 const cacheValueDuration = 2 * time.Minute
 
-func Insert(tier tier.Tier, name string, tree ast.Ast) (uint64, error) {
+func Insert(ctx context.Context, tier tier.Tier, name string, tree ast.Ast, description string) (uint64, error) {
+	ret, err := query.Retrieve(ctx, tier, name)
+	if err == nil {
+		var tree2 ast.Ast
+		err = ast.Unmarshal(ret.QuerySer, &tree2)
+		if ret.Description == description && err == nil && tree2.Equals(tree) {
+			return ret.QueryId, nil
+		}
+		return 0, fmt.Errorf("query with name '%s' already exists with a different config", name)
+	}
+	if err != query.ErrNotFound {
+		return 0, fmt.Errorf("failed to get query: %w", err)
+	}
 	ts := ftypes.Timestamp(tier.Clock.Now().Unix())
 	treeSer, err := ast.Marshal(tree)
 	if err != nil {
 		return 0, fmt.Errorf("failed to marshal ast: %w", err)
 	}
-	return query.Insert(tier, name, ts, treeSer)
+	return query.Insert(tier, name, ts, treeSer, description)
 }
 
-func Get(tier tier.Tier, name string) (ast.Ast, error) {
+func Get(ctx context.Context, tier tier.Tier, name string) (ast.Ast, error) {
 	// if found in cache, return directly
 	if v, ok := tier.PCache.Get(name, "QueryStore"); ok {
 		if tree, ok := fromCacheValue(tier, v); ok {
@@ -32,15 +44,15 @@ func Get(tier tier.Tier, name string) (ast.Ast, error) {
 		}
 	}
 	// otherwise, store in cache and return
-	ret, err := query.Get(tier, libquery.QueryRequest{Name: name})
-	if err != nil {
+	ret, err := query.Retrieve(ctx, tier, name)
+	if err == query.ErrNotFound {
+		return nil, fmt.Errorf("query with name '%s' not found", name)
+	} else if err != nil {
 		return nil, fmt.Errorf("failed to get query: %w", err)
 	}
-	if len(ret) == 0 {
-		return nil, fmt.Errorf("query with name '%s' not found", name)
-	}
+
 	var tree ast.Ast
-	err = ast.Unmarshal(ret[0].QuerySer, &tree)
+	err = ast.Unmarshal(ret.QuerySer, &tree)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall ast: %w", err)
 	}
@@ -50,9 +62,8 @@ func Get(tier tier.Tier, name string) (ast.Ast, error) {
 	return tree, nil
 }
 
-func List(tier tier.Tier) ([]libquery.QuerySer, error) {
-	req := libquery.QueryRequest{}
-	return query.Get(tier, req)
+func List(ctx context.Context, tier tier.Tier) ([]libquery.QuerySer, error) {
+	return query.RetrieveAll(ctx, tier)
 }
 
 func fromCacheValue(tier tier.Tier, v interface{}) (ast.Ast, bool) {

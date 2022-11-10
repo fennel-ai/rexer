@@ -1,60 +1,42 @@
 package query
 
 import (
-	"testing"
-
+	"context"
 	"fennel/lib/ftypes"
 	"fennel/lib/query"
 	"fennel/test"
 	"fennel/tier"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func verifyGet(t *testing.T, tier tier.Tier, request query.QueryRequest, expected []query.QuerySer) {
-	queries, err := Get(tier, request)
+func verifyRetrieve(t *testing.T, tier tier.Tier, name string, expected query.QuerySer) {
+	ctx := context.Background()
+	query, err := Retrieve(ctx, tier, name)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, queries)
+	assert.Equal(t, expected, query)
 }
 
 func TestInsertGet(t *testing.T) {
 	tier := test.Tier(t)
 	defer test.Teardown(tier)
 
-	// initially no queries even with no filters
-	queries, err := Get(tier, query.QueryRequest{})
-	assert.NoError(t, err)
-	assert.Empty(t, queries)
-
 	// set a couple of queries and verify we can get them
 	ts1 := ftypes.Timestamp(1)
-	query1 := query.QuerySer{QueryId: 0, Name: "name", Timestamp: ts1, QuerySer: []byte("hello")}
+	query1 := query.QuerySer{QueryId: 0, Name: "name", Timestamp: ts1, QuerySer: []byte("hello"), Description: "description"}
 
-	queryID1, err := Insert(tier, query1.Name, query1.Timestamp, query1.QuerySer)
+	queryID1, err := Insert(tier, query1.Name, query1.Timestamp, query1.QuerySer, "description")
 	assert.NoError(t, err)
 	query1.QueryId = queryID1
 
-	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{QueryId: queryID1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{QueryId: queryID1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 - 1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 + 1}, []query.QuerySer{})
+	verifyRetrieve(t, tier, "name", query1)
+	verifyRetrieve(t, tier, query1.Name, query1)
 
 	ts2 := ftypes.Timestamp(3)
-	query2 := query.QuerySer{QueryId: 0, Name: "query2", Timestamp: ts2, QuerySer: []byte("bye")}
-	queryID2, err := Insert(tier, query2.Name, query2.Timestamp, query2.QuerySer)
+	query2 := query.QuerySer{QueryId: 0, Name: "query2", Timestamp: ts2, QuerySer: []byte("bye"), Description: "description2"}
+	queryID2, err := Insert(tier, query2.Name, query2.Timestamp, query2.QuerySer, "description2")
 	assert.NoError(t, err)
 	query2.QueryId = queryID2
 
-	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{QueryId: queryID1}, []query.QuerySer{query1})
-	verifyGet(t, tier, query.QueryRequest{QueryId: queryID2}, []query.QuerySer{query2})
-	verifyGet(t, tier, query.QueryRequest{}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 - 1}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1}, []query.QuerySer{query1, query2})
-	verifyGet(t, tier, query.QueryRequest{MinTimestamp: ts1 + 1}, []query.QuerySer{query2})
-	verifyGet(t, tier, query.QueryRequest{MaxTimestamp: ts1}, []query.QuerySer{})
-	verifyGet(t, tier, query.QueryRequest{MaxTimestamp: ts2}, []query.QuerySer{query1})
+	verifyRetrieve(t, tier, "query2", query2)
 }

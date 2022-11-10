@@ -118,6 +118,7 @@ var Schema = db.Schema{
 		);`,
 	// ==================== END Schema for Phaser ======================
 	13: `ALTER TABLE aggregate_config ADD COLUMN source VARCHAR(64) NOT NULL DEFAULT 'action';`,
+	// name in query_ast is meant to be unique, but it is not enforced by the schema.
 	14: `ALTER TABLE query_ast ADD COLUMN name VARCHAR(64) NOT NULL;`,
 	// Statement 15 adds the container_name column to the model table.
 	// Statement 16 generates container names for rows with no container name.
@@ -214,4 +215,6 @@ var Schema = db.Schema{
 	);`,
 	// ==================== END Schema for usage counters ===================
 	24: `ALTER TABLE aggregate_config ADD COLUMN mode VARCHAR(64) DEFAULT 'rql';`,
+	26: `ALTER TABLE query_ast ADD COLUMN description VARCHAR(2048) DEFAULT '';`,
+	27: `ALTER TABLE query_ast ADD INDEX (name);`,
 }

@@ -637,7 +637,7 @@ func (m server) QueryPandas(w http.ResponseWriter, req *http.Request) {
 }
 
 func (m server) ListQueries(w http.ResponseWriter, req *http.Request) {
-	queries, err := query2.List(m.tier)
+	queries, err := query2.List(req.Context(), m.tier)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
@@ -661,6 +661,11 @@ func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
+	description, err := jsonparser.GetString(data, "description")
+	if err != nil {
+		handleBadRequest(w, "", err)
+		return
+	}
 	qStr, err := jsonparser.GetString(data, "query")
 	if err != nil {
 		handleBadRequest(w, "", err)
@@ -671,7 +676,7 @@ func (m server) StoreQuery(w http.ResponseWriter, req *http.Request) {
 		handleBadRequest(w, "", err)
 		return
 	}
-	_, err = query2.Insert(m.tier, name, q)
+	_, err = query2.Insert(req.Context(), m.tier, name, q, description)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
@@ -766,7 +771,7 @@ func (m server) RunQuery(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	tree, err := query2.Get(m.tier, name)
+	tree, err := query2.Get(req.Context(), m.tier, name)
 	if err != nil {
 		handleInternalServerError(w, "", err)
 		return
