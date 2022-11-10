@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"fennel/controller/mock"
+
 	"github.com/buger/jsonparser"
 
 	"fennel/engine/ast"
@@ -21,10 +22,10 @@ type QueryRequest struct {
 }
 
 type QuerySer struct {
-	QueryId   uint64           `db:"query_id"`
-	Name      string           `db:"name"`
-	Timestamp ftypes.Timestamp `db:"timestamp"`
-	QuerySer  []byte           `db:"query_ser"`
+	QueryId   uint64           `db:"query_id" json:"id"`
+	Name      string           `db:"name" json:"name"`
+	Timestamp ftypes.Timestamp `db:"timestamp" json:"timestamp"`
+	QuerySer  []byte           `db:"query_ser" json:"-"`
 }
 
 type BoundQuery struct {

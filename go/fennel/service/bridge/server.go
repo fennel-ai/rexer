@@ -12,6 +12,7 @@ import (
 	metricC "fennel/mothership/controller/metric"
 	onboardC "fennel/mothership/controller/onboard"
 	profileC "fennel/mothership/controller/profile"
+	queryC "fennel/mothership/controller/query"
 	tierC "fennel/mothership/controller/tier"
 	userC "fennel/mothership/controller/user"
 	"fennel/mothership/lib"
@@ -555,11 +556,14 @@ func (s *server) Actions(c *gin.Context) {
 }
 
 func (s *server) StoredQueries(c *gin.Context) {
-	// TODO(xiao) call http server
-	query := gin.H{"name": "assumenda", "description": "Enim ducimus qui consequuntur.", "updatedAt": time.Now().UnixMicro()}
-	queries := make([]gin.H, 20)
-	for i := range queries {
-		queries[i] = query
+	tier, _ := ginL.CurrentTier(c)
+	queries, err := queryC.ListQueries(c.Request.Context(), tier)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Fail to read stored queries, please try again later.",
+		})
+		log.Printf("Failed to read stored queries: %v\n", err)
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{

@@ -15,7 +15,7 @@ const columns = [
 interface StoredQuery {
     name: string,
     description?: string,
-    updatedAt: number,
+    timestamp: number,
 }
 
 interface QueriesResponse {
@@ -35,7 +35,7 @@ function EndpointsPage() {
                 const data = response.data.queries.map((query: StoredQuery, idx: number) => ({
                     ...query,
                     key: idx,
-                    updatedAt: new Date(query.updatedAt / 1000).toISOString(),
+                    updatedAt: new Date(query.timestamp).toISOString(),
                 }));
                 setDataSource(data);
                 setLoading(false);
