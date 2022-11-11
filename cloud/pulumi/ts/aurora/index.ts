@@ -24,6 +24,7 @@ export type inputType = {
     // Upon deletion of the cluster, should the final snapshot be skipped.
     // We should ideally set this to `false` for production tiers and true for the test/staging tiers.
     skipFinalSnapshot: boolean,
+    autoPause?: boolean,
     protect: boolean,
     scope: Scope,
 }
@@ -130,6 +131,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         masterUsername: input.username,
         masterPassword: input.password,
         scalingConfiguration: {
+            autoPause: input.autoPause,
             minCapacity: input.minCapacity,
             maxCapacity: input.maxCapacity,
         },
