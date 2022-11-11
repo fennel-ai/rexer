@@ -441,7 +441,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-2-common-ng",
                     instanceTypes: ["t3.medium"],
                     minSize: 1,
-                    maxSize: 3,
+                    maxSize: 5,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
@@ -449,6 +449,17 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
         },
+
+        nitrousConf: {
+            replicas: 1,
+            storageCapacityGB: 20,
+            storageClass: "local",
+            binlog: {
+                partitions: 2,
+                replicationFactor: 1,
+            },
+        },
+
         // set up MSK cluster for integration tests
         mskConf: {
             // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
