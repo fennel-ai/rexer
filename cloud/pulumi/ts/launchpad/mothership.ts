@@ -84,6 +84,8 @@ const setupResources = async () => {
             "eks": eksOutput.clusterSg,
         },
         planeId: input.planeId,
+        // disable auto-pausing the DB instance to avoid long waits on webapp login
+        autoPause: false,
         skipFinalSnapshot: input.dbConf.skipFinalSnapshot,
         connectedCidrBlocks: [input.vpcConf.cidrBlock],
         protect: input.protectResources,
