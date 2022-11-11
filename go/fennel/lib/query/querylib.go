@@ -14,18 +14,12 @@ import (
 	"fennel/lib/value"
 )
 
-type QueryRequest struct {
-	QueryId      uint64           `db:"query_id"`
-	Name         string           `db:"name"`
-	MinTimestamp ftypes.Timestamp `db:"min_timestamp"`
-	MaxTimestamp ftypes.Timestamp `db:"max_timestamp"`
-}
-
 type QuerySer struct {
-	QueryId   uint64           `db:"query_id" json:"id"`
-	Name      string           `db:"name" json:"name"`
-	Timestamp ftypes.Timestamp `db:"timestamp" json:"timestamp"`
-	QuerySer  []byte           `db:"query_ser" json:"-"`
+	QueryId     uint64           `db:"query_id" json:"id"`
+	Name        string           `db:"name" json:"name"`
+	Timestamp   ftypes.Timestamp `db:"timestamp" json:"timestamp"`
+	QuerySer    []byte           `db:"query_ser" json:"-"`
+	Description string           `db:"description" json:"description"`
 }
 
 type BoundQuery struct {

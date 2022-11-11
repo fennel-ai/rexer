@@ -450,12 +450,13 @@ func TestStoreRunQuery(t *testing.T) {
 	})
 
 	name := "query_name"
+	description := "query description"
 	// attempting to run a query that is not stored should return an error
 	_, err = c.RunQuery(name, value.NewDict(nil))
 	assert.Error(t, err)
 
 	// now store a query
-	err = c.StoreQuery(name, tree)
+	err = c.StoreQuery(name, tree, description)
 	assert.NoError(t, err)
 
 	found, err := c.RunQuery(name, value.NewDict(map[string]value.Value{"x": value.Int(3)}))
