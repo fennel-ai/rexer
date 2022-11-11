@@ -13,6 +13,7 @@ const columns = [
 ];
 
 interface StoredQuery {
+    id: number,
     name: string,
     description?: string,
     timestamp: number,
@@ -32,10 +33,10 @@ function EndpointsPage() {
         setLoading(true);
         axios.get(`/tier/${tierID}/stored_queries`)
             .then((response: AxiosResponse<QueriesResponse>) => {
-                const data = response.data.queries.map((query: StoredQuery, idx: number) => ({
+                const data = response.data.queries.map((query: StoredQuery) => ({
                     ...query,
-                    key: idx,
-                    updatedAt: new Date(query.timestamp).toISOString(),
+                    key: query.id,
+                    updatedAt: new Date(query.timestamp * 1000).toISOString(),
                 }));
                 setDataSource(data);
                 setLoading(false);
