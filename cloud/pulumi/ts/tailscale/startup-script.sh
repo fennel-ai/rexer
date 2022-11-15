@@ -19,6 +19,7 @@ sudo systemctl enable --now tailscaled
 
 # TODO: Don't save the tailscale authkey in plaintext.
 # 172.31.0.0/16 : Control plane
+# 10.101.0.0/16: Test data plane for feature engineering world
 # 10.102.0.0/16: Test data plane
 # 10.103.0.0/16: Dev data plane
 # 10.105.0.0/16: Lokal prod data plane
@@ -28,5 +29,5 @@ sudo systemctl enable --now tailscaled
 # 10.110.0.0/16: Temporary Test plane
 # 10.111.0.0/16: Data plane for self serve.
 sudo tailscale up \
-  --advertise-routes=172.31.0.0/16,10.102.0.0/16,10.103.0.0/16,10.105.0.0/16,10.106.0.0/16,10.107.0.0/16,10.109.0.0/16,10.110.0.0/16,10.111.0.0/16 \
+  --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16,10.105.0.0/16,10.106.0.0/16,10.107.0.0/16,10.109.0.0/16,10.110.0.0/16,10.111.0.0/16 \
   --authkey tskey-krRB5i7CNTRL-bgqwFPeYVV2o7bqXUA4KM3
