@@ -25,5 +25,5 @@ const relay = new aws.ec2.Instance("tailscale-relay",
         tags: {
             Name: "tailscale-relay",
         },
-    }
+    }, { replaceOnChanges: ['*'], deleteBeforeReplace: true }
 )
