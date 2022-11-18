@@ -338,6 +338,11 @@ func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, 
 // written and the error if any. This assumes that both l2entries and records are
 // sorted on bucketID
 func writeIndex(writer *bufio.Writer, numBuckets uint32, l2entries []bucket, records []record) (uint32, error) {
+	// if there are no records, no need for an index as well
+	if len(records) == 0 {
+		return 0, nil
+	}
+
 	overflow := make([]byte, 0, 2*numBuckets*8) // reserve some size (but not too large, 8 times the number of buckets) to avoid too much copying
 	entry := make([]byte, 32)
 	for bid := uint32(0); bid < numBuckets; bid++ {

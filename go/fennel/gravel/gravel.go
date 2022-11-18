@@ -63,7 +63,6 @@ func Open(opts Options, clock clock.Clock) (ret *Gravel, failure error) {
 		return nil, fmt.Errorf("invalid table type: %d", testTable)
 	}
 	logger := zap.L().Named(opts.Name)
-	// manifest, err := InitManifest(opts.Dirname, opts.TableType, opts.NumShards)
 	tableManager, err := InitTableManager(opts.Dirname, opts.TableType, opts.NumShards, opts.CompactionWorkerNum, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not init manifest: %w", err)
