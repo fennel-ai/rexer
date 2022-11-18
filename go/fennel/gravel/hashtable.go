@@ -93,6 +93,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"fennel/lib/timer"
 	fbinary "fennel/lib/utils/binary"
 	"fennel/lib/utils/slice"
@@ -122,6 +126,14 @@ const (
 )
 
 var incompleteFile = fmt.Errorf("expected end of file")
+
+// TODO: remove once this value is consistently ZERO
+var corruptedHashtables = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "corrupted_hashtables",
+		Help: "Number of hashtables which are in corrupted state i.e. with numBuckets == 1, but indexSize == 0",
+	},
+)
 
 type fingerprint uint16
 
@@ -257,9 +269,19 @@ func (ht *hashTable) Size() uint64 {
 
 func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 	head := ht.head // deref in local variables to reduce address translations
+
+	// This is to avoid the bug introduced in https://github.com/fennel-ai/rexer/pull/1589 where indexSize
+	// could be ZERO but numBuckets == 1
+	//
+	// Remove this once the compaction has removed all the tables with the above state
+	if head.numBuckets == 0 {
+		// nothing to read here
+		return Value{}, ErrNotFound
+	}
 	bucketID := getBucketID(hash, head.numBuckets)
 	fp := getFingerprint(hash)
 
+	// even if numBuckets > 0, it is possible that index of the hashTable is empty, so we make that check in this method
 	matchIndex, matchCount, numCandidates, dataPos, err := ht.readIndex(bucketID, fp)
 	if err != nil {
 		return Value{}, err
@@ -274,6 +296,16 @@ func (ht *hashTable) Get(key []byte, hash uint64) (Value, error) {
 // returns the slice of indices (in current bucket) whose fingerprints matches the given, the total number of records that
 // fall into this bucket, as well as the data section offset, with error if there is any
 func (ht *hashTable) readIndex(bucketID uint32, fp fingerprint) (int, int, int, uint64, error) {
+	// index is empty, so nothing to match here
+	//
+	// This is to avoid the bug introduced in https://github.com/fennel-ai/rexer/pull/1589 where indexSize
+	// could be ZERO but numBuckets == 1
+	//
+	// Remove this once the compaction has removed all the tables with the above state
+	if len(ht.index) == 0 {
+		return -1, 0, 0, 0, nil
+	}
+
 	indexStart := int(bucketID) * bucketSizeBytes
 	indexEnd := indexStart + bucketSizeBytes
 	index := ht.index[indexStart:indexEnd]
@@ -595,7 +627,11 @@ func buildHashTable(filepath string, data map[string]Value) error {
 	}
 	numRecords := uint32(len(data))
 	numBuckets := numRecords / numRecordsPerBucket
-	if numBuckets == 0 {
+
+	if numRecords == 0 {
+		numBuckets = 0
+	} else if numBuckets == 0 {
+		// when numRecords < numRecordsPerBucket
 		numBuckets = 1
 	}
 
@@ -832,7 +868,17 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 	index := buf[dataEnd:indexEnd]
 	madviseIndex := buf[dataEnd & ^(uint64(os.Getpagesize())-1) : indexEnd] // madvise must use page-aligned ptr
 
-	overflow := index[int(header.numBuckets)*bucketSizeBytes:]
+	// This is to avoid the bug introduced in https://github.com/fennel-ai/rexer/pull/1589 where indexSize
+	// could be ZERO but numBuckets == 1
+	//
+	// Remove this once the compaction has removed all the tables with the above state
+	var overflowIdx int
+	if header.indexsize == 0 {
+		overflowIdx = 0
+	} else {
+		overflowIdx = int(header.numBuckets)*bucketSizeBytes
+	}
+	overflow := index[overflowIdx:]
 	err = unix.Madvise(madviseIndex, syscall.MADV_WILLNEED)
 	if err != nil {
 		zap.L().Error("failed to Madvise on index mapping", zap.String("filename", fullFileName), zap.Error(err))
@@ -855,6 +901,10 @@ func openHashTable(fullFileName string, warmIndex bool, warmData bool) (Table, e
 		for i := 0; i < len(data); i++ {
 			_ = data[i]
 		}
+	}
+
+	if header.numBuckets > 0 && len(index) == 0 {
+		corruptedHashtables.Inc()
 	}
 
 	tableObj := &hashTable{
