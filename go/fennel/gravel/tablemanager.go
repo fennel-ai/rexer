@@ -168,7 +168,8 @@ func (t *TableManager) invokeCompaction(workerIdx int) bool {
 	}
 
 	// actual compact work
-	t.logger.Info("Going to compact for shard", zap.Int("worker_id", workerIdx), zap.Uint64("shardId", pickedShard.shardId), zap.Bool("compact_to_final", compactToFinal))
+	t.logger.Info("Going to compact for shard", zap.Int("worker_id", workerIdx), zap.Uint64("shardId", pickedShard.shardId), zap.Bool("compact_to_final", compactToFinal),
+		zap.Any("tablesToCompact", tablesToCompact))
 	newTableFile, err := CompactTables(t.manifest.dirname, tablesToCompact, pickedShard.shardId, t.manifest.tableType, compactToFinal)
 	if err != nil {
 		t.logger.Error("failed to compact", zap.Int("worker_id", workerIdx), zap.Error(err))

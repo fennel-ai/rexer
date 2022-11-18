@@ -3,14 +3,15 @@ package gravel
 import (
 	"context"
 	"errors"
-	"fennel/lib/timer"
-	"fennel/lib/utils/parallel"
 	"fmt"
 	"os"
 	"path"
 	"sort"
 	"strings"
 	"time"
+
+	"fennel/lib/timer"
+	"fennel/lib/utils/parallel"
 )
 
 const maxCompactBatch = 4
