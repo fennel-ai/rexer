@@ -3,14 +3,16 @@ package rpc
 import (
 	"context"
 	"errors"
-	"fennel/lib/arena"
-	"fennel/lib/utils/parallel"
 	"fmt"
-	"google.golang.org/grpc/keepalive"
 	"io"
 	"log"
 	"net"
 	"time"
+
+	"google.golang.org/grpc/keepalive"
+
+	"fennel/lib/arena"
+	"fennel/lib/utils/parallel"
 
 	"fennel/lib/ftypes"
 	"fennel/lib/timer"
@@ -22,7 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -181,6 +183,11 @@ func (s *Server) GetAggregateValues(stream Nitrous_GetAggregateValuesServer) err
 		if err != nil {
 			return err
 		}
+
+		// TODO(mohit): Ideally tracing should be enabled only if the upstream trace is enabled. Currently, this
+		// is not properly implemented since the stream is created with `context.Background()` i.e. it does not
+		// borrow information from the upstream request. Here, the context is dropped, and we again use
+		// `context.Background()` to initialize tracing on the nitrous side.
 		ctx := context.Background()
 		ctx = timer.WithTracing(ctx)
 		resp, err := s.processRequest(ctx, req)
