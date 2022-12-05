@@ -441,6 +441,12 @@ export const setup = async (input: inputType) => {
                                         value: `${binlogPartitions}`
                                     },
                                     {
+                                        name: "TRACE_SAMPLING_RATIO",
+                                        // set sampling rate to 0.01% - currently we see about `2465.60/min` requests
+                                        // for 1%
+                                        value: "0.0001",
+                                    },
+                                    {
                                         name: "IDENTITY",
                                         valueFrom: {
                                             fieldRef: {
