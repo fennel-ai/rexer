@@ -693,19 +693,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     expansionPriority: 1,
                 },
                 {
-                    name: "p-5-common-ng-x86",
-                    instanceTypes: ["t3.medium"],
-                    // few pods still require X86 based machines and are not compatible with ARM64.
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                    labels: {
-                        "node-group": "p-5-common-ng-x86",
-                    },
-                },
-                {
                     name: "p-5-query-ng-4c-8G-arm",
                     // TODO(mohit): Move to c7g once they are supported in ap-south-1
                     //
