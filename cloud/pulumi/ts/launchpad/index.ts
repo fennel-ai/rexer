@@ -370,28 +370,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-    },
-    // reserver tierIds 1001 to 2000 for self-serve.
-    1001: {
-        protectResources: true,
-        planeId: 10,
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        airbyteConf: {},
-        plan: Plan.PERSONAL,
-        requestLimit: 1000,
-    },
-    // reserver tierIds 1001 to 2000 for self-serve.
-    1002: {
-        protectResources: true,
-        planeId: 10,
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        airbyteConf: {},
-        plan: Plan.PERSONAL,
-        requestLimit: 1000,
     }
 }
 
@@ -940,77 +918,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         customer: customers[2],
         mothershipId: 12,
-    },
-    10: {
-        protectResources: true,
-
-        accountConf: {
-            newAccount: {
-                name: "self-serve",
-                email: "admin+self-serve@fennel.ai"
-            }
-        },
-
-        planeId: 10,
-        region: "us-west-2",
-        vpcConf: {
-            cidr: "10.111.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 1,
-            maxCapacity: 4,
-            password: "foundationdb",
-            skipFinalSnapshot: true,
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 4,
-            nodeType: "db.t4g.medium",
-            numReplicasPerShard: 0,
-        },
-        // increase the desired capacity and scale up to occupy more pods
-        //
-        // https://github.com/awslabs/amazon-eks-ami/blob/master/files/eni-max-pods.txt
-        eksConf: {
-            nodeGroups: [
-                {
-                    name: "p-3-common-ng-arm64",
-                    instanceTypes: ["c7g.2xlarge"],
-                    minSize: 1,
-                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
-                    // number to accommodate more servers
-                    maxSize: 10,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-3-common-ng-x86",
-                    instanceTypes: ["c6i.2xlarge"],
-                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
-                    // number to accommodate more servers
-                    //
-                    // milvus requires minimum 3 nodes
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-            ],
-        },
-        mothershipId: 12,
-        customer: customers[1],
-        // set up MSK cluster
-        mskConf: {
-            // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
-            brokerType: "kafka.t3.small",
-            // this will place 1 broker node in each of the AZs
-            numberOfBrokerNodes: 2,
-            // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
-            storageVolumeSizeGiB: 64,
-        },
-    },
+    }
 }
 
 const mothershipConfs: Record<number, MothershipConf> = {
