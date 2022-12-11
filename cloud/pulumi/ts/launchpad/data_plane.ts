@@ -454,6 +454,8 @@ const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: 
         stackName = `fennel/${projectName}/plane-${args.planeId}`
     }
 
+    console.log("Updating data plane: ", stackName);
+
     // validate that exactly one account configuration is set
     if (args.accountConf.newAccount !== undefined && args.accountConf.existingAccount !== undefined) {
         console.info("both newAccount and existingAccount configuration is set; Exactly one should be set")

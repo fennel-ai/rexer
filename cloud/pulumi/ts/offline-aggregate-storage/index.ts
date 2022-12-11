@@ -12,6 +12,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    tierName?: string,
     protect: boolean,
 }
 
@@ -32,7 +33,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
-    const bucketName = `t-${input.tierId}-offline-aggregate-storage`
+    let bucketName;
+    if (input.tierName) {
+        bucketName = `t-${input.tierName}-offline-aggregate-storage`
+    } else {
+        bucketName = `t-${input.tierId}-offline-aggregate-storage`
+    }
     const bucket = new aws.s3.Bucket(`t-${input.tierId}-offline-aggregate-storage`, {
         acl: "private",
         bucket: bucketName,

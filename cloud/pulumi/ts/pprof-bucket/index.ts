@@ -8,6 +8,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    tierName?: string,
     protect: boolean,
 }
 
@@ -27,7 +28,12 @@ export const setup = async (input: inputType): Promise<outputType> => {
         }
     });
 
-    const bucketName = `t-${input.tierId}-pprof-store`
+    let bucketName;
+    if (input.tierName) {
+        bucketName = `t-${input.tierName}-pprof-store`
+    } else {
+        bucketName = `t-${input.tierId}-pprof-store`
+    }
     const bucket = new aws.s3.Bucket("tier-pprof-store-bucket", {
         acl: "private",
         bucket: bucketName,

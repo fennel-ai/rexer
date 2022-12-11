@@ -21,6 +21,7 @@ function getFullyQualifiedStackName(name: string): string {
     return fullyQualifiedStackName(org, project, name)
 }
 
+// TODO(mohit): Fix this to consider cases when planeId (here scopeId) could be reused.
 function getStackName(scope: Scope, scopeId: number): string {
     switch (scope) {
         case Scope.DATAPLANE:

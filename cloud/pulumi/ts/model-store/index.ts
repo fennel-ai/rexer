@@ -9,6 +9,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    tierName?: string,
     protect: boolean,
 }
 
@@ -28,7 +29,12 @@ export const setup = async (input: inputType): Promise<outputType> => {
         }
     });
 
-    const bucketName = `t-${input.tierId}-model-store`
+    let bucketName;
+    if (input.tierName) {
+        bucketName = `t-${input.tierName}-model-store`
+    } else {
+        bucketName = `t-${input.tierId}-model-store`
+    }
     const bucket = new aws.s3.Bucket("tier-model-store-bucket", {
         acl: "private",
         bucket: bucketName,

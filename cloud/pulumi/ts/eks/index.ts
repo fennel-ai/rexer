@@ -1,14 +1,13 @@
 import * as eks from "@pulumi/eks";
-import * as k8s from "@pulumi/kubernetes"
+import * as docker from "@pulumi/docker";
+import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { local } from "@pulumi/command";
 import * as aws from "@pulumi/aws";
 import * as fs from 'fs';
 import * as process from "process";
 import * as path from 'path';
-import { getPrefixList, KeyPair } from "@pulumi/aws/ec2";
 import { exit } from "process";
-import { BooleanLiteral } from "typescript";
 import { getPrefix, Scope } from "../lib/util"
 
 // NOTE: The AMI used should be an eks-worker AMI that can be searched
@@ -175,14 +174,59 @@ function setupLinkerd(cluster: k8s.Provider) {
     return linkerd
 }
 
-async function setupEKSLocalSSDProvisioner(cluster: eks.Cluster) {
+async function setupEKSLocalSSDProvisioner(cluster: eks.Cluster, awsProvider: aws.Provider) {
     const root = path.join(process.env.FENNEL_ROOT!, "deployment/artifacts/eks-nvme-ssd-provisioner");
     // Create eks-nvme-ssd-provisioner. This is responsible found mounting
     // attached disks.
 
-    const ssdProvisioner = new k8s.yaml.ConfigFile(`eks-nvme-ssd-provisioner`, {
-        file: path.join(root, "eks-nvme-ssd-provisioner.yaml"),
-    }, { provider: cluster.provider })
+    const repo = new aws.ecr.Repository(`nvme-ssd-provisioner-repo`, {
+        imageScanningConfiguration: {
+            scanOnPush: true
+        },
+        imageTagMutability: "MUTABLE"
+    }, { provider: awsProvider });
+
+    const registryInfo = repo.registryId.apply(async id => {
+        const credentials = await aws.ecr.getCredentials({ registryId: id }, { provider: awsProvider });
+        const decodedCredentials = Buffer.from(credentials.authorizationToken, "base64").toString();
+        const [username, password] = decodedCredentials.split(":");
+        if (!password || !username) {
+            throw new Error("Invalid credentials");
+        }
+        return {
+            server: credentials.proxyEndpoint,
+            username: username,
+            password: password,
+        };
+    });
+    const imageName = repo.repositoryUrl.apply(imgName => {
+        return `${imgName}:latest`
+    });
+    const dockerfile = path.join(root, "Dockerfile.alpine");
+    const image = new docker.Image("nvme-ssd-provisioner-img", {
+        build: {
+            context: root,
+            dockerfile: dockerfile,
+            args: {
+                // TODO: consider using docker buildx here
+                "platform": "linux/arm64",
+            },
+        },
+        imageName: imageName,
+        registry: registryInfo,
+    });
+
+    const ssdProvisioner = image.imageName.apply(imgName => {
+        return new k8s.yaml.ConfigFile(`eks-nvme-ssd-provisioner`, {
+            file: path.join(root, "eks-nvme-ssd-provisioner.yaml"),
+            transformations: [
+                (obj: any, opts: pulumi.CustomResourceOptions) => {
+                    if (obj.kind === "DaemonSet") {
+                        obj.spec.template.spec.containers[0].image = imgName;
+                    }
+                },
+            ]}, { provider: cluster.provider });
+    });
 
     // Create resources for local-static-provisioner:
     // https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner/
@@ -998,7 +1042,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const storageclasses = setupStorageClasses(cluster)
     const clusterName = cluster.core.cluster.name
     // Setup provisioner for deploying PVs backed by locally attached disks.
-    await setupEKSLocalSSDProvisioner(cluster)
+    await setupEKSLocalSSDProvisioner(cluster, awsProvider);
     storageclasses["local"] = pulumi.output("nvme-ssd")
 
     const output = pulumi.output({
