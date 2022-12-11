@@ -74,10 +74,12 @@ export type backupConf = {
     backupFrequencyDuration?: string,
     remoteCopiesToKeep?: number,
     resourceConf?: util.ResourceConf,
+    storageCapacityGB: number,
 }
 
 export type inputType = {
     planeId: number,
+    planeName?: string,
     region: string,
     roleArn: pulumi.Input<string>,
     nodeInstanceRole: pulumi.Input<string>,
@@ -232,7 +234,12 @@ export const setup = async (input: inputType) => {
     // Setup binlog kafka topic.
     const mskCreds = setupBinLogInMsk(input, binlogPartitions, awsProvider);
 
-    const bucketName = `nitrous-p-${input.planeId}-backup`
+    let bucketName: string;
+    if (input.planeName) {
+        bucketName = `nitrous-p-${input.planeName}-backup`
+    } else {
+        bucketName = `nitrous-p-${input.planeId}-backup`
+    }
     setupS3(input, bucketName, awsProvider)
 
     // Create a private ECR repository.
@@ -688,7 +695,7 @@ export const setup = async (input: inputType) => {
                                 storageClassName: input.storageClass,
                                 resources: {
                                     requests: {
-                                        storage: `${input.storageCapacityGB}Gi`,
+                                        storage: `${input.backupConf?.storageCapacityGB}Gi`,
                                     },
                                 }
                             }

@@ -578,6 +578,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
                 backupFrequencyDuration: "5m",
                 remoteCopiesToKeep: 2,
+                // using the same node type as the primary nitrous instances
+                storageCapacityGB: 100,
             },
         },
 
@@ -831,6 +833,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                         limit: "60Gi",
                     }
                 },
+                storageCapacityGB: 1700,
             },
         },
 
@@ -918,7 +921,93 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         customer: customers[2],
         mothershipId: 12,
-    }
+    },
+    // plane 10 - for self serve pending account close
+
+    // lokal plane in their individual account
+    11: {
+        protectResources: true,
+
+        accountConf: {
+            newAccount: {
+                name: "lokal-prod",
+                email: "admin+lokal-prod@fennel.ai"
+            },
+        },
+        planeName: "lokal-prod",
+        planeId: 5,
+        region: "ap-south-1",
+        vpcConf: {
+            cidr: "10.112.0.0/16"
+        },
+        dbConf: {
+            minCapacity: 2,
+            maxCapacity: 16,
+            password: "password",
+            skipFinalSnapshot: false,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.medium",
+            // use smaller number of cache nodes - this is required for profiles, we are almost always ~99.9%
+            numNodeGroups: 2,
+            replicasPerNodeGroup: 1,
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            // keep 1 shard for the existing users of redis - phaser and action dedup check logic
+            numShards: 1,
+            // this is only required for actions and streamlog deduplication - currently with a `db.r6g.large` instance
+            // the memory utilization is around 1%
+            nodeType: "db.t4g.small",
+            numReplicasPerShard: 1,
+        },
+        eksConf: {
+            nodeGroups: [
+                // common node group
+                //
+                // TODO(mohit): Add more node groups as we enable/grow compute
+                {
+                    name: "p-5-common-ng-arm64",
+                    instanceTypes: ["t4g.medium"],
+                    minSize: 1,
+                    maxSize: 5,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-common-ng-x86",
+                    instanceTypes: ["t3.medium"],
+                    minSize: 1,
+                    maxSize: 5,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                }
+            ],
+            spotReschedulerConf: {
+                spotNodeLabel: "rescheduler-label=spot",
+                onDemandNodeLabel: "rescheduler-label=on-demand",
+            }
+        },
+        // TODO(mohit): Configure prometheus since the metrics collected exhausts the default setting
+
+        // TODO(mohit): scale down nitrous
+
+        // set up MSK cluster
+        mskConf: {
+            // see - https://aws.amazon.com/msk/pricing/
+            brokerType: "kafka.m5.large",
+            // this will place 2 broker nodes in each of the AZs
+            numberOfBrokerNodes: 4,
+            // TODO(mohit): As we mirror data, would we require more memory?
+            // currently in the lokal setup, with 1636 GiB, the utilization is at 20%.  To be ~75% utilization,
+            // we configure the EBS volume size to be 425
+            storageVolumeSizeGiB: 425,
+        },
+        customer: customers[3],
+        mothershipId: 12,
+    },
 }
 
 const mothershipConfs: Record<number, MothershipConf> = {

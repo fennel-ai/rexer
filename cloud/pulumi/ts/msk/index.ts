@@ -11,6 +11,8 @@ export const plugins = {
 
 export type inputType = {
     planeId: number,
+    planeName?: string,
+
     region: string,
     roleArn: pulumi.Input<string>,
     protect: boolean,
@@ -278,7 +280,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     });
 
     // create the s3 connector plugin which will be used by every tier level MSK connector to run
-    const bucketName = `p-${input.planeId}-mskconnect-plugins`;
+    let bucketName: string;
+    if (input.planeName) {
+        bucketName = `p-${input.planeName}-mskconnect-plugins`;
+    } else {
+        bucketName = `p-${input.planeId}-mskconnect-plugins`;
+    }
     const pluginBucket = new aws.s3.BucketV2("mskconnect-plugin-bucket", {
         bucket: bucketName,
         forceDestroy: true,

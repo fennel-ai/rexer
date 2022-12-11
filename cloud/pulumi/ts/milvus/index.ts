@@ -11,7 +11,8 @@ export type inputType = {
     kubeconfig: pulumi.Input<any>,
     region: string,
     roleArn: pulumi.Input<string>,
-    planeId: number
+    planeId: number,
+    planeName?: string,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -34,7 +35,13 @@ export const setup = async (input: inputType): Promise<outputType> => {
         name: `p-${input.planeId}-milvus-user`,
     }, { provider: awsProvider })
 
-    const bucketName = `p-${input.planeId}-milvus-data`
+    let bucketName: string;
+    if (input.planeName) {
+        bucketName = `p-${input.planeName}-milvus-data`
+    } else {
+        bucketName = `p-${input.planeId}-milvus-data`
+    }
+
     const milvusBucket = new aws.s3.Bucket(`milvus-bucket-${input.planeId}`, {
         bucket: bucketName,
         policy: {

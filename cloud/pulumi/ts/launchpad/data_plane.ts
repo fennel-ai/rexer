@@ -103,6 +103,13 @@ type AccountConf = {
 
 
 export type DataPlaneConf = {
+    // Optional name of the plane - this is to disambiguate resources which exist in the global namespace
+    // e.g. pulumi stack name, s3 buckets etc. If this is not set, we use the planeId configured (which is a required
+    // field)
+    //
+    // This was primarily introduced due to the account migration for Lokal where we needed to preserve
+    // few resource names for smoother data migration (kafka topics - requirement by MirrorMaker 2.0 etc).
+    planeName?: string,
     // Should be set to false, when deleting the plane
     //
     // Else, individual data storage resources, if they are to be deleted, should be set to false and the stack should
@@ -290,6 +297,7 @@ const setupResources = async () => {
             region: input.region,
             roleArn: roleArn,
             planeId: input.planeId,
+            planeName: input.planeName,
             kubeconfig: eksOutput.kubeconfig
         })
     }
@@ -303,6 +311,7 @@ const setupResources = async () => {
     }
     const mskOutput = await msk.setup({
         planeId: input.planeId,
+        planeName: input.planeName,
         region: input.region,
         roleArn: roleArn,
         privateSubnets: vpcOutput.privateSubnets,
@@ -320,6 +329,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: roleArn,
         planeId: input.planeId,
+        planeName: input.planeName,
         protect: input.protectResources,
     })
 
@@ -351,6 +361,8 @@ const setupResources = async () => {
     if (input.nitrousConf !== undefined) {
         nitrousOutput = await nitrous.setup({
             planeId: input.planeId,
+            planeName: input.planeName,
+
             region: input.region,
             roleArn: roleArn,
             nodeInstanceRole: eksOutput.instanceRole,
@@ -392,6 +404,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: roleArn,
         planeId: input.planeId,
+        planeName: input.planeName,
         protect: input.protectResources,
     })
 
@@ -399,6 +412,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: roleArn,
         planeId: input.planeId,
+        planeName: input.planeName,
         protect: input.protectResources,
     })
 
@@ -433,7 +447,12 @@ const setupResources = async () => {
 
 const setupDataPlane = async (args: DataPlaneConf, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
-    const stackName = `fennel/${projectName}/plane-${args.planeId}`
+    let stackName;
+    if (args.planeName) {
+        stackName = `fennel/${projectName}/${args.planeName}`
+    } else {
+        stackName = `fennel/${projectName}/plane-${args.planeId}`
+    }
 
     // validate that exactly one account configuration is set
     if (args.accountConf.newAccount !== undefined && args.accountConf.existingAccount !== undefined) {

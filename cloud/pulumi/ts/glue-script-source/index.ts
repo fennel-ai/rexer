@@ -14,6 +14,7 @@ export type inputType = {
     region: string,
     roleArn: pulumi.Input<string>,
     planeId: number,
+    planeName?: string,
     protect: boolean,
 }
 
@@ -34,7 +35,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
-    const bucketName = `p-${input.planeId}-gluejob-source`
+    let bucketName: string;
+    if (input.planeName) {
+        bucketName = `p-${input.planeName}-gluejob-source`
+    } else {
+        bucketName = `p-${input.planeId}-gluejob-source`
+    }
+
     const bucket = new aws.s3.Bucket("glue-source-bucket", {
         // OWNER gets full control but no one else has access right.
         // We grant access to the amazon user using user policy instead.

@@ -9,6 +9,7 @@ export type inputType = {
     region: string,
     roleArn: pulumi.Input<string>,
     planeId: number,
+    planeName?: string,
     protect: boolean,
 }
 
@@ -30,7 +31,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     });
 
     // create s3 bucket
-    const bucketName = `p-${input.planeId}-training-data`;
+    let bucketName: string;
+    if (input.planeName) {
+        bucketName = `p-${input.planeName}-training-data`
+    } else {
+        bucketName = `p-${input.planeId}-training-data`;
+    }
+
     const bucket = new aws.s3.Bucket("conn-sink-bucket", {
         // OWNER gets full control but no one else has access right.
         // We grant access to the amazon user using user policy instead.
