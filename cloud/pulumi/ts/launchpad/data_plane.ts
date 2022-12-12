@@ -18,6 +18,8 @@ import * as planeEksPermissions from "../plane-eks-permissions";
 import * as postgres from "../postgres";
 import * as modelMonitoring from "../model-monitoring";
 import * as msk from "../msk";
+import * as mirrorMaker from "../mirror-maker";
+import * as strimzi from "../strimzi";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -56,6 +58,11 @@ type PrometheusConf = {
     metricsRetentionDays?: number,
     nodeSelector?: Record<string, string>,
 }
+
+// strimzi is a kafka operator which is installed in the kubernetes cluster for managing kafka
+//
+// we are only interested in using its mirror maker 2.0 which is defined as a custom resource
+type StrimziConf = {}
 
 type MilvusConf = {}
 
@@ -132,6 +139,7 @@ export type DataPlaneConf = {
     nitrousConf?: NitrousConf,
     // TODO(mohit): Make this default going forward
     modelMonitoringConf?: ModelMonitoringConf,
+    strimziConf?: StrimziConf,
     // TODO(amit): Make this non optional going forward.
     mothershipId?: number,
     customer?: Customer,
@@ -321,6 +329,23 @@ const setupResources = async () => {
         },
         connectedCidrBlocks: [input.controlPlaneConf.cidrBlock],
         protect: input.protectResources,
+    });
+    const strimziOutput = await strimzi.setup({
+        kubeconfig: eksOutput.kubeconfig,
+    });
+    const mirrorMakerOutput = await mirrorMaker.setup({
+        planeId: input.planeId,
+        roleArn: roleArn,
+        region: input.region,
+        kubeconfig: eksOutput.kubeconfig,
+
+        sourcePassword: "p-5-password",
+        sourceUsername: "p-5-username",
+        sourceBootstrapServers: "b-1.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096,b-2.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096,b-3.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096,b-4.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096",
+
+        targetPassword: "p-5-password",
+        targetUsername: "p-5-username",
+        targetBootstrapServers: "b-1.p5kafkacluster.p3b4le.c2.kafka.ap-south-1.amazonaws.com:9096,b-2.p5kafkacluster.p3b4le.c2.kafka.ap-south-1.amazonaws.com:9096",
     });
     const connectorSinkOutput = await connectorSink.setup({
         region: input.region,

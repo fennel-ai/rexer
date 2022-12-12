@@ -760,7 +760,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
-
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-4xl-ng-arm",
@@ -1001,7 +1000,16 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
-
+                // Node group for mirror maker.
+                {
+                    name: "p-5-large-ng-x86",
+                    instanceTypes: ["r6i.xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-4xl-ng-arm",
