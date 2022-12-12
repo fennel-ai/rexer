@@ -12,42 +12,24 @@ export const plugins = {
 const DEFAULT_REPLICAS = 1
 const DEFAULT_SOURCE_CONNECTOR_TASKS = 10
 const DEFAULT_CHECKPOINT_CONNECTOR_TASKS = 10
-const DEFAULT_MEMORY_REQUESTS = "1Gi"
-const DEFAULT_MEMORY_LIMITS = "4Gi"
-const DEFAULT_CPU_REQUESTS = "1"
-const DEFAULT_CPU_LIMITS = "2"
-
-export type MirrorMakerConf = {
-    // increases the number of worker nodes running the "Tasks"
-    replicas?: number,
-    // this should ideally match the number of total partitions the topics to be mirrored have
-    sourceConnectorTasks?: number,
-    // this should ideally match the number of consumer groups the topics to be mirrored have
-    checkpointConnectorTasks?: number,
-
-    // worker nodes resource requirements
-    cpuRequests?: string,
-    cpuLimits?: string,
-    memoryRequests?: string,
-    memoryLimits?: string,
-}
+const DEFAULT_MEMORY_REQUESTS = "20Gi"
+const DEFAULT_MEMORY_LIMITS = "32Gi"
+const DEFAULT_CPU_REQUESTS = "3"
+const DEFAULT_CPU_LIMITS = "4"
 
 export type inputType = {
-    tierId: number,
+    planeId: number,
     roleArn: pulumi.Input<string>,
     region: string,
-    kubeconfig: string,
+    kubeconfig: any,
 
-    topics: topicConf[],
-    conf: MirrorMakerConf,
+    sourcePassword: string,
+    sourceUsername: string,
+    sourceBootstrapServers: string,
 
-    mskPassword: string,
-    mskUsername: string,
-    mskBootstrapServers: string,
-
-    confluentPassword: pulumi.Output<string>,
-    confluentUsername: string,
-    confluentBootstrapServers: string,
+    targetPassword: string,
+    targetUsername: string,
+    targetBootstrapServers: string,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -71,43 +53,37 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // secret with passwords
     const mirrorMakerCreds = new k8s.core.v1.Secret("mirror-maker-creds", {
         stringData: {
-            "confluentPassword": input.confluentPassword,
-            "mskPassword": input.mskPassword,
+            "sourcePassword": input.sourcePassword,
+            "targetPassword": input.targetPassword,
         },
         metadata: {
-            name: `t-${input.tierId}-mirrormaker-passwords`
+            name: `p-${input.planeId}-mirrormaker-passwords`
         }
     }, { provider: k8sProvider, deleteBeforeReplace: true });
-
-    let topicNames: string[] = [];
-    input.topics.forEach((topicConf) => {
-         topicNames.push(topicConf.name);
-    })
-    const topicRegex = topicNames.join("|");
 
     // setup the custom resource
     const mapping = new k8s.apiextensions.CustomResource("mirror-maker2-crd", {
         apiVersion: "kafka.strimzi.io/v1beta2",
         kind: "KafkaMirrorMaker2",
         metadata: {
-            name: `t-${input.tierId}-mirrormaker2`,
+            name: `p-${input.planeId}-mirrormaker2`,
         },
         spec: {
             "version": "3.2.0",
-            "replicas": input.conf.replicas || DEFAULT_REPLICAS,
+            "replicas": DEFAULT_REPLICAS,
             "connectCluster": "target-cluster",
             "clusters": [
                 {
                     "alias": "source-cluster",
                     "authentication": {
-                        "type": "plain",
-                        "username": input.confluentUsername,
+                        "type": "scram-sha-512",
+                        "username": input.sourceUsername,
                         "passwordSecret": {
-                            "password": "confluentPassword",
+                            "password": "sourcePassword",
                             "secretName": mirrorMakerCreds.metadata.name,
                         }
                     },
-                    "bootstrapServers": input.confluentBootstrapServers,
+                    "bootstrapServers": input.sourceBootstrapServers,
                     "tls": {
                         "trustedCertificates": []
                     }
@@ -116,13 +92,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     "alias": "target-cluster",
                     "authentication": {
                         "type": "scram-sha-512",
-                        "username": input.mskUsername,
+                        "username": input.targetUsername,
                         "passwordSecret": {
-                            "password": "mskPassword",
+                            "password": "targetPassword",
                             "secretName": mirrorMakerCreds.metadata.name,
                         }
                     },
-                    "bootstrapServers": input.mskBootstrapServers,
+                    "bootstrapServers": input.targetBootstrapServers,
                     "config": {
                         "config.storage.replication.factor": 2,
                         "offset.storage.replication.factor": 2,
@@ -138,12 +114,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                     "sourceCluster": "source-cluster",
                     "targetCluster": "target-cluster",
                     "sourceConnector": {
-                        "tasksMax": input.conf.sourceConnectorTasks || DEFAULT_SOURCE_CONNECTOR_TASKS,
+                        "tasksMax": DEFAULT_SOURCE_CONNECTOR_TASKS,
                         "config": {
                             "replication.factor": 2,
                             "offset-syncs.topic.replication.factor": 2,
                             "replication.policy.class": "io.strimzi.kafka.connect.mirror.IdentityReplicationPolicy",
                             "offset-syncs.topic.location": "target",
+                            "sync.topic.acls.enabled": false,
                         }
                     },
                     "heartbeatConnector": {
@@ -152,7 +129,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                         }
                     },
                     "checkpointConnector": {
-                        "tasksMax": input.conf.checkpointConnectorTasks || DEFAULT_CHECKPOINT_CONNECTOR_TASKS,
+                        "tasksMax": DEFAULT_CHECKPOINT_CONNECTOR_TASKS,
                         "config": {
                             "checkpoints.topic.replication.factor": 2,
                             "sync.group.offsets.enabled": true,
@@ -162,19 +139,20 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                             "offset-syncs.topic.location": "target",
                         }
                     },
-                    "topicsPattern": topicRegex,
-                    // copy all of their consumer groups
-                    "groupsPattern": ".*",
+
+                    "topicsPattern": "t_107_actionlog|t_107_profilelog|p_5_nitrous_log|p_5_aggregates_conf",
+                    // sync consumer group offsets for everything except nitrous
+                    "groupsPattern": "^(?!nitrous-0|nitrous-1|nitrous-backup-0).*",
                 }
             ],
             "resources": {
                 "requests": {
-                    "cpu": input.conf.cpuRequests || DEFAULT_CPU_REQUESTS,
-                    "memory": input.conf.memoryRequests || DEFAULT_MEMORY_REQUESTS,
+                    "cpu": DEFAULT_CPU_REQUESTS,
+                    "memory": DEFAULT_MEMORY_REQUESTS,
                 },
                 "limits": {
-                    "cpu": input.conf.cpuLimits || DEFAULT_CPU_LIMITS,
-                    "memory": input.conf.memoryLimits || DEFAULT_MEMORY_LIMITS,
+                    "cpu": DEFAULT_CPU_LIMITS,
+                    "memory": DEFAULT_MEMORY_LIMITS,
                 }
             },
             "template": {
@@ -216,7 +194,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
                 }
             }
         }
-    }, { provider: k8sProvider, deleteBeforeReplace: true })
+    }, { provider: k8sProvider, replaceOnChanges: ["*"],  deleteBeforeReplace: true })
 
     const output = pulumi.output({})
     return output

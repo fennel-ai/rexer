@@ -18,6 +18,7 @@ import * as planeEksPermissions from "../plane-eks-permissions";
 import * as postgres from "../postgres";
 import * as modelMonitoring from "../model-monitoring";
 import * as msk from "../msk";
+import * as mirrorMaker from "../mirror-maker";
 import * as strimzi from "../strimzi";
 import * as util from "../lib/util";
 
@@ -334,6 +335,20 @@ const setupResources = async () => {
     });
     const strimziOutput = await strimzi.setup({
         kubeconfig: eksOutput.kubeconfig,
+    });
+    const mirrorMakerOutput = await mirrorMaker.setup({
+        planeId: input.planeId,
+        roleArn: roleArn,
+        region: input.region,
+        kubeconfig: eksOutput.kubeconfig,
+
+        sourcePassword: "p-5-password",
+        sourceUsername: "p-5-username",
+        sourceBootstrapServers: "b-4.p5kafkacluster.g8h02u.c3.kafka.ap-south-1.amazonaws.com:9096,b-2.p5kafkacluster.g8h02u.c3.kafka.ap-south-1.amazonaws.com:9096,b-3.p5kafkacluster.g8h02u.c3.kafka.ap-south-1.amazonaws.com:9096",
+
+        targetPassword: "p-5-password",
+        targetUsername: "p-5-username",
+        targetBootstrapServers: "b-3.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096,b-1.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096,b-2.p5kafkacluster.0lsm9r.c2.kafka.ap-south-1.amazonaws.com:9096",
     });
     const connectorSinkOutput = await connectorSink.setup({
         region: input.region,
