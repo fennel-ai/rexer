@@ -25,6 +25,7 @@ import * as pprofBucket from "../pprof-bucket";
 import * as tierEksPermissions from "../tier-eks-permissions";
 import * as countersCleanup from "../counters-cleanup";
 import * as unleash from "../unleash";
+import * as mirrorMaker from "../mirror-maker";
 import * as util from "../lib/util";
 
 import * as process from "process";
@@ -287,6 +288,23 @@ const setupResources = async () => {
         mskApiKey: input.mskConf.mskUsername,
         mskApiSecret: input.mskConf.mskPassword,
         mskBootstrapServers: input.mskConf.bootstrapBrokers,
+    });
+    const mirrorMakerOutput = await mirrorMaker.setup({
+        tierId: input.tierId,
+        roleArn: input.roleArn,
+        region: input.region,
+        kubeconfig: input.kubeconfig,
+
+        topics: input.topics,
+        conf: input.mirrorMakerConf!,
+
+        mskPassword: input.mskConf.mskPassword,
+        mskUsername: input.mskConf.mskUsername,
+        mskBootstrapServers: input.mskConf.bootstrapBrokers,
+
+        confluentPassword: input.kafkaApiSecret,
+        confluentUsername: input.kafkaApiKey,
+        confluentBootstrapServers: input.bootstrapServer,
     });
     const offlineAggregateStorageBucket = await offlineAggregateStorage.setup({
         region: input.region,
