@@ -336,6 +336,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         plan: Plan.STARTUP,
         requestLimit: 0,
+        enableCors: true,
     },
     // 3 Demo tiers asked by Nikhil as of 08/09/2022
     116: {
@@ -1284,6 +1285,8 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
             airbyteConf: tierConf.airbyteConf,
             plan: tierConf.plan,
             requestLimit: tierConf.requestLimit,
+
+            enableCors: tierConf.enableCors,
         }, preview, destroy).catch(err => console.log(err))
     }
 }

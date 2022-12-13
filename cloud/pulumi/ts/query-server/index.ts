@@ -30,6 +30,7 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    enableCors?: boolean,
     minReplicas?: number,
     maxReplicas?: number,
     useAmd64?: boolean,
@@ -270,6 +271,82 @@ export const setup = async (input: inputType) => {
     }, { provider: k8sProvider, deleteBeforeReplace: true });
 
     // Setup ingress resources for query-server.
+    let spec: Record<string, any> = {
+        "hostname": "*",
+        "prefix": "\/data\/(internal\/v1\/query|v1\/query|query)",
+        "prefix_regex": true,
+        "rewrite": "/query",
+        "service": `query-server:${appPort}`,
+        "timeout_ms": timeoutSeconds * 1000,
+        "retry_policy": {
+            // Retry on gateway errors (which applies to 502, 503 or 504 responses)
+            //
+            // See - https://www.getambassador.io/docs/emissary/latest/topics/using/retries/#retry_on
+            //
+            // Also see - https://www.envoyproxy.io/docs/envoy/latest/faq/load_balancing/transient_failures#retries
+            //
+            // Ideally we want to retry on `connect-failure` and `retriable-4xx` errors as well, but
+            // emissary does not support configuring multiple `retry_on`
+            //
+            // (request retry section) - that multiple `retry_on` are in fact possible to configure
+            "retry_on": "gateway-error",
+            // Retry twice at max
+            //
+            // Currently we have not ruled out the exact cause for query servers OOMing. If the root cause is that
+            // there is a query of death (=> a query which requires a large memory allocation in this case),
+            // retrying many times will lead to multiple servers crashing with OOMs
+            //
+            // NOTE: we currently do not set `max_retry` in the global circuit breaker configured and it defaults to
+            // 5. This should be lower than the value set there so that the circuit breaker does not preempt
+            // the request before desired (or Mapping configured) retries
+            "num_retries": 2,
+            // Use `per_try_timeout` - specifies the timeout for each retry.
+            // Default: this is the global request timeout (which is by default 3000ms, and is overridden per
+            // mapping)
+            "per_try_timeout": "60s"
+        },
+        "circuit_breakers": [{
+            // Specifies the maximum number of concurrent retries there could be to the upstream service
+            //
+            // We noticed that this limit was being hit for many 5xx failures and there were no retry attempts,
+            // increasing it reasonably so that - the budget is not hit frequently, but also considering
+            // too many retries could potentially kill other servers (as the root cause for these failures in the
+            // first place is because of servers restarting)
+            //
+            // defaults to 3
+            "max_retries": 25,
+        }],
+        // use kubernetes endpoint level discovery so that the load balancing decisions are taken by
+        // emissary (or envoy) and we can configure advanced load balancing algorithms
+        "resolver": endpointResolverName,
+        "load_balancer": {
+            // Since we have not configured any weights for the endpoints, this should effectively
+            // behave like P2C (power of 2 choices) in which 2 endpoints are picked at random and one with the least
+            // requests is used to forward the request. This should help us more or less equally distribute
+            // the requests but also ensure the queue length (and potentially the latency) into consideration
+            // while load balancing.
+            //
+            // See - https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers#weighted-least-request
+            //
+            // Also see - https://blog.envoyproxy.io/examining-load-balancing-algorithms-with-envoy-1be643ea121c
+            // which gives a good idea about how different algorithms behave.
+            //
+            // NOTE: This is may not an ideal load balancing algorithms when say a "node" or "endpoint" is
+            // constantly failing and fails immediately hence it's queue length is almost always lower than any
+            // other node, if this is a contender in the 2 endpoints selected, this will always be selected,
+            // hence failing the requests. A good solution for this is "outlier detection" mechanism in
+            // envoy but emissary does not allow us to configure them
+            "policy": "least_request"
+        }
+    };
+    if (input.enableCors) {
+        spec["cors"] = {
+            // allow requests from any origin
+            "origins": ["*"],
+            // allow only GET POST and OPTIONS methods
+            "methods": ["GET", "POST", "OPTIONS"],
+        }
+    }
     const mapping = new k8s.apiextensions.CustomResource("query-server-mapping", {
         apiVersion: "getambassador.io/v3alpha1",
         kind: "Mapping",
@@ -279,74 +356,7 @@ export const setup = async (input: inputType) => {
                 "svc": "go-query",
             }
         },
-        spec: {
-            "hostname": "*",
-            "prefix": "\/data\/(internal\/v1\/query|v1\/query|query)",
-            "prefix_regex": true,
-            "rewrite": "/query",
-            "service": `query-server:${appPort}`,
-            "timeout_ms": timeoutSeconds * 1000,
-            "retry_policy": {
-                // Retry on gateway errors (which applies to 502, 503 or 504 responses)
-                //
-                // See - https://www.getambassador.io/docs/emissary/latest/topics/using/retries/#retry_on
-                //
-                // Also see - https://www.envoyproxy.io/docs/envoy/latest/faq/load_balancing/transient_failures#retries
-                //
-                // Ideally we want to retry on `connect-failure` and `retriable-4xx` errors as well, but
-                // emissary does not support configuring multiple `retry_on`
-                //
-                // (request retry section) - that multiple `retry_on` are in fact possible to configure
-                "retry_on": "gateway-error",
-                // Retry twice at max
-                //
-                // Currently we have not ruled out the exact cause for query servers OOMing. If the root cause is that
-                // there is a query of death (=> a query which requires a large memory allocation in this case),
-                // retrying many times will lead to multiple servers crashing with OOMs
-                //
-                // NOTE: we currently do not set `max_retry` in the global circuit breaker configured and it defaults to
-                // 5. This should be lower than the value set there so that the circuit breaker does not preempt
-                // the request before desired (or Mapping configured) retries
-                "num_retries": 2,
-                // Use `per_try_timeout` - specifies the timeout for each retry.
-                // Default: this is the global request timeout (which is by default 3000ms, and is overridden per
-                // mapping)
-                "per_try_timeout": "60s"
-            },
-            "circuit_breakers": [{
-                // Specifies the maximum number of concurrent retries there could be to the upstream service
-                //
-                // We noticed that this limit was being hit for many 5xx failures and there were no retry attempts,
-                // increasing it reasonably so that - the budget is not hit frequently, but also considering
-                // too many retries could potentially kill other servers (as the root cause for these failures in the
-                // first place is because of servers restarting)
-                //
-                // defaults to 3
-                "max_retries": 25,
-            }],
-            // use kubernetes endpoint level discovery so that the load balancing decisions are taken by
-            // emissary (or envoy) and we can configure advanced load balancing algorithms
-            "resolver": endpointResolverName,
-            "load_balancer": {
-                // Since we have not configured any weights for the endpoints, this should effectively
-                // behave like P2C (power of 2 choices) in which 2 endpoints are picked at random and one with the least
-                // requests is used to forward the request. This should help us more or less equally distribute
-                // the requests but also ensure the queue length (and potentially the latency) into consideration
-                // while load balancing.
-                //
-                // See - https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers#weighted-least-request
-                //
-                // Also see - https://blog.envoyproxy.io/examining-load-balancing-algorithms-with-envoy-1be643ea121c
-                // which gives a good idea about how different algorithms behave.
-                //
-                // NOTE: This is may not an ideal load balancing algorithms when say a "node" or "endpoint" is
-                // constantly failing and fails immediately hence it's queue length is almost always lower than any
-                // other node, if this is a contender in the 2 endpoints selected, this will always be selected,
-                // hence failing the requests. A good solution for this is "outlier detection" mechanism in
-                // envoy but emissary does not allow us to configure them
-                "policy": "least_request"
-            }
-        }
+        spec: spec,
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     const host = new k8s.apiextensions.CustomResource("query-server-host", {
