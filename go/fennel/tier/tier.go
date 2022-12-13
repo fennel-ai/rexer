@@ -112,17 +112,15 @@ func (args TierArgs) Valid() error {
 	if args.PlaneID == 0 {
 		missingFields = append(missingFields, "PLANE_ID")
 	}
-	if args.NitrousServer == "" {
-		missingFields = append(missingFields, "NITROUS_SERVER")
-	}
+
+	// TODO(mohit): make this a required argument
 	if args.MskKafkaServer != "" {
-		missingFields = append(missingFields, "MSK_KAFKA_SERVER")
-	}
-	if args.MskKafkaUsername == "" {
-		missingFields = append(missingFields, "MSK_KAFKA_USERNAME")
-	}
-	if args.MskKafkaPassword == "" {
-		missingFields = append(missingFields, "MSK_KAFKA_PASSWORD")
+		if args.MskKafkaUsername == "" {
+			missingFields = append(missingFields, "MSK_KAFKA_USERNAME")
+		}
+		if args.MskKafkaPassword == "" {
+			missingFields = append(missingFields, "MSK_KAFKA_PASSWORD")
+		}
 	}
 	// TODO: require args when ready for s3, glue, modelStore, sagemaker, UnleashEndpoint
 	if len(missingFields) > 0 {
@@ -151,7 +149,7 @@ type Tier struct {
 	AirbyteClient     mo.Option[airbyte.Client]
 	SagemakerClient   sagemaker.SMClient
 	MilvusClient      mo.Option[milvus.Client]
-	NitrousClient     nitrous.NitrousClient
+	NitrousClient     mo.Option[nitrous.NitrousClient]
 	ModelStore        *modelstore.ModelStore
 	Args              TierArgs
 	// In-process caches for the tier, has very short TTL ( order of minutes )
@@ -280,27 +278,35 @@ func CreateFromArgs(args *TierArgs) (tier Tier, err error) {
 		return kafkaConsumer.(libkafka.FConsumer), nil
 	}
 
-	logger.Info("Connecting to nitrous")
-	binlogProducer, ok := producers[libnitrous.BINLOG_KAFKA_TOPIC]
-	if !ok {
-		return tier, fmt.Errorf("failed to create nitrous client; Binlog kafka topic not configured")
+	nitrousClient := mo.None[nitrous.NitrousClient]()
+	if args.NitrousServer != "" {
+		logger.Info("Connecting to nitrous")
+		binlogProducer, ok := producers[libnitrous.BINLOG_KAFKA_TOPIC]
+		if !ok {
+			return tier, fmt.Errorf("failed to create nitrous client; Binlog kafka topic not configured")
+		}
+		reqslogProducer, ok := producers[libnitrous.REQS_KAFKA_TOPIC]
+		if !ok {
+			return tier, fmt.Errorf("failed to create nitrous client; Reqslog kafka topic not configured")
+		}
+		aggregateConfProducer, ok := producers[libnitrous.AGGR_CONF_KAFKA_TOPIC]
+		if !ok {
+			return tier, fmt.Errorf("failed to create nitrous client; aggregate_conf topic not configured")
+		}
+		nitrousConfig := nitrous.NitrousClientConfig{
+			TierID:                args.TierID,
+			ServerAddr:            args.NitrousServer,
+			BinlogProducer:        binlogProducer,
+			BinlogPartitions:      args.BinlogPartitions,
+			ReqsLogProducer:       reqslogProducer,
+			AggregateConfProducer: aggregateConfProducer,
+		}
+		client, err := nitrousConfig.Materialize()
+		if err != nil {
+			return tier, fmt.Errorf("failed to create nitrous client: %w", err)
+		}
+		nitrousClient = mo.Some(client.(nitrous.NitrousClient))
 	}
-	aggregateConfProducer, ok := producers[libnitrous.AGGR_CONF_KAFKA_TOPIC]
-	if !ok {
-		return tier, fmt.Errorf("failed to create nitrous client; aggregate_conf topic not configured")
-	}
-	nitrousConfig := nitrous.NitrousClientConfig{
-		TierID:                args.TierID,
-		ServerAddr:            args.NitrousServer,
-		BinlogProducer:        binlogProducer,
-		BinlogPartitions:      args.BinlogPartitions,
-		AggregateConfProducer: aggregateConfProducer,
-	}
-	client, err := nitrousConfig.Materialize()
-	if err != nil {
-		return tier, fmt.Errorf("failed to create nitrous client: %w", err)
-	}
-	nitrousClient := client.(nitrous.NitrousClient)
 
 	milvusClient := mo.None[milvus.Client]()
 	if args.MilvusArgs.Url != "" {

@@ -17,7 +17,6 @@ import (
 	_ "fennel/opdefs/std"
 	_ "fennel/opdefs/std/set"
 	"fennel/test"
-	"fennel/test/nitrous"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +54,9 @@ func TestValueAll(t *testing.T) {
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
 
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
+	// give some time for aggregate definitions to be stored on nitrous (these are currently communicated
+	// through a kafka topic which makes this behavior non-deterministic without timeouts or sleeps)
+	time.Sleep(2 * time.Second)
 
 	// now create changes
 	t1 := t0.Add(3600 * time.Second)
@@ -129,7 +130,8 @@ func TestValueAll(t *testing.T) {
 	err = Update(ctx, tier, actions, agg2)
 	assert.NoError(t, err)
 
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
+	// Wait for the binlog to be consumed by the binlog to allow values to be updated correctly
+	time.Sleep(10 * time.Second)
 
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name,
@@ -172,9 +174,11 @@ func TestCachedValueAll(t *testing.T) {
 	defer test.Teardown(tier)
 
 	ctx := context.Background()
-	clock := tier.Clock.(*clock2.Mock)
-	clock.Set(time.Now())
+	clock := clock2.NewMock()
+	tier.Clock = clock
 	t0 := clock.Now()
+	t1 := t0.Add(1800 * time.Second)
+	clock.Set(t1)
 
 	agg := aggregate.Aggregate{
 		Id:        1,
@@ -188,8 +192,6 @@ func TestCachedValueAll(t *testing.T) {
 		},
 	}
 	assert.NoError(t, Store(ctx, tier, agg))
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	// initially we should get 0
 	key := value.String("key")
@@ -215,9 +217,6 @@ func TestCachedValueAll(t *testing.T) {
 		},
 	}
 	assert.NoError(t, Update(ctx, tier, actions, agg))
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	expected = value.Int(0)
 	found, err = Value(ctx, tier, agg.Name, key, kwargs)
 	assert.NoError(t, err)
@@ -235,8 +234,6 @@ func TestCachedValueAll(t *testing.T) {
 	assert.NoError(t, Store(ctx, tier, agg1))
 	assert.NoError(t, Store(ctx, tier, agg2))
 	assert.NoError(t, Store(ctx, tier, agg3))
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	// initially we only get req1 and req3 and we should find 0s
 	reqs := []aggregate.GetAggValueRequest{
@@ -258,9 +255,6 @@ func TestCachedValueAll(t *testing.T) {
 	for _, agg := range []aggregate.Aggregate{agg1, agg2, agg3} {
 		assert.NoError(t, Update(ctx, tier, actions, agg))
 	}
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	// and this works even with repeated requests
 	req2 := []aggregate.GetAggValueRequest{reqs[0], reqs[2], reqs[1], reqs[1], reqs[2]}
 	expectedVals = []value.Value{value.Int(0), value.Int(0), value.Int(1), value.Int(1), value.Int(0)}
