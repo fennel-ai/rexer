@@ -398,8 +398,7 @@ const tierConfs: Record<number, TierConf> = {
         sagemakerConf: {
             // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
             // not autoscalable).
-            instanceType: "ml.c5.large",
-            // have multiple instances for fault tolerance
+            instanceType: "ml.m5.large",
             instanceCount: 1,
         },
         ingressConf: {
