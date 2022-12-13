@@ -99,6 +99,46 @@ const tierConfs: Record<number, TierConf> = {
         plan: Plan.STARTUP,
         requestLimit: 0,
     },
+    // Yext demo tier
+    115: {
+        protectResources: true,
+        planeId: 3,
+        tierId: 115,
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        // set larger requests for the http + query server
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "2250m",
+                        limit: "2500m"
+                    },
+                    memory: {
+                        request: "6G",
+                        limit: "7G",
+                    }
+                }
+            },
+        },
+        // enable nitrous
+        enableNitrous: true,
+
+        // they currently only work with offline aggregation jobs
+        enableOfflineAggregationJobs: true,
+
+        // enable airbyte
+        airbyteConf: {
+            publicServer: false,
+        },
+        plan: Plan.STARTUP,
+        requestLimit: 0,
+        enableCors: true,
+    },
     // Lokal prod tier in their account.
     130: {
         protectResources: true,
@@ -936,5 +976,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
         airbyteConf: tierConf.airbyteConf,
         plan: tierConf.plan,
         requestLimit: tierConf.requestLimit,
+
+        enableCors: tierConf.enableCors,
     }, preview, destroy).catch(err => console.log(err))
 }
