@@ -110,6 +110,7 @@ export type TierConf = {
     // enable few functionalities
     enableTrainingDatasetGenerationJobs?: boolean,
     enableOfflineAggregationJobs?: boolean,
+    enableCors?: boolean,
 }
 
 type inputType = {
@@ -182,6 +183,9 @@ type inputType = {
     airbyteConf?: AirbyteConf,
     plan?: util.Plan,
     requestLimit?: number,
+
+    // cors
+    enableCors?: boolean,
 }
 
 const parseConfig = (): inputType => {
@@ -254,7 +258,9 @@ const parseConfig = (): inputType => {
         airbyteConf: config.getObject(nameof<inputType>("airbyteConf")),
 
         plan: config.getNumber(nameof<inputType>("plan")),
-        requestLimit: config.getNumber(nameof<inputType>("requestLimit"))
+        requestLimit: config.getNumber(nameof<inputType>("requestLimit")),
+
+        enableCors: config.getBoolean(nameof<inputType>("enableCors")),
     };
 };
 
@@ -603,6 +609,7 @@ const setupResources = async () => {
             kubeconfig: input.kubeconfig,
             namespace: input.namespace,
             tierId: input.tierId,
+            enableCors: input.enableCors,
             minReplicas: input.httpServerConf?.podConf?.minReplicas,
             maxReplicas: input.httpServerConf?.podConf?.maxReplicas,
             resourceConf: input.httpServerConf?.podConf?.resourceConf,
@@ -622,6 +629,7 @@ const setupResources = async () => {
                 kubeconfig: input.kubeconfig,
                 namespace: input.namespace,
                 tierId: input.tierId,
+                enableCors: input.enableCors,
                 minReplicas: input.queryServerConf?.podConf?.minReplicas,
                 maxReplicas: input.queryServerConf?.podConf?.maxReplicas,
                 resourceConf: input.queryServerConf?.podConf?.resourceConf,
@@ -767,6 +775,9 @@ type TierInput = {
 
     // customer id.
     customerId?: number,
+
+    // enable cors for the http and query servers
+    enableCors?: boolean,
 }
 
 const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) => {
@@ -905,6 +916,10 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
 
     if (args.customerId !== undefined) {
         await stack.setConfig("customerId", { value: String(args.customerId) })
+    }
+
+    if (args.enableCors) {
+        await stack.setConfig("enableCors", { value: String(args.enableCors) })
     }
 
     console.info("config set");

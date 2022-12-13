@@ -158,6 +158,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         plan: Plan.STARTUP,
         requestLimit: 0,
+        enableCors: true,
     },
     // Lokal prod tier on their prod data plane.
     120: {
@@ -1248,5 +1249,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
         airbyteConf: tierConf.airbyteConf,
         plan: tierConf.plan,
         requestLimit: tierConf.requestLimit,
+
+        enableCors: tierConf.enableCors,
     }, preview, destroy).catch(err => console.log(err))
 }

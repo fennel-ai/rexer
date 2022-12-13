@@ -32,6 +32,7 @@ export type inputType = {
     kubeconfig: string,
     namespace: string,
     tierId: number,
+    enableCors?: boolean,
     minReplicas?: number,
     maxReplicas?: number,
     useAmd64?: boolean,
@@ -299,6 +300,21 @@ export const setup = async (input: inputType) => {
     })
 
     // Setup ingress resources for http-server.
+    let spec: Record<string, any> = {
+        "hostname": "*",
+        "prefix": "/data/",
+        "service": `http-server:${appPort}`,
+        "timeout_ms": timeoutSeconds * 1000,
+    };
+    if (input.enableCors) {
+        spec["cors"] = {
+            // allow requests from any origin
+            "origins": ["*"],
+            // allow only GET POST and OPTIONS methods
+            "methods": ["GET", "POST", "OPTIONS"],
+        }
+    }
+
     const mapping = new k8s.apiextensions.CustomResource("api-server-mapping", {
         apiVersion: "getambassador.io/v3alpha1",
         kind: "Mapping",
@@ -308,12 +324,7 @@ export const setup = async (input: inputType) => {
                 "svc": "go-http",
             }
         },
-        spec: {
-            "hostname": "*",
-            "prefix": "/data/",
-            "service": `http-server:${appPort}`,
-            "timeout_ms": timeoutSeconds * 1000,
-        }
+        spec: spec,
     }, { provider: k8sProvider, deleteBeforeReplace: true })
 
     const host = new k8s.apiextensions.CustomResource("api-server-host", {
