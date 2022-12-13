@@ -24,6 +24,7 @@ import (
 	"fennel/tier"
 
 	"github.com/Unleash/unleash-client-go/v3"
+	"github.com/samber/mo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -81,7 +82,7 @@ func Tier(t *testing.T) tier.Tier {
 		Cache:            Cache,
 		PCache:           PCache,
 		Redis:            redClient,
-		NitrousClient:    nitrousClient,
+		NitrousClient:    mo.Some(nitrousClient),
 		Producers:        producers,
 		Clock:            clock,
 		NewKafkaConsumer: consumerCreator,
@@ -92,6 +93,12 @@ func Tier(t *testing.T) tier.Tier {
 		AggregateDefs:    new(sync.Map),
 		RequestLimit:     -1,
 	}
+}
+
+func TierWithRequestLimit(t *testing.T, requestLimit int64) tier.Tier {
+	tier := Tier(t)
+	tier.RequestLimit = requestLimit
+	return tier
 }
 
 func Teardown(tier tier.Tier) {

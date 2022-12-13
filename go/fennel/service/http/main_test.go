@@ -13,7 +13,6 @@ import (
 	clock2 "github.com/raulk/clock"
 
 	usagecontroller "fennel/controller/usage"
-	"fennel/test/nitrous"
 
 	action2 "fennel/controller/action"
 	aggregate2 "fennel/controller/aggregate"
@@ -497,10 +496,6 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	key := value.Int(4)
 	assert.Equal(t, t0, tier.Clock.Now())
 	assert.NoError(t, aggregate2.Store(ctx, tier, agg))
-
-	// wait for the aggregate to be consumed
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	// initially count is zero
 	valueSendReceive(t, holder, agg, key, value.Int(0), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
@@ -521,9 +516,6 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	err := aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
 
-	// wait for the actions to be consumed
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	clock.Set(t1.Add(60 * time.Second))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 
@@ -543,10 +535,6 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 	}
 	err = aggregate2.Update(ctx, tier, actions, agg)
 	assert.NoError(t, err)
-
-	// wait for the actions to be consumed
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	clock.Set(t2.Add(60 * time.Second))
 	valueSendReceive(t, holder, agg, key, value.Int(2), value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}))
 	valueSendReceive(t, holder, agg, key, value.Int(1), value.NewDict(map[string]value.Value{"duration": value.Int(120)}))
@@ -557,7 +545,6 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	defer test.Teardown(tier)
 
 	clock := tier.Clock.(*clock2.Mock)
-	clock.Set(time.Now())
 	t0 := clock.Now()
 
 	ctx, cancelFn := context.WithCancel(context.Background())
@@ -585,15 +572,12 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 			Durations: []uint32{3 * 3600, 6 * 3600},
 		},
 	}
+	assert.NoError(t, aggregate2.Store(ctx, tier, agg1))
+	assert.NoError(t, aggregate2.Store(ctx, tier, agg2))
 
 	// agg1 is assigned Id = 1 & agg2.Id = 2
 	agg1.Id = 1
 	agg2.Id = 2
-
-	assert.NoError(t, aggregate2.Store(ctx, tier, agg1))
-	assert.NoError(t, aggregate2.Store(ctx, tier, agg2))
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
 
 	// now create changes
 	t1 := t0.Add(3600 * time.Second)
@@ -623,9 +607,6 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	}
 	err := aggregate2.Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	req1 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
@@ -654,9 +635,6 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	}
 	err = aggregate2.Update(ctx, tier, actions, agg2)
 	assert.NoError(t, err)
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	req2 := aggregate.GetAggValueRequest{
 		AggName: agg2.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(6 * 3600)}),
 	}
@@ -681,9 +659,6 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 	}
 	err = aggregate2.Update(ctx, tier, actions, agg1)
 	assert.NoError(t, err)
-
-	nitrous.WaitForMessagesToBeConsumed(t, ctx, tier.NitrousClient)
-
 	req3 := aggregate.GetAggValueRequest{
 		AggName: agg1.Name, Key: key, Kwargs: value.NewDict(map[string]value.Value{"duration": value.Int(1800)}),
 	}
