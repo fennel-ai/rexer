@@ -56,29 +56,6 @@ const customers: Record<number, Customer> = {
 
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
-    // Mohit's debug tier
-    101: {
-        protectResources: false,
-        planeId: 3,
-        tierId: 101,
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "1250m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                },
-            }
-        },
-        enableNitrous: true,
-    },
     // Fennel staging tier using Fennel's staging data plane.
     106: {
         protectResources: true,
@@ -181,33 +158,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         enableNitrous: true,
     },
-    // Discord demo tier
-    111: {
-        protectResources: true,
-        planeId: 3,
-        tierId: 111,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "2000m",
-                        limit: "6000m"
-                    },
-                    memory: {
-                        request: "6G",
-                        limit: "8G",
-                    }
-                }
-            },
-        },
-        enableNitrous: true,
-    },
     // Convoy prod tier
     112: {
         protectResources: true,
@@ -264,45 +214,6 @@ const tierConfs: Record<number, TierConf> = {
         plan: Plan.STARTUP,
         requestLimit: 0,
     },
-    // 3 Demo tiers asked by Nikhil as of 08/09/2022
-    116: {
-        protectResources: true,
-        planeId: 3,
-        tierId: 116,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-    },
-    117: {
-        protectResources: true,
-        planeId: 3,
-        tierId: 117,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-    },
-    118: {
-        protectResources: true,
-        planeId: 3,
-        tierId: 118,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-    },
-    119: {
-        protectResources: true,
-        planeId: 3,
-        tierId: 119,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        airbyteConf: {},
-    },
-
     // Lokal prod tier on their prod data plane.
     120: {
         protectResources: true,
@@ -393,7 +304,7 @@ const tierConfs: Record<number, TierConf> = {
         enableNitrous: true,
         plan: Plan.STARTUP,
         requestLimit: 0,
-    },
+    }
 }
 
 // map from plane id to its configuration.
