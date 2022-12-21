@@ -1155,18 +1155,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     expansionPriority: 1,
                 },
 
-                // required for kafka mirror maker
-                //
-                // TODO(mohit): remove
-                {
-                    name: "p-5-large-ng-x86",
-                    instanceTypes: ["r6i.xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
                 // Nitrous node group.
                 {
                     name: "p-5-nitrous-ng-arm",
