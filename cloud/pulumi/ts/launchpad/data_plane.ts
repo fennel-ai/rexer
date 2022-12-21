@@ -132,7 +132,6 @@ export type DataPlaneConf = {
     nitrousConf?: NitrousConf,
     // TODO(mohit): Make this default going forward
     modelMonitoringConf?: ModelMonitoringConf,
-    strimziConf?: StrimziConf,
     // TODO(amit): Make this non optional going forward.
     mothershipId?: number,
     customer?: Customer,
