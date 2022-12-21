@@ -15,6 +15,7 @@ export type inputType = {
     roleArn: pulumi.Input<string>,
     // TODO(mohit): See if this should be made a tier specific resource
     planeId: number,
+    planeName?: string,
     protect: boolean,
 }
 
@@ -34,7 +35,13 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         }
     });
 
-    const bucketName = `p-${input.planeId}-offline-aggregate-source`
+    let bucketName: string;
+    if (input.planeName) {
+        bucketName = `p-${input.planeName}-offline-aggregate-source`
+    } else {
+        bucketName = `p-${input.planeId}-offline-aggregate-source`
+    }
+
     const bucket = new aws.s3.Bucket(`p-${input.planeId}-offline-aggregate-source-bucket`, {
         // OWNER gets full control but no one else has access right.
         // We grant access to the amazon user using user policy instead.

@@ -9,6 +9,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    tierName?: string,
     protect: boolean
 }
 
@@ -27,7 +28,12 @@ export const setup = async (input: inputType): Promise<outputType> => {
         }
     });
 
-    const bucketName = `t-${input.tierId}-offline-aggregate-output`
+    let bucketName;
+    if (input.tierName) {
+        bucketName = `t-${input.tierName}-offline-aggregate-output`
+    } else {
+        bucketName = `t-${input.tierId}-offline-aggregate-output`
+    }
     const bucket = new aws.s3.Bucket(`p-${input.tierId}-offline-aggregate-output`, {
         acl: "private",
         bucket: bucketName,

@@ -30,6 +30,7 @@ export type MothershipConf = {
     dbConf: util.DBConfig,
     eksConf: util.EksConf,
     planeId: number,
+    planeName?: string,
     vpcConf: vpc.controlPlaneConfig,
     ingressConf?: util.IngressConf,
     bridgeServerConf?: BridgeServerConf,

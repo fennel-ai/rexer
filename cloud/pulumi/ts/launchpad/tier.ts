@@ -92,6 +92,9 @@ export type TierConf = {
     // NOTE: Please add a justification if this value is being set to False and the configuration is being checked-in
     protectResources: boolean,
     planeId: number,
+    tierId: number,
+    tierName?: string,
+
     enableNitrous?: boolean,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
@@ -108,6 +111,7 @@ export type TierConf = {
 type inputType = {
     protect: boolean,
     tierId: number,
+    tierName?: string,
     planeId: number,
     // aws and k8s configuration.
     roleArn: string,
@@ -177,6 +181,7 @@ const parseConfig = (): inputType => {
     return {
         protect: config.requireBoolean(nameof<inputType>("protect")),
         tierId: config.requireNumber(nameof<inputType>("tierId")),
+        tierName: config.get(nameof<inputType>("tierName")),
         planeId: config.requireNumber(nameof<inputType>("planeId")),
 
         topics: config.requireObject(nameof<inputType>("topics")),
@@ -287,6 +292,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        tierName: input.tierName,
         protect: input.protect,
     })
     // setup kafka connector to s3 bucket for the action and feature log topics.
@@ -336,6 +342,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        tierName: input.tierName,
         protect: input.protect,
     })
 
@@ -371,6 +378,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        tierName: input.tierName,
         protect: input.protect,
     })
     // setup sagemaker endpoint related resources
@@ -401,6 +409,7 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
+        tierName: input.tierName,
         protect: input.protect,
     });
 
@@ -413,6 +422,7 @@ const setupResources = async () => {
             region: input.region,
             roleArn: input.roleArn,
             tierId: input.tierId,
+            tierName: input.tierName,
             namespace: input.namespace,
             dbEndpoint: input.postgresDbEndpoint,
             dbPort: input.postgresDbPort,
@@ -519,7 +529,6 @@ const setupResources = async () => {
         region: input.region,
         roleArn: input.roleArn,
         tierId: input.tierId,
-        planeId: input.planeId,
         sourceBucket: input.glueSourceBucket,
         trainingDataBucket: input.glueTrainingDataBucket,
         script: input.glueSourceScript,
@@ -527,7 +536,11 @@ const setupResources = async () => {
 
     let queryServerShadowBucketName: string | undefined;
     if (input.queryServerConf !== undefined) {
-        queryServerShadowBucketName = `t-${input.tierId}-query-server-reqs`;
+        if (input.tierName) {
+            queryServerShadowBucketName = `t-${input.tierName}-query-server-reqs`;
+        } else {
+            queryServerShadowBucketName = `t-${input.tierId}-query-server-reqs`;
+        }
     }
 
     // setup tier level permissions on the EKS instance role before actually spinning up the jobs so that the
@@ -609,6 +622,7 @@ const setupResources = async () => {
 
         // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
         // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
+
         await countaggr.setup({
             roleArn: input.roleArn,
             region: input.region,
@@ -619,6 +633,7 @@ const setupResources = async () => {
             useAmd64: input.countAggrConf?.podConf?.useAmd64,
             nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
         });
+
         await countersCleanup.setup({
             region: input.region,
             roleArn: input.roleArn,
@@ -639,6 +654,7 @@ type TierInput = {
     protect: boolean,
 
     tierId: number,
+    tierName?: string,
     planeId: number,
     // kafka configuration.
     topics: kafkatopics.topicConf[],
@@ -732,7 +748,12 @@ type TierInput = {
 
 const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) => {
     const projectName = `launchpad`
-    const stackName = `fennel/${projectName}/tier-${args.tierId}`
+    let stackName: string;
+    if (args.tierName) {
+        stackName = `fennel/${projectName}/${args.tierName}`
+    } else {
+        stackName = `fennel/${projectName}/tier-${args.tierId}`
+    }
 
     console.info("initializing stack");
     // Create our stack
@@ -757,6 +778,9 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("protect"), { value: String(args.protect) })
 
     await stack.setConfig(nameof<inputType>("tierId"), { value: String(args.tierId) })
+    if (args.tierName) {
+        await stack.setConfig(nameof<inputType>("tierName"), { value: args.tierName })
+    }
     await stack.setConfig(nameof<inputType>("planeId"), { value: String(args.planeId) })
 
     await stack.setConfig(nameof<inputType>("topics"), { value: JSON.stringify(args.topics) })

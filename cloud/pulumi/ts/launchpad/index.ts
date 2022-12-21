@@ -60,6 +60,7 @@ const tierConfs: Record<number, TierConf> = {
     101: {
         protectResources: false,
         planeId: 3,
+        tierId: 101,
         httpServerConf: {
             podConf: {
                 minReplicas: 1,
@@ -82,6 +83,7 @@ const tierConfs: Record<number, TierConf> = {
     106: {
         protectResources: true,
         planeId: 3,
+        tierId: 106,
         httpServerConf: {
             podConf: {
                 minReplicas: 1,
@@ -115,6 +117,7 @@ const tierConfs: Record<number, TierConf> = {
     107: {
         protectResources: true,
         planeId: 5,
+        tierId: 107,
         httpServerConf: {
             podConf: {
                 minReplicas: 2,
@@ -218,6 +221,7 @@ const tierConfs: Record<number, TierConf> = {
     108: {
         protectResources: true,
         planeId: 3,
+        tierId: 108,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -243,6 +247,7 @@ const tierConfs: Record<number, TierConf> = {
     109: {
         protectResources: true,
         planeId: 5,
+        tierId: 109,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -269,6 +274,7 @@ const tierConfs: Record<number, TierConf> = {
     111: {
         protectResources: true,
         planeId: 3,
+        tierId: 111,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -295,6 +301,7 @@ const tierConfs: Record<number, TierConf> = {
     112: {
         protectResources: true,
         planeId: 9,
+        tierId: 112,
         // TODO(mohit): set service configurations
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
@@ -307,6 +314,7 @@ const tierConfs: Record<number, TierConf> = {
     115: {
         protectResources: true,
         planeId: 3,
+        tierId: 115,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -341,6 +349,7 @@ const tierConfs: Record<number, TierConf> = {
     116: {
         protectResources: true,
         planeId: 3,
+        tierId: 116,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -349,6 +358,7 @@ const tierConfs: Record<number, TierConf> = {
     117: {
         protectResources: true,
         planeId: 3,
+        tierId: 117,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -357,6 +367,7 @@ const tierConfs: Record<number, TierConf> = {
     118: {
         protectResources: true,
         planeId: 3,
+        tierId: 118,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
@@ -365,12 +376,105 @@ const tierConfs: Record<number, TierConf> = {
     119: {
         protectResources: true,
         planeId: 3,
+        tierId: 119,
         // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
             usePublicSubnets: true,
         },
         airbyteConf: {},
-    }
+    },
+
+    // Lokal prod tier on their prod data plane.
+    120: {
+        protectResources: true,
+        // this is the plane in the new account for lokal
+        planeId: 11,
+        // assign the same tier id as the original account - this is to have the same db names and kafka topics
+        // which are being copied/mirrored from the original account.
+        tierId: 107,
+        // this is required for any resource in the global namespace e.g. pulumi stack, s3 buckets, etc.
+        tierName: "lokal-prod-tier",
+
+        httpServerConf: {
+            podConf: {
+                minReplicas: 2,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "1000m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+                // each http-server should be in different nodes from each other
+                nodeLabels: {
+                    "node-group": "p-5-httpserver-ng"
+                }
+            }
+        },
+
+        // countaggr should be scheduled in a different node than http-server
+        countAggrConf: {
+            podConf: {
+                nodeLabels: {
+                    "node-group": "p-5-countaggr-ng"
+                },
+                resourceConf: {
+                    // c6g.2xlarge machine, set requests and limits accordingly
+                    cpu: {
+                        request: "6000m",
+                        limit: "8000m",
+                    },
+                    memory: {
+                        request: "10Gi",
+                        limit: "14Gi",
+                    }
+                }
+            }
+        },
+
+        // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
+        // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
+        // place the pods across the nodes based on utilization and `limit`
+        queryServerConf: {
+            podConf: {
+                minReplicas: 2,
+                maxReplicas: 10,
+                resourceConf: {
+                    // c6g.xlarge machines, set requests and limits accordingly
+                    cpu: {
+                        request: "2500m",
+                        limit: "3000m"
+                    },
+                    memory: {
+                        request: "5G",
+                        limit: "7G",
+                    }
+                },
+                nodeLabels: {
+                    "node-group": "p-5-queryserver-ng"
+                },
+            }
+        },
+
+        sagemakerConf: {
+            // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
+            // not autoscalable).
+            instanceType: "ml.m5.large",
+            instanceCount: 1,
+        },
+        ingressConf: {
+            useDedicatedMachines: true,
+            replicas: 3,
+        },
+        airbyteConf: {},
+        enableNitrous: true,
+        plan: Plan.STARTUP,
+        requestLimit: 0,
+    },
 }
 
 // map from plane id to its configuration.
@@ -578,6 +682,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
                 backupFrequencyDuration: "5m",
                 remoteCopiesToKeep: 2,
+                // using the same node type as the primary nitrous instances
+                storageCapacityGB: 100,
             },
         },
 
@@ -831,6 +937,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                         limit: "60Gi",
                     }
                 },
+                storageCapacityGB: 1700,
             },
         },
 
@@ -918,7 +1025,255 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         customer: customers[2],
         mothershipId: 12,
-    }
+    },
+    // plane 10 - for self serve pending account close
+
+    // lokal plane in their individual account
+    11: {
+        protectResources: true,
+
+        accountConf: {
+            newAccount: {
+                name: "lokal-prod",
+                email: "admin+lokal-prod@fennel.ai"
+            },
+        },
+        planeName: "lokal-prod",
+        planeId: 5,
+        region: "ap-south-1",
+        vpcConf: {
+            cidr: "10.112.0.0/16"
+        },
+        // TODO(mohit): till the elasticache has reasonably hit rate, keep more db ACUs running for profile lookups
+        dbConf: {
+            minCapacity: 16,
+            maxCapacity: 64,
+            password: "password",
+            skipFinalSnapshot: false,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.medium",
+            // use smaller number of cache nodes - this is required for profiles, we are almost always ~99.9%
+            numNodeGroups: 2,
+            replicasPerNodeGroup: 1,
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            // keep 1 shard for the existing users of redis - phaser and action dedup check logic
+            numShards: 1,
+            // this is only required for actions and streamlog deduplication - currently with a `db.r6g.large` instance
+            // the memory utilization is around 1%
+            nodeType: "db.t4g.small",
+            numReplicasPerShard: 1,
+        },
+        eksConf: {
+            nodeGroups: [
+                // HTTP server node group
+                {
+                    name: "p-5-httpserver-ng-arm64",
+                    instanceTypes: ["t4g.medium"],
+                    // at least have 2 nodes for fault tolerance
+                    minSize: 2,
+                    maxSize: 5,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-httpserver-ng"
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                // Countaggr server node group
+                {
+                    name: "p-5-countaggr-ng-arm64",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    instanceTypes: ["c6g.2xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-countaggr-ng"
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+
+                // Query server node groups
+                {
+                    name: "p-5-query-ng-arm",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "on-demand",
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-query-ng-arm-spot",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
+                    },
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
+                },
+
+                // Common node groups in case some container needs to be run on these
+                {
+                    name: "p-5-common-ng-arm64",
+                    instanceTypes: ["t4g.medium"],
+                    minSize: 1,
+                    maxSize: 5,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-common-ng-x86",
+                    instanceTypes: ["t3.medium"],
+                    minSize: 1,
+                    maxSize: 5,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+
+                // Nitrous node group.
+                {
+                    name: "p-5-nitrous-ng-arm",
+                    // 32vCpu, 128GiB and 1900GB of local SSD - $0.9664
+                    instanceTypes: ["m6gd.8xlarge"],
+                    minSize: 2,
+                    maxSize: 2,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-5-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+                // Nitrous backup node group.
+                {
+                    name: "p-5-nitrous-backup-ng-arm",
+                    // 8vCpu, 64GiB and 475GB of local SSD - $0.299
+                    instanceTypes: ["r6gd.2xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-5-nitrous-backup-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+            ],
+            spotReschedulerConf: {
+                spotNodeLabel: "rescheduler-label=spot",
+                onDemandNodeLabel: "rescheduler-label=on-demand",
+            }
+        },
+        prometheusConf: {
+            volumeSizeGiB: 256,
+            metricsRetentionDays: 60,
+        },
+
+        // Run nitrous on the plane.
+        nitrousConf: {
+            replicas: 2,
+            useAmd64: false,
+            storageCapacityGB: 1700,
+            storageClass: "local",
+            resourceConf: {
+                cpu: {
+                    request: "30000m",
+                    limit: "32000m"
+                },
+                memory: {
+                    request: "110Gi",
+                    limit: "120Gi",
+                }
+            },
+            binlog: {
+                partitions: 32,
+                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
+                partition_retention_bytes: -1,
+                max_message_bytes: 2097164,
+                // TODO(mohit): Consider setting this to 2.
+                // it is recommended to have RF >= 3 in a 3 AZ cluster. With a 2 AZ cluster, this could be an overkill.
+                //
+                // NOTE: since we configure 4 brokers, setting to >=2 works with rolling updates to the cluster where
+                // a broker is "inactive".
+                //
+                // by default MSK sets this to 2 for the cluster configured in 2 AZs - this is bad for availability
+                // since it is possible that one of the AZ is unreachable and the broker in the same AZ is down
+                // (could be a rolling update affecting this broker)
+                replicationFactor: 2,
+                // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
+                // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
+                //
+                // For Confluent based topics, min in-sync replicas is 2
+            },
+            nodeLabels: {
+                "node-group": "p-5-nitrous-ng",
+            },
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-5-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "60m",
+                remoteCopiesToKeep: 2,
+                // this needs to be consistent with the node group which this pod is going to get scheduled on
+                //
+                // currently r6gd.8xlarge
+                resourceConf: {
+                    cpu: {
+                        request: "6000m",
+                        limit: "8000m"
+                    },
+                    memory: {
+                        request: "55Gi",
+                        limit: "60Gi",
+                    }
+                },
+                storageCapacityGB: 400,
+            },
+        },
+
+        // set up MSK cluster
+        mskConf: {
+            // see - https://aws.amazon.com/msk/pricing/
+            brokerType: "kafka.m5.large",
+            // this will place 2 broker nodes in each of the AZs
+            numberOfBrokerNodes: 4,
+            // TODO(mohit): As we mirror data, would we require more memory?
+            // currently in the lokal setup, with 1636 GiB, the utilization is at 20%.  To be ~75% utilization,
+            // we configure the EBS volume size to be 425
+            storageVolumeSizeGiB: 425,
+        },
+        customer: customers[3],
+        mothershipId: 12,
+    },
 }
 
 const mothershipConfs: Record<number, MothershipConf> = {
@@ -1041,9 +1396,6 @@ const mothershipConfs: Record<number, MothershipConf> = {
 
 //==============================================================================
 
-var tierId = 0;
-var planeId = 0;
-
 var preview = false;
 var destroy = false;
 
@@ -1088,9 +1440,7 @@ if (id in dataPlaneConfs) {
         console.log(`Destruction of data-planes is not supported from launchpad, please delete it directly via pulumi CLI`)
         process.exit(1)
     }
-    planeId = id
-    console.log("Updating data plane: ", planeId)
-    await setupDataPlane(dataPlaneConfs[planeId], preview, destroy)
+    await setupDataPlane(dataPlaneConfs[id], preview, destroy)
     if (mothershipId !== undefined && mothership !== undefined) {
         console.log('updating mothership database...')
         await mothership.insertOrUpdateDataPlane(id, id => {
@@ -1109,21 +1459,19 @@ if (id in dataPlaneConfs) {
     }
 
 } else if (id in tierConfs) {
-    tierId = id
-    planeId = tierConfs[tierId].planeId
-    console.log("Updating data plane: ", planeId)
-    const dataplane = await setupDataPlane(dataPlaneConfs[planeId], preview, false)
+    const tierConf = tierConfs[id];
+    const dataplane = await setupDataPlane(dataPlaneConfs[tierConf.planeId], preview, false)
     if (destroy) {
         // For destroy we need to do a first pass of propagating protectResource to all the child
         // resources. So we run destroy as false.
-        await setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId], preview, false, true)
+        await setupTierWrapperFn(tierConf, dataplane, dataPlaneConfs[tierConf.planeId], preview, false, true)
     }
     // If destroy was set to true then both destroy and unprotect would be set to false and stack
     // destruction would continue.
-    await setupTierWrapperFn(tierId, dataplane, dataPlaneConfs[planeId], preview, destroy, destroy)
+    await setupTierWrapperFn(tierConf, dataplane, dataPlaneConfs[tierConf.planeId], preview, destroy, destroy)
     if (mothershipId !== undefined && mothership !== undefined) {
         console.log('updating mothership database...')
-        await mothership.insertOrUpdateTier(tierId)
+        await mothership.insertOrUpdateTier(id)
         process.once('exit', code => {
             if (mothership !== undefined) {
                 mothership.exit().then(() => {
@@ -1137,15 +1485,14 @@ if (id in dataPlaneConfs) {
         console.log(`Destruction of mothership is not supported from launchpad, please delete it directly via pulumi CLI`)
         process.exit(1)
     }
-    planeId = id
-    console.log("Updating mothership: ", planeId)
-    await setupMothership(mothershipConfs[planeId], preview, destroy)
+    console.log("Updating mothership: ", id)
+    await setupMothership(mothershipConfs[id], preview, destroy)
 } else {
     console.log(`${id} is neither a tier, data plane or a control plane`)
     process.exit(1)
 }
 
-async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeConf: DataPlaneConf, preview: boolean, destroy: boolean, unprotect: boolean) {
+async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, planeConf: DataPlaneConf, preview: boolean, destroy: boolean, unprotect: boolean) {
     const roleArn = dataplane[nameof<PlaneOutput>("roleArn")].value as string
     const dbOutput = dataplane[nameof<PlaneOutput>("db")].value as aurora.outputType
     const postgresDbOutput = dataplane[nameof<PlaneOutput>("postgresDb")].value as postgres.outputType
@@ -1162,128 +1509,127 @@ async function setupTierWrapperFn(tierId: number, dataplane: OutputMap, planeCon
     const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")] !== undefined ? dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType : undefined
 
     // Create/update/delete the tier.
-    if (tierId !== 0) {
-        console.log("Updating tier: ", tierId);
-        const tierConf = tierConfs[tierId]
-        if (unprotect) {
-            tierConf.protectResources = false
-        }
-
-        // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
-        // defined in all node groups.
-
-        const mskConf: TierMskConf = {
-            clusterArn: mskOutput.clusterArn,
-            mskUsername: mskOutput.mskUsername,
-            mskPassword: mskOutput.mskPassword,
-            bootstrapBrokers: mskOutput.bootstrapBrokers,
-            bootstrapBrokersIam: mskOutput.bootstrapBrokersIam,
-            sgId: mskOutput.clusterSgId,
-            s3ConnectPluginArn: mskOutput.s3ConnectPluginArn,
-            s3ConnectPluginRev: mskOutput.s3ConnectPluginRevision,
-            s3ConnectWorkerArn: mskOutput.s3ConnectWorkerArn,
-            s3ConnectWorkerRev: mskOutput.s3ConnectWorkerRev,
-        }
-
-        const topics: kafkatopics.topicConf[] = [
-            {
-                name: `t_${tierId}_actionlog`,
-                // TODO(mohit): Increase this period to 21 days to support few of the larger aggregates
-                retention_ms: 1209600000  // 14 days retention
-            },
-            {
-                name: `t_${tierId}_featurelog`,
-                partitions: 10,
-                retention_ms: 432000000  // 5 days retention
-            },
-            // configure profile topic to have "unlimited" retention
-            {
-                name: `t_${tierId}_profilelog`,
-                retention_ms: -1
-            },
-            {
-                name: `t_${tierId}_actionlog_json`,
-                retention_ms: 432000000  // 5 days retention
-            },
-            { name: `t_${tierId}_aggr_offline_transform` },
-            // configure stream log to which airbyte connectors will write stream data to
-            {
-                name: `t_${tierId}_streamlog`,
-                partitions: 10,
-                retention_ms: 432000000  // 5 days retention
-            },
-            {
-                name: `t_${tierId}_hourly_usage_log`,
-                retention_ms: 432000000  // 5 days retention
-            }
-
-        ];
-        await setupTier({
-            protect: tierConf.protectResources,
-
-            tierId: Number(tierId),
-            planeId: Number(planeId),
-
-            topics: topics,
-            mskConf: mskConf,
-
-            connUserAccessKey: trainingDataOutput.userAccessKeyId,
-            connUserSecret: trainingDataOutput.userSecretAccessKey,
-            connBucketName: trainingDataOutput.bucketName,
-
-            db: "db",
-            dbEndpoint: dbOutput.host,
-            dbUsername: "admin",
-            dbPassword: planeConf.dbConf.password,
-
-            postgresDbEndpoint: postgresDbOutput.host,
-            postgresDbPort: postgresDbOutput.port,
-
-            roleArn: roleArn,
-            region: planeConf.region,
-
-            kubeconfig: JSON.stringify(eksOutput.kubeconfig),
-            namespace: `t-${tierId}`,
-
-            redisEndpoint: redisOutput.clusterEndPoints[0],
-            cachePrimaryEndpoint: elasticacheOutput.endpoint,
-
-            ingressConf: tierConf.ingressConf,
-            vpcPrivateSubnetIds: vpcOutput.privateSubnets,
-            vpcPublicSubnetIds: vpcOutput.publicSubnets,
-
-            clusterName: eksOutput.clusterName,
-            nodeInstanceRoleArn: eksOutput.instanceRoleArn,
-
-            glueSourceBucket: glueOutput.scriptSourceBucket,
-            glueSourceScript: glueOutput.scriptPath,
-            glueTrainingDataBucket: trainingDataOutput.bucketName,
-
-            offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
-            offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
-
-            otelCollectorEndpoint: telemetryOutput.otelCollectorEndpoint,
-            otelCollectorHttpEndpoint: telemetryOutput.otelCollectorHttpEndpoint,
-
-            httpServerConf: tierConf.httpServerConf,
-            queryServerConf: tierConf.queryServerConf,
-            enableNitrous: tierConf.enableNitrous,
-            nitrousBinLogPartitions: nitrousOutput ? nitrousOutput.binlogPartitions : undefined,
-
-            countAggrConf: tierConf.countAggrConf,
-
-            nodeInstanceRole: eksOutput.instanceRole,
-
-            vpcId: vpcOutput.vpcId,
-            connectedSecurityGroups: {
-                "eks": eksOutput.clusterSg,
-            },
-            milvusEndpoint: milvusOutput.endpoint,
-            sagemakerConf: tierConf.sagemakerConf,
-
-            airbyteConf: tierConf.airbyteConf,
-            plan: tierConf.plan,
-            requestLimit: tierConf.requestLimit,
-        }, preview, destroy).catch(err => console.log(err))
+    const tierId = tierConf.tierId;
+    console.log("Updating tier: ", tierId);
+    if (unprotect) {
+        tierConf.protectResources = false
     }
+
+    // TODO(mohit): Validate that the nodeLabel specified in `PodConf` have at least one label match across labels
+    // defined in all node groups.
+
+    const mskConf: TierMskConf = {
+        clusterArn: mskOutput.clusterArn,
+        mskUsername: mskOutput.mskUsername,
+        mskPassword: mskOutput.mskPassword,
+        bootstrapBrokers: mskOutput.bootstrapBrokers,
+        bootstrapBrokersIam: mskOutput.bootstrapBrokersIam,
+        sgId: mskOutput.clusterSgId,
+        s3ConnectPluginArn: mskOutput.s3ConnectPluginArn,
+        s3ConnectPluginRev: mskOutput.s3ConnectPluginRevision,
+        s3ConnectWorkerArn: mskOutput.s3ConnectWorkerArn,
+        s3ConnectWorkerRev: mskOutput.s3ConnectWorkerRev,
+    }
+
+    const topics: kafkatopics.topicConf[] = [
+        {
+            name: `t_${tierId}_actionlog`,
+            // TODO(mohit): Increase this period to 21 days to support few of the larger aggregates
+            retention_ms: 1209600000  // 14 days retention
+        },
+        {
+            name: `t_${tierId}_featurelog`,
+            partitions: 10,
+            retention_ms: 432000000  // 5 days retention
+        },
+        // configure profile topic to have "unlimited" retention
+        {
+            name: `t_${tierId}_profilelog`,
+            retention_ms: -1
+        },
+        {
+            name: `t_${tierId}_actionlog_json`,
+            retention_ms: 432000000  // 5 days retention
+        },
+        { name: `t_${tierId}_aggr_offline_transform` },
+        // configure stream log to which airbyte connectors will write stream data to
+        {
+            name: `t_${tierId}_streamlog`,
+            partitions: 10,
+            retention_ms: 432000000  // 5 days retention
+        },
+        {
+            name: `t_${tierId}_hourly_usage_log`,
+            retention_ms: 432000000  // 5 days retention
+        }
+
+    ];
+    await setupTier({
+        protect: tierConf.protectResources,
+
+        tierId: Number(tierId),
+        tierName: tierConf.tierName,
+        planeId: Number(planeConf.planeId),
+
+        topics: topics,
+        mskConf: mskConf,
+
+        connUserAccessKey: trainingDataOutput.userAccessKeyId,
+        connUserSecret: trainingDataOutput.userSecretAccessKey,
+        connBucketName: trainingDataOutput.bucketName,
+
+        db: "db",
+        dbEndpoint: dbOutput.host,
+        dbUsername: "admin",
+        dbPassword: planeConf.dbConf.password,
+
+        postgresDbEndpoint: postgresDbOutput.host,
+        postgresDbPort: postgresDbOutput.port,
+
+        roleArn: roleArn,
+        region: planeConf.region,
+
+        kubeconfig: JSON.stringify(eksOutput.kubeconfig),
+        namespace: `t-${tierId}`,
+
+        redisEndpoint: redisOutput.clusterEndPoints[0],
+        cachePrimaryEndpoint: elasticacheOutput.endpoint,
+
+        ingressConf: tierConf.ingressConf,
+        vpcPrivateSubnetIds: vpcOutput.privateSubnets,
+        vpcPublicSubnetIds: vpcOutput.publicSubnets,
+
+        clusterName: eksOutput.clusterName,
+        nodeInstanceRoleArn: eksOutput.instanceRoleArn,
+
+        glueSourceBucket: glueOutput.scriptSourceBucket,
+        glueSourceScript: glueOutput.scriptPath,
+        glueTrainingDataBucket: trainingDataOutput.bucketName,
+
+        offlineAggregateSourceBucket: offlineAggregateSourceFiles.bucketName,
+        offlineAggregateSourceFiles: offlineAggregateSourceFiles.sources,
+
+        otelCollectorEndpoint: telemetryOutput.otelCollectorEndpoint,
+        otelCollectorHttpEndpoint: telemetryOutput.otelCollectorHttpEndpoint,
+
+        httpServerConf: tierConf.httpServerConf,
+        queryServerConf: tierConf.queryServerConf,
+        enableNitrous: tierConf.enableNitrous,
+        nitrousBinLogPartitions: nitrousOutput ? nitrousOutput.binlogPartitions : undefined,
+
+        countAggrConf: tierConf.countAggrConf,
+
+        nodeInstanceRole: eksOutput.instanceRole,
+
+        vpcId: vpcOutput.vpcId,
+        connectedSecurityGroups: {
+            "eks": eksOutput.clusterSg,
+        },
+        milvusEndpoint: milvusOutput.endpoint,
+        sagemakerConf: tierConf.sagemakerConf,
+
+        airbyteConf: tierConf.airbyteConf,
+        plan: tierConf.plan,
+        requestLimit: tierConf.requestLimit,
+    }, preview, destroy).catch(err => console.log(err))
 }

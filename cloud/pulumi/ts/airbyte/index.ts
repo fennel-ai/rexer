@@ -18,6 +18,7 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
+    tierName?: string,
     namespace: string,
     dbEndpoint: string,
     dbPort: number,
@@ -89,7 +90,12 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, { provider: postgresProvider, protect: input.protect });
 
     // create s3 bucket
-    const bucketName = `t-${input.tierId}-airbyte-logs`
+    let bucketName;
+    if (input.tierName) {
+        bucketName = `t-${input.tierName}-airbyte-logs`
+    } else {
+        bucketName = `t-${input.tierId}-airbyte-logs`
+    }
     const bucket = new aws.s3.Bucket("airbyte-log-store", {
         acl: "private",
         bucket: bucketName,

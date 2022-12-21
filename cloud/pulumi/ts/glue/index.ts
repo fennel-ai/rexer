@@ -9,7 +9,6 @@ export type inputType = {
     region: string,
     roleArn: string,
     tierId: number,
-    planeId: number,
     sourceBucket: string,
     trainingDataBucket: string,
     script: string,
@@ -128,7 +127,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         roleArn: role.arn,
         defaultArguments: {
             '--TIER_ID': `${input.tierId}`,
-            '--PLANE_ID': `${input.planeId}`,
+            '--BUCKET_NAME': `${input.trainingDataBucket}`,
             '--enable-continuous-cloudwatch-log': 'true',
             '--enable-continuous-log-filter': 'false',
             // this is to easily filter out logs from a particular GLUE job
