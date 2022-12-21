@@ -395,6 +395,53 @@ const tierConfs: Record<number, TierConf> = {
         // this is required for any resource in the global namespace e.g. pulumi stack, s3 buckets, etc.
         tierName: "lokal-prod-tier",
 
+        httpServerConf: {
+            podConf: {
+                minReplicas: 2,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "1000m",
+                        limit: "1500m"
+                    },
+                    memory: {
+                        request: "2G",
+                        limit: "3G",
+                    }
+                },
+                // each http-server should be in different nodes from each other
+                nodeLabels: {
+                    "node-group": "p-5-httpserver-ng"
+                }
+            }
+        },
+
+        // TODO(mohit): add countaggr configuration
+
+        // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
+        // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
+        // place the pods across the nodes based on utilization and `limit`
+        queryServerConf: {
+            podConf: {
+                minReplicas: 2,
+                maxReplicas: 10,
+                resourceConf: {
+                    // c6g.xlarge machines, set requests and limits accordingly
+                    cpu: {
+                        request: "2500m",
+                        limit: "3000m"
+                    },
+                    memory: {
+                        request: "5G",
+                        limit: "7G",
+                    }
+                },
+                nodeLabels: {
+                    "node-group": "p-5-queryserver-ng"
+                },
+            }
+        },
+
         sagemakerConf: {
             // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
             // not autoscalable).
@@ -403,7 +450,7 @@ const tierConfs: Record<number, TierConf> = {
         },
         ingressConf: {
             useDedicatedMachines: true,
-            replicas: 2,
+            replicas: 3,
         },
         airbyteConf: {},
         enableNitrous: true,
@@ -1003,9 +1050,74 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         eksConf: {
             nodeGroups: [
-                // common node group
-                //
-                // TODO(mohit): Add more node groups as we enable/grow compute
+                // HTTP server node group
+                {
+                    name: "p-5-httpserver-ng-arm64",
+                    instanceTypes: ["t4g.medium"],
+                    // at least have 2 nodes for fault tolerance
+                    minSize: 2,
+                    maxSize: 5,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-httpserver-ng"
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                // Countaggr server node group
+                {
+                    name: "p-5-countaggr-ng-arm64",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    instanceTypes: ["c6g.2xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-countaggr-ng"
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+
+                // Query server node groups
+                {
+                    name: "p-5-query-ng-arm",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "on-demand",
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-query-ng-arm-spot",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
+                    },
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
+                },
+
+                // Common node groups in case some container needs to be run on these
                 {
                     name: "p-5-common-ng-arm64",
                     instanceTypes: ["t4g.medium"],
@@ -1024,6 +1136,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
+
+                // required for kafka mirror maker
+                //
+                // TODO(mohit): remove
                 {
                     name: "p-5-large-ng-x86",
                     instanceTypes: ["r6i.xlarge"],
@@ -1069,7 +1185,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 onDemandNodeLabel: "rescheduler-label=on-demand",
             }
         },
-        // TODO(mohit): Configure prometheus since the metrics collected exhausts the default setting
+        prometheusConf: {
+            volumeSizeGiB: 256,
+            metricsRetentionDays: 60,
+        },
 
         // Run nitrous on the plane.
         nitrousConf: {
