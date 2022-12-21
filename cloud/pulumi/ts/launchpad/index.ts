@@ -979,9 +979,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         vpcConf: {
             cidr: "10.112.0.0/16"
         },
+        // TODO(mohit): till the elasticache has reasonably hit rate, keep more db ACUs running for profile lookups
         dbConf: {
-            minCapacity: 2,
-            maxCapacity: 16,
+            minCapacity: 16,
+            maxCapacity: 64,
             password: "password",
             skipFinalSnapshot: false,
         },
