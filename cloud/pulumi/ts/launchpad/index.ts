@@ -416,7 +416,25 @@ const tierConfs: Record<number, TierConf> = {
             }
         },
 
-        // TODO(mohit): add countaggr configuration
+        // countaggr should be scheduled in a different node than http-server
+        countAggrConf: {
+            podConf: {
+                nodeLabels: {
+                    "node-group": "p-5-countaggr-ng"
+                },
+                resourceConf: {
+                    // c6g.2xlarge machine, set requests and limits accordingly
+                    cpu: {
+                        request: "6000m",
+                        limit: "8000m",
+                    },
+                    memory: {
+                        request: "10Gi",
+                        limit: "14Gi",
+                    }
+                }
+            }
+        },
 
         // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
         // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
