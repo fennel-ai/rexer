@@ -148,7 +148,7 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 			}
 			// Forward online aggregates to nitrous if the client has been initialized.
 			// We do this even if the aggregate has been previously defined.
-			if err := tier.NitrousClient.CreateAggregate(ctx, agg.Id, agg.Options); err != nil {
+			if err := tier.NitrousClient.CreateAggregate(ctx, agg2.Id, agg2.Options); err != nil {
 				return fmt.Errorf("failed to create aggregate in nitrous: %v", err)
 			}
 			return nil
