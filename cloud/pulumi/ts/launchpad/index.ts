@@ -90,19 +90,6 @@ const tierConfs: Record<number, TierConf> = {
             publicServer: true,
         },
     },
-    // Lokal prod tier on their prod data plane.
-    107: {
-        protectResources: true,
-        planeId: 5,
-        tierId: 107,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-
-        plan: Plan.STARTUP,
-        requestLimit: 0,
-    },
     // Convoy prod tier
     112: {
         protectResources: true,
@@ -469,108 +456,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // consider expanding this in the future if each broker needs more storage capacity
             storageVolumeSizeGiB: 128,
         },
-    },
-    // Lokal's prod tier data plane
-    5: {
-        protectResources: true,
-
-        accountConf: {
-            existingAccount: {
-                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
-            }
-        },
-
-        planeId: 5,
-        region: "ap-south-1",
-        vpcConf: {
-            cidr: "10.105.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 2,
-            maxCapacity: 16,
-            password: "password",
-            skipFinalSnapshot: false,
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.medium",
-            numNodeGroups: 4,
-            replicasPerNodeGroup: 1,
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            // keep 1 shard for the existing users of redis - phaser and action dedup check logic
-            numShards: 1,
-            nodeType: "db.r6g.large",
-            numReplicasPerShard: 1,
-        },
-        eksConf: {
-            nodeGroups: [
-                // TODO(mohit): Consider naming in a consistent way.. long names will hit character limits
-                //
-                // HTTP server node group
-                {
-                    name: "p-5-httpserver-ng-arm64",
-                    instanceTypes: ["t4g.medium"],
-                    // at least have 2 nodes for fault tolerance
-                    minSize: 2,
-                    maxSize: 5,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-httpserver-ng"
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-5-common-ng-arm-xlarge",
-                    instanceTypes: ["t4g.xlarge"],
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                    labels: {
-                        "node-group": "p-5-common-ng-arm",
-                    },
-                },
-                {
-                    name: "p-5-common-ng-x86-med",
-                    instanceTypes: ["t3.medium"],
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                    labels: {
-                        "node-group": "p-5-common-ng-x86",
-                    },
-                }
-            ],
-            spotReschedulerConf: {
-                spotNodeLabel: "rescheduler-label=spot",
-                onDemandNodeLabel: "rescheduler-label=on-demand",
-            }
-        },
-        prometheusConf: {
-            volumeSizeGiB: 256,
-            metricsRetentionDays: 60,
-            nodeSelector: {
-                "node-group": "p-5-common-ng-arm",
-            },
-        },
-
-        // set up MSK cluster
-        mskConf: {
-            // TODO(mohit): monitor CPU and Memory to decide if this machine should be upgraded; this gives 2vCPU, 8GB
-            //
-            // see - https://aws.amazon.com/msk/pricing/
-            brokerType: "kafka.m5.large",
-            // this will place 2 broker nodes in each of the AZs
-            numberOfBrokerNodes: 4,
-            storageVolumeSizeGiB: 1636,
-        },
-        customer: customers[3],
-        mothershipId: 12,
     },
     // plane 8 - pending account close, post which it can be destroyed
     // Convoy's production plane
