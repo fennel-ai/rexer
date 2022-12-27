@@ -103,36 +103,6 @@ const tierConfs: Record<number, TierConf> = {
         plan: Plan.STARTUP,
         requestLimit: 0,
     },
-    // Convoy staging tier using Fennel's staging data plane.
-    108: {
-        protectResources: true,
-        planeId: 3,
-        tierId: 108,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-
-        // they only use the offline aggregation
-        enableOfflineAggregationJobs: true,
-
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "1250m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                }
-            },
-        },
-    },
     // Convoy prod tier
     112: {
         protectResources: true,
@@ -415,7 +385,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
                 {
                     name: "p-3-common-ng-x86",
-                    instanceTypes: ["c6i.xlarge"],
+                    instanceTypes: ["t3.medium"],
                     minSize: 1,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
