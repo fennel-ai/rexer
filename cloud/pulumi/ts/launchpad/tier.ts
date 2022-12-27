@@ -231,6 +231,9 @@ const parseConfig = (): inputType => {
 
         otelCollectorEndpoint: config.require(nameof<inputType>("otelCollectorEndpoint")),
         otelCollectorHttpEndpoint: config.require(nameof<inputType>("otelCollectorHttpEndpoint")),
+        
+        enableTrainingDatasetGenerationJobs: config.getObject(nameof<inputType>("enableTrainingDatasetGenerationJobs")),
+        enableOfflineAggregationJobs: config.getObject(nameof<inputType>("enableOfflineAggregationJobs")),
 
         httpServerConf: config.getObject(nameof<inputType>("httpServerConf")),
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
