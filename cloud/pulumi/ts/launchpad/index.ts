@@ -405,7 +405,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-3-common-ng-arm64",
                     instanceTypes: ["c7g.2xlarge"],
-                    minSize: 2,
+                    minSize: 1,
                     // since we create demo tiers on top of this plane, allow scaling this node group to a larger
                     // number to accommodate more servers
                     maxSize: 10,
@@ -415,12 +415,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
                 {
                     name: "p-3-common-ng-x86",
-                    instanceTypes: ["c6i.2xlarge"],
-                    // since we create demo tiers on top of this plane, allow scaling this node group to a larger
-                    // number to accommodate more servers
-                    //
-                    // milvus requires minimum 3 nodes
-                    minSize: 4,
+                    instanceTypes: ["c6i.xlarge"],
+                    minSize: 1,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
@@ -462,7 +458,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
             ],
         },
-        milvusConf: {},
+        // milvusConf: {},
         // modelMonitoringConf: {},
         // Run nitrous on the plane.
         nitrousConf: {
