@@ -118,101 +118,9 @@ const tierConfs: Record<number, TierConf> = {
         protectResources: true,
         planeId: 5,
         tierId: 107,
-        httpServerConf: {
-            podConf: {
-                minReplicas: 2,
-                maxReplicas: 4,
-                resourceConf: {
-                    cpu: {
-                        request: "1000m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                },
-                // each http-server should be in different nodes from each other
-                nodeLabels: {
-                    "node-group": "p-5-httpserver-ng"
-                }
-            }
-        },
-        // countaggr should be scheduled in a different node than http-server
-        countAggrConf: {
-            podConf: {
-                nodeLabels: {
-                    "node-group": "p-5-countaggr-ng"
-                },
-                resourceConf: {
-                    // c6g.2xlarge machine, set requests and limits accordingly
-                    cpu: {
-                        request: "6000m",
-                        limit: "8000m",
-                    },
-                    memory: {
-                        request: "10Gi",
-                        limit: "14Gi",
-                    }
-                }
-            }
-        },
-        // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
-        // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
-        // place the pods across the nodes based on utilization and `limit`
-        queryServerConf: {
-            podConf: {
-                minReplicas: 2,
-                maxReplicas: 10,
-                resourceConf: {
-                    // c6g.xlarge machines, set requests and limits accordingly
-                    cpu: {
-                        request: "2500m",
-                        limit: "3000m"
-                    },
-                    memory: {
-                        request: "5G",
-                        limit: "7G",
-                    }
-                },
-                nodeLabels: {
-                    "node-group": "p-5-queryserver-ng"
-                },
-            }
-        },
-        sagemakerConf: {
-            // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
-            // not autoscalable).
-            instanceType: "ml.c5.large",
-            // have multiple instances for fault tolerance
-            instanceCount: 1,
-        },
+        // use public subnets for ingress to allow traffic from outside the assigned vpc
         ingressConf: {
-            useDedicatedMachines: true,
-            replicas: 4,
-        },
-        enableNitrous: true,
-        airbyteConf: {
-            workerResourceConf: {
-                cpu: {
-                    request: "1000m",
-                    limit: "2000m",
-                },
-                memory: {
-                    request: "1Gi",
-                    limit: "4Gi",
-                }
-            },
-            jobsResourceConf: {
-                cpu: {
-                    request: "1000m",
-                    limit: "2000m",
-                },
-                memory: {
-                    request: "2Gi",
-                    limit: "4Gi",
-                }
-            }
+            usePublicSubnets: true,
         },
         plan: Plan.STARTUP,
         requestLimit: 0,
@@ -729,21 +637,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             nodeType: "db.r6g.large",
             numReplicasPerShard: 1,
         },
-        otelConf: {
-            resourceConf: {
-                memory: {
-                    request: "1G",
-                    limit: "2G",
-                },
-                cpu: {
-                    request: "128m",
-                    limit: "1000m"
-                }
-            },
-            nodeSelector: {
-                "node-group": "p-5-common-ng-arm",
-            },
-        },
         eksConf: {
             nodeGroups: [
                 // TODO(mohit): Consider naming in a consistent way.. long names will hit character limits
@@ -762,84 +655,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
-                // Countaggr server node group
-                {
-                    name: "p-5-countaggr-ng-arm64",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.2xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-countaggr-ng"
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-5-query-ng-4c-8G-arm",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
-                    instanceTypes: ["c6g.xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "on-demand",
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-5-query-ng-4c-8G-arm-spot",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
-                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "spot",
-                    },
-                    capacityType: SPOT_INSTANCE_TYPE,
-                    expansionPriority: 10,
-                },
-                // Nitrous node group.
-                {
-                    name: "p-5-nitrous-ng-arm",
-                    instanceTypes: ["m6gd.8xlarge"],
-                    minSize: 2,
-                    maxSize: 2,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    labels: {
-                        "node-group": "p-5-nitrous-ng",
-                        "aws.amazon.com/eks-local-ssd": "true",
-                    },
-                    expansionPriority: 1,
-                },
-                // Nitrous backup node group.
-                {
-                    name: "p-5-nitrous-backup-ng-arm",
-                    instanceTypes: ["c6gd.8xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    labels: {
-                        "node-group": "p-5-nitrous-backup-ng",
-                        "aws.amazon.com/eks-local-ssd": "true",
-                    },
-                    expansionPriority: 1,
-                },
                 {
                     name: "p-5-common-ng-arm-xlarge",
                     instanceTypes: ["t4g.xlarge"],
@@ -853,8 +668,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     },
                 },
                 {
-                    name: "p-5-common-ng-x86-c6i2xlarge",
-                    instanceTypes: ["c6i.2xlarge"],
+                    name: "p-5-common-ng-x86-med",
+                    instanceTypes: ["t3.medium"],
                     minSize: 1,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
@@ -875,69 +690,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             metricsRetentionDays: 60,
             nodeSelector: {
                 "node-group": "p-5-common-ng-arm",
-            },
-        },
-        // Run nitrous on the plane.
-        nitrousConf: {
-            replicas: 2,
-            useAmd64: false,
-            storageCapacityGB: 1700,
-            storageClass: "local",
-            resourceConf: {
-                cpu: {
-                    request: "30000m",
-                    limit: "32000m"
-                },
-                memory: {
-                    request: "110Gi",
-                    limit: "120Gi",
-                }
-            },
-            binlog: {
-                partitions: 32,
-                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
-                partition_retention_bytes: -1,
-                max_message_bytes: 2097164,
-                // TODO(mohit): Consider setting this to 2.
-                // it is recommended to have RF >= 3 in a 3 AZ cluster. With a 2 AZ cluster, this could be an overkill.
-                //
-                // NOTE: since we configure 4 brokers, setting to >=2 works with rolling updates to the cluster where
-                // a broker is "inactive".
-                //
-                // by default MSK sets this to 2 for the cluster configured in 2 AZs - this is bad for availability
-                // since it is possible that one of the AZ is unreachable and the broker in the same AZ is down
-                // (could be a rolling update affecting this broker)
-                replicationFactor: 2,
-                // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
-                // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
-                //
-                // For Confluent based topics, min in-sync replicas is 2
-            },
-            nodeLabels: {
-                "node-group": "p-5-nitrous-ng",
-            },
-
-            // backup configurations
-            backupConf: {
-                nodeLabelsForBackup: {
-                    "node-group": "p-5-nitrous-backup-ng",
-                },
-                backupFrequencyDuration: "60m",
-                remoteCopiesToKeep: 2,
-                // this needs to be consistent with the node group which this pod is going to get scheduled on
-                //
-                // currently c6gd.8xlarge
-                resourceConf: {
-                    cpu: {
-                        request: "30000m",
-                        limit: "32000m"
-                    },
-                    memory: {
-                        request: "55Gi",
-                        limit: "60Gi",
-                    }
-                },
-                storageCapacityGB: 1700,
             },
         },
 
