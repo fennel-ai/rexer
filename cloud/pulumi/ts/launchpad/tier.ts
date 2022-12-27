@@ -106,6 +106,10 @@ export type TierConf = {
     plan?: util.Plan,
     requestLimit?: number,
     customerId?: number,
+
+    // enable few functionalities
+    enableTrainingDatasetGenerationJobs?: boolean,
+    enableOfflineAggregationJobs?: boolean,
 }
 
 type inputType = {
@@ -131,6 +135,10 @@ type inputType = {
     connUserAccessKey: string,
     connUserSecret: string,
     connBucketName: string,
+
+    enableTrainingDatasetGenerationJobs?: boolean,
+    enableOfflineAggregationJobs?: boolean,
+
     // db configuration.
     db: string,
     dbUsername: string,
@@ -295,48 +303,55 @@ const setupResources = async () => {
         tierName: input.tierName,
         protect: input.protect,
     })
-    // setup kafka connector to s3 bucket for the action and feature log topics.
-    const kafkaConnectors = await kafkaconnectors.setup({
-        tierId: input.tierId,
-        region: input.region,
-        roleArn: input.roleArn,
-        vpcId: input.vpcId,
-        protect: input.protect,
-        awsAccessKeyId: input.connUserAccessKey,
-        awsSecretAccessKey: input.connUserSecret,
-        s3BucketName: input.connBucketName,
 
-        // msk
-        mskClusterArn: input.mskConf.clusterArn,
-        mskBootstrapServersIam: input.mskConf.bootstrapBrokersIam,
-        privateSubnetIds: input.vpcPrivateSubnetIds,
-        mskSgId: input.mskConf.sgId,
-        s3ConnectPluginArn: input.mskConf.s3ConnectPluginArn,
-        s3ConnectPluginRev: input.mskConf.s3ConnectPluginRev,
-        s3ConnectWorkerArn: input.mskConf.s3ConnectWorkerArn,
-        s3ConnectWorkerRev: input.mskConf.s3ConnectWorkerRev
-    })
-    // setup kafka connectors to s3 bucket for offline aggregate data
-    const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
-        tierId: input.tierId,
-        region: input.region,
-        roleArn: input.roleArn,
-        vpcId: input.vpcId,
-        awsAccessKeyId: offlineAggregateStorageBucket.userAccessKeyId,
-        awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
-        s3BucketName: offlineAggregateStorageBucket.bucketName,
-        protect: input.protect,
+    if (input.enableTrainingDatasetGenerationJobs) {
+        // setup kafka connector to s3 bucket for the action and feature log topics.
+        const kafkaConnectors = await kafkaconnectors.setup({
+            tierId: input.tierId,
+            region: input.region,
+            roleArn: input.roleArn,
+            vpcId: input.vpcId,
+            protect: input.protect,
+            awsAccessKeyId: input.connUserAccessKey,
+            awsSecretAccessKey: input.connUserSecret,
+            s3BucketName: input.connBucketName,
 
-        // msk
-        mskClusterArn: input.mskConf.clusterArn,
-        mskBootstrapServersIam: input.mskConf.bootstrapBrokersIam,
-        privateSubnetIds: input.vpcPrivateSubnetIds,
-        mskSgId: input.mskConf.sgId,
-        s3ConnectPluginArn: input.mskConf.s3ConnectPluginArn,
-        s3ConnectPluginRev: input.mskConf.s3ConnectPluginRev,
-        s3ConnectWorkerArn: input.mskConf.s3ConnectWorkerArn,
-        s3ConnectWorkerRev: input.mskConf.s3ConnectWorkerRev
-    })
+            // msk
+            mskClusterArn: input.mskConf.clusterArn,
+            mskBootstrapServersIam: input.mskConf.bootstrapBrokersIam,
+            privateSubnetIds: input.vpcPrivateSubnetIds,
+            mskSgId: input.mskConf.sgId,
+            s3ConnectPluginArn: input.mskConf.s3ConnectPluginArn,
+            s3ConnectPluginRev: input.mskConf.s3ConnectPluginRev,
+            s3ConnectWorkerArn: input.mskConf.s3ConnectWorkerArn,
+            s3ConnectWorkerRev: input.mskConf.s3ConnectWorkerRev
+        })
+    }
+
+    if (input.enableOfflineAggregationJobs) {
+        // setup kafka connectors to s3 bucket for offline aggregate data
+        const offlineAggregateConnector = await offlineAggregateKafkaConnector.setup({
+            tierId: input.tierId,
+            region: input.region,
+            roleArn: input.roleArn,
+            vpcId: input.vpcId,
+            awsAccessKeyId: offlineAggregateStorageBucket.userAccessKeyId,
+            awsSecretAccessKey: offlineAggregateStorageBucket.userSecretAccessKey,
+            s3BucketName: offlineAggregateStorageBucket.bucketName,
+            protect: input.protect,
+
+            // msk
+            mskClusterArn: input.mskConf.clusterArn,
+            mskBootstrapServersIam: input.mskConf.bootstrapBrokersIam,
+            privateSubnetIds: input.vpcPrivateSubnetIds,
+            mskSgId: input.mskConf.sgId,
+            s3ConnectPluginArn: input.mskConf.s3ConnectPluginArn,
+            s3ConnectPluginRev: input.mskConf.s3ConnectPluginRev,
+            s3ConnectWorkerArn: input.mskConf.s3ConnectWorkerArn,
+            s3ConnectWorkerRev: input.mskConf.s3ConnectWorkerRev
+        })
+    }
+
     // setup offline aggregate output bucket
     const offlineAggregateOutputBucket = await offlineAggregateOutput.setup({
         region: input.region,
@@ -532,6 +547,8 @@ const setupResources = async () => {
         sourceBucket: input.glueSourceBucket,
         trainingDataBucket: input.glueTrainingDataBucket,
         script: input.glueSourceScript,
+
+        enableTrainingDatasetGenerationJobs: input.enableTrainingDatasetGenerationJobs,
     })
 
     let queryServerShadowBucketName: string | undefined;
@@ -667,6 +684,9 @@ type TierInput = {
     connUserSecret: string,
     connBucketName: string,
 
+    enableTrainingDatasetGenerationJobs?: boolean,
+    enableOfflineAggregationJobs?: boolean,
+
     // db configuration.
     db: string,
     dbUsername: string,
@@ -790,6 +810,14 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await stack.setConfig(nameof<inputType>("connUserAccessKey"), { value: args.connUserAccessKey })
     await stack.setConfig(nameof<inputType>("connUserSecret"), { value: args.connUserSecret })
     await stack.setConfig(nameof<inputType>("connBucketName"), { value: args.connBucketName })
+
+    if (args.enableOfflineAggregationJobs !== undefined) {
+        await stack.setConfig(nameof<inputType>("enableOfflineAggregationJobs"), { value: JSON.stringify(args.enableOfflineAggregationJobs) })
+    }
+
+    if (args.enableTrainingDatasetGenerationJobs !== undefined) {
+        await stack.setConfig(nameof<inputType>("enableTrainingDatasetGenerationJobs"), { value: JSON.stringify(args.enableTrainingDatasetGenerationJobs) })
+    }
 
     await stack.setConfig(nameof<inputType>("db"), { value: args.db })
     await stack.setConfig(nameof<inputType>("dbUsername"), { value: args.dbUsername })

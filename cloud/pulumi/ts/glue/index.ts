@@ -12,6 +12,8 @@ export type inputType = {
     sourceBucket: string,
     trainingDataBucket: string,
     script: string,
+
+    enableTrainingDatasetGenerationJobs?: boolean,
 }
 
 // should not contain any pulumi.Output<> types.
@@ -144,16 +146,18 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, {provider});
 
     // create a trigger to run this job every day
-    const trigger = new aws.glue.Trigger(`t-${input.tierId}-scheduled-trigger`, {
-        // https://docs.aws.amazon.com/glue/latest/dg/monitor-data-warehouse-schedule.html
-        // run every at 00:15 UTC
-        schedule: "cron(15 0 * * ? *)",
-        type: "SCHEDULED",
-        actions: [{
-            jobName: job.name,
-        }],
-        description: "Triggers GLUE job to transform features and labels from in JSON format to Parquet",
-    }, {provider});
+    if (input.enableTrainingDatasetGenerationJobs) {
+        const trigger = new aws.glue.Trigger(`t-${input.tierId}-scheduled-trigger`, {
+            // https://docs.aws.amazon.com/glue/latest/dg/monitor-data-warehouse-schedule.html
+            // run every at 00:15 UTC
+            schedule: "cron(15 0 * * ? *)",
+            type: "SCHEDULED",
+            actions: [{
+                jobName: job.name,
+            }],
+            description: "Triggers GLUE job to transform features and labels from in JSON format to Parquet",
+        }, {provider});
+    }
 
     return pulumi.output({
         jobName: job.name,
