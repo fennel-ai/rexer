@@ -112,6 +112,10 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+
+        // they only use the offline aggregation
+        enableOfflineAggregationJobs: true,
+
         httpServerConf: {
             podConf: {
                 minReplicas: 1,
@@ -128,33 +132,6 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
-    },
-    // Lokal's staging tier
-    109: {
-        protectResources: true,
-        planeId: 5,
-        tierId: 109,
-        // use public subnets for ingress to allow traffic from outside the assigned vpc
-        ingressConf: {
-            usePublicSubnets: true,
-        },
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "750m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                }
-            },
-        },
-        enableNitrous: true,
     },
     // Convoy prod tier
     112: {
@@ -224,7 +201,7 @@ const tierConfs: Record<number, TierConf> = {
         tierName: "lokal-prod-tier",
 
         // training data generation is required for model training
-        enableTrainingDatasetGenerationJobs = true,
+        enableTrainingDatasetGenerationJobs: true,
 
         httpServerConf: {
             podConf: {
