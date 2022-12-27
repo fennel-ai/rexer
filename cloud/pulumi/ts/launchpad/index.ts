@@ -100,8 +100,6 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
 
-        enableTrainingDatasetGenerationJobs: true,
-
         plan: Plan.STARTUP,
         requestLimit: 0,
     },
@@ -169,7 +167,7 @@ const tierConfs: Record<number, TierConf> = {
             usePublicSubnets: true,
         },
 
-        enableTrainingDatasetGenerationJobs: true,
+        // they only use the offline aggregation
         enableOfflineAggregationJobs: true,
 
         plan: Plan.STARTUP,
@@ -204,7 +202,7 @@ const tierConfs: Record<number, TierConf> = {
         // enable nitrous
         enableNitrous: true,
 
-        enableTrainingDatasetGenerationJobs: true,
+        // they currently only work with offline aggregation jobs
         enableOfflineAggregationJobs: true,
 
         // enable airbyte
@@ -224,6 +222,9 @@ const tierConfs: Record<number, TierConf> = {
         tierId: 107,
         // this is required for any resource in the global namespace e.g. pulumi stack, s3 buckets, etc.
         tierName: "lokal-prod-tier",
+
+        // training data generation is required for model training
+        enableTrainingDatasetGenerationJobs = true,
 
         httpServerConf: {
             podConf: {
