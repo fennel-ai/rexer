@@ -1044,9 +1044,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         vpcConf: {
             cidr: "10.112.0.0/16"
         },
-        // TODO(mohit): till the elasticache has reasonably hit rate, keep more db ACUs running for profile lookups
         dbConf: {
-            minCapacity: 16,
+            minCapacity: 2,
             maxCapacity: 64,
             password: "password",
             skipFinalSnapshot: false,
@@ -1266,10 +1265,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 2 broker nodes in each of the AZs
             numberOfBrokerNodes: 4,
-            // TODO(mohit): As we mirror data, would we require more memory?
-            // currently in the lokal setup, with 1636 GiB, the utilization is at 20%.  To be ~75% utilization,
-            // we configure the EBS volume size to be 425
-            storageVolumeSizeGiB: 425,
+            storageVolumeSizeGiB: 525,
         },
         customer: customers[3],
         mothershipId: 12,
