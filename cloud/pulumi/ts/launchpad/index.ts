@@ -1276,6 +1276,9 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
         milvusEndpoint: milvusOutput.endpoint,
         sagemakerConf: tierConf.sagemakerConf,
 
+        enableTrainingDatasetGenerationJobs: tierConf.enableTrainingDatasetGenerationJobs,
+        enableOfflineAggregationJobs: tierConf.enableOfflineAggregationJobs,
+
         airbyteConf: tierConf.airbyteConf,
         plan: tierConf.plan,
         requestLimit: tierConf.requestLimit,
