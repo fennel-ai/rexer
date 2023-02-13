@@ -659,9 +659,9 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
 
                 // Nitrous node group.
                 {
-                    name: "p-5-nitrous-ng-arm",
-                    // 32vCpu, 128GiB and 1900GB of local SSD - $0.9664
-                    instanceTypes: ["m6gd.8xlarge"],
+                    name: "p-5-nitrous-4xl-ng-arm",
+                    // 16vCpu, 64GiB and 900GB of local SSD
+                    instanceTypes: ["m6gd.4xlarge"],
                     minSize: 2,
                     maxSize: 2,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -702,16 +702,16 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         nitrousConf: {
             replicas: 2,
             useAmd64: false,
-            storageCapacityGB: 1700,
+            storageCapacityGB: 850,
             storageClass: "local",
             resourceConf: {
                 cpu: {
-                    request: "30000m",
-                    limit: "32000m"
+                    request: "15000m",
+                    limit: "16000m"
                 },
                 memory: {
-                    request: "110Gi",
-                    limit: "120Gi",
+                    request: "57Gi",
+                    limit: "58Gi",
                 }
             },
             binlog: {
@@ -917,7 +917,7 @@ if (process.argv.length == 4) {
 }
 
 const id = Number.parseInt(process.argv[process.argv.length - 1])
-// TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction. 
+// TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction.
 
 function getMothershipId(id: number | undefined): number | undefined {
     if (id === undefined || id in mothershipConfs) {

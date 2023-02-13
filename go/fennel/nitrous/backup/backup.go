@@ -306,7 +306,7 @@ func (bm *BackupManager) RestoreToPath(ctx context.Context, dir string, versionN
 
 	// Each remote file could be in the order of XX MB (currently capped at 2GB). Since most of the instance types are
 	// limited by 1.5 GBps, we configure the parallel workers and the batch size for each accordingly
-	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("backup_downloader", 250 /*nWorkers=*/)
+	pool := parallel.NewWorkerPool[*uploadedManifestItem, struct{}]("backup_downloader", 20 /*nWorkers=*/)
 	_, err = pool.Process(ctx, manifest, func(m []*uploadedManifestItem, f []struct{}) error {
 		for _, i := range m {
 			localDownloadedName := filepath.Join(dir, i.LocalName)

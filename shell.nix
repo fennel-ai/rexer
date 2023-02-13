@@ -46,7 +46,7 @@ with pkgs; mkShell {
     pkgs.act
 
     python-with-my-packages
-    pkgs.poetry
+    # pkgs.poetry
     pkgs.pipenv
     # Packages for javascript development
     pkgs.nodejs
