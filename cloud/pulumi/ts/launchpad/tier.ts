@@ -231,7 +231,7 @@ const parseConfig = (): inputType => {
 
         otelCollectorEndpoint: config.require(nameof<inputType>("otelCollectorEndpoint")),
         otelCollectorHttpEndpoint: config.require(nameof<inputType>("otelCollectorHttpEndpoint")),
-        
+
         enableTrainingDatasetGenerationJobs: config.getObject(nameof<inputType>("enableTrainingDatasetGenerationJobs")),
         enableOfflineAggregationJobs: config.getObject(nameof<inputType>("enableOfflineAggregationJobs")),
 
@@ -643,16 +643,17 @@ const setupResources = async () => {
         // This there is an affinity requirement on http-server and countaggr pods, schedule the http-server pod first
         // and let countaggr depend on it's output so that affinity requirements do not unexpected behavior
 
-        await countaggr.setup({
-            roleArn: input.roleArn,
-            region: input.region,
-            kubeconfig: input.kubeconfig,
-            namespace: input.namespace,
-            tierId: input.tierId,
-            resourceConf: input.countAggrConf?.podConf?.resourceConf,
-            useAmd64: input.countAggrConf?.podConf?.useAmd64,
-            nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
-        });
+        // TODO: setup countaggr for lokal.
+        // await countaggr.setup({
+        //     roleArn: input.roleArn,
+        //     region: input.region,
+        //     kubeconfig: input.kubeconfig,
+        //     namespace: input.namespace,
+        //     tierId: input.tierId,
+        //     resourceConf: input.countAggrConf?.podConf?.resourceConf,
+        //     useAmd64: input.countAggrConf?.podConf?.useAmd64,
+        //     nodeLabels: input.countAggrConf?.podConf?.nodeLabels,
+        // });
 
         await countersCleanup.setup({
             region: input.region,
