@@ -26,8 +26,9 @@ sudo systemctl enable --now tailscaled
 # 10.109.0.0/16: Convoy production plane
 # 10.111.0.0/16: Data plane for self serve.
 # 10.112.0.0/16: Data plane for lokal in independent account
+# 10.113.0.0/16: Data plane for lokal in their organization
 # 10.121.0.0/16: Data plane for oslash in their account
 # 10.122.0.0/16: Data plane for oslash in their account in us-east-1
 sudo tailscale up \
-  --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16,10.105.0.0/16,10.109.0.0/16,10.111.0.0/16,10.112.0.0/16,10.121.0.0/16,10.122.0.0/16 \
+  --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16,10.105.0.0/16,10.109.0.0/16,10.111.0.0/16,10.112.0.0/16,10.121.0.0/16,10.122.0.0/16,10.113.0.0/16 \
   --authkey tskey-auth-kFD8zZ1CNTRL-a3My8Ng7k43gh4FUBVw4533AX9xdATX4B
