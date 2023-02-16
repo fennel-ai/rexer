@@ -267,7 +267,7 @@ const tierConfs: Record<number, TierConf> = {
         requestLimit: 0,
         enableCors: true,
     },
-    // Lokal prod tier on their owned data plane.
+    // Lokal prod tier in their account.
     130: {
         protectResources: true,
         // this is the plane in the new account for lokal
