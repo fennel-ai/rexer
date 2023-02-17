@@ -1113,7 +1113,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 1 broker nodes in each of the AZs
             numberOfBrokerNodes: 2,
-            storageVolumeSizeGiB: 600,
+            storageVolumeSizeGiB: 1200,
         },
         customer: customers[3],
         mothershipId: 12,
