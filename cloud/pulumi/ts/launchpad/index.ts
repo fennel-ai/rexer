@@ -57,10 +57,10 @@ const customers: Record<number, Customer> = {
 // map from tier id to plane id.
 const tierConfs: Record<number, TierConf> = {
     // Fennel staging tier using Fennel's staging data plane.
-    106: {
+    108: {
         protectResources: true,
         planeId: 3,
-        tierId: 106,
+        tierId: 108,
         httpServerConf: {
             podConf: {
                 minReplicas: 1,
@@ -77,6 +77,12 @@ const tierConfs: Record<number, TierConf> = {
                 },
             }
         },
+        ingressConf: {
+            usePublicSubnets: true,
+        },
+        // enable nitrous
+        enableNitrous: false,
+        enableOfflineAggregationJobs: true,
         // NOTE: We make the airbyte instance hosted on the staging tier public for unit, integration and e2e tests
         //
         // Since Airbyte is a tier level resource, our testing plane 2, does not have any tiers on it. Hence we will
