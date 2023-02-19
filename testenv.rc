@@ -1,23 +1,17 @@
 export PLANE_ID=2
-export KAFKA_SERVER_ADDRESS="pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
-export KAFKA_USERNAME="HWGB3CSLWYNXWNA3"
-export KAFKA_PASSWORD="t7SYuJa4OsQI600/c4x8IBppm6zvPHevjWNC0klU501UViMydaeW0BqsEt+xFSxw"
 
-export MSK_KAFKA_SERVER_ADDRESS="b-2.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-1.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-3.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096"
+export MSK_KAFKA_SERVER_ADDRESS="b-1.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096,b-2.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096,b-3.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096"
 export MSK_KAFKA_USERNAME="p-2-username"
 export MSK_KAFKA_PASSWORD="p-2-password"
 
-export MYSQL_SERVER_ADDRESS="p-2-db-20220322011744501900000001.cluster-c00d7gkxaysk.us-west-2.rds.amazonaws.com"
+export MYSQL_SERVER_ADDRESS="p-2-db-20230219195419966900000002.cluster-cvqxrj40ycgd.us-west-2.rds.amazonaws.com"
 export MYSQL_DATABASE_NAME="db"
 export MYSQL_USERNAME="admin"
 export MYSQL_PASSWORD="foundationdb"
-export REDIS_SERVER_ADDRESS="clustercfg.p-2-redis-db-69f0a76.fbjfph.memorydb.us-west-2.amazonaws.com:6379"
-export CACHE_PRIMARY="clustercfg.p-2-cache-cluster-f1b24e1.fbjfph.usw2.cache.amazonaws.com:6379"
+export REDIS_SERVER_ADDRESS="clustercfg.p-2-redis-db-b2d93b3.gx28jz.memorydb.us-west-2.amazonaws.com:6379"
+export CACHE_PRIMARY="clustercfg.p-2-cache-cluster-a314dd2.gx28jz.usw2.cache.amazonaws.com:6379"
 export KUBECONFIG="$FENNEL_ROOT/cloud/pulumi/ts/eks/kubeconfig-plane-2.json"
 export AWS_ROLE_ARN="arn:aws:iam::030813887342:role/admin"
-# plane 3 milvus, we moved away from hosting a milvus on plane 2 because of it's expensive setup and requirements
-export MILVUS_URL="k8s-milvus-milvus-bd81afaa2e-36b8f1a6cfe90d93.elb.us-west-2.amazonaws.com:19530"
-export AIRBYTE_SERVER_ADDRESS="http://a645fd3b34bc4419285322c0644669ff-232432470.us-west-2.elb.amazonaws.com:8001/api"
 export MOTHERSHIP_ID=1
 export MOTHERSHIP_MYSQL_ADDRESS="dw48w7ntx844.us-west-2.psdb.cloud"
 export MOTHERSHIP_MYSQL_DBNAME="controldb"
