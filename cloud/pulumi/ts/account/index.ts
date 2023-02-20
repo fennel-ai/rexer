@@ -9,6 +9,7 @@ export const plugins = {
 }
 
 export const MASTER_ACCOUNT_ADMIN_ROLE_ARN = "arn:aws:iam::030813887342:role/admin";
+export const DEV_ACCOUNT_ADMIN_ROLE_ARN = "arn:aws:iam::824489454832:role/admin";
 
 export type inputType = {
     name: string,

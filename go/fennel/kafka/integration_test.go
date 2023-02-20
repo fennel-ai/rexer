@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	test_kafka_servers = "b-2.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-1.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096,b-3.p2kafkacluster.7frhj0.c10.kafka.us-west-2.amazonaws.com:9096"
-	kafka_username     = "p-2-username"
-	kafka_password     = "p-2-password"
+	test_kafka_servers   = "b-1.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096,b-2.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096,b-3.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096"
+	kafka_username       = "p-2-username"
+	kafka_password       = "p-2-password"
 	kafka_sasl_mechanism = "SCRAM-SHA-512"
 )
 
@@ -254,7 +254,7 @@ func integrationProducer(t *testing.T, scope resource.Scope, topic string, parti
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-		SaslMechanism: 	 SaslScramSha512Mechanism,
+		SaslMechanism:   SaslScramSha512Mechanism,
 		Scope:           scope,
 	}.Materialize()
 	assert.NoError(t, err)
@@ -290,7 +290,7 @@ func TestProduceToOutOfIndexPartition(t *testing.T) {
 		BootstrapServer: test_kafka_servers,
 		Username:        kafka_username,
 		Password:        kafka_password,
-		SaslMechanism: 	 SaslScramSha512Mechanism,
+		SaslMechanism:   SaslScramSha512Mechanism,
 		Scope:           scope,
 	}.Materialize()
 	assert.NoError(t, err)
@@ -307,7 +307,7 @@ func TestProduceToOutOfIndexPartition(t *testing.T) {
 	//
 	// we can optionally subscribe to the producer events to watch for errors
 	consumer := integrationConsumer(t, scope, topic, utils.RandString(5), DefaultOffsetPolicy)
-	x, err := consumer.ReadBatch(ctx, 1, 5 * time.Second)
+	x, err := consumer.ReadBatch(ctx, 1, 5*time.Second)
 	assert.NoError(t, err)
 	assert.Empty(t, x)
 }
@@ -352,9 +352,9 @@ func TestExplicitPartitionProducer(t *testing.T) {
 					if len(event.Partitions) > 0 {
 						toppars := make(kafka.TopicPartitions, 1)
 						toppars = append(toppars, kafka.TopicPartition{
-							Topic: &topic,
+							Topic:     &topic,
 							Partition: 0,
-							Offset: 0,
+							Offset:    0,
 						})
 						zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
 						err := c.Assign(toppars)
@@ -390,9 +390,9 @@ func TestExplicitPartitionProducer(t *testing.T) {
 					if len(event.Partitions) > 0 {
 						toppars := make(kafka.TopicPartitions, 1)
 						toppars = append(toppars, kafka.TopicPartition{
-							Topic: &topic,
+							Topic:     &topic,
 							Partition: 1,
-							Offset: 0,
+							Offset:    0,
 						})
 						zap.L().Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
 						err := c.Assign(toppars)
@@ -417,7 +417,7 @@ func TestExplicitPartitionProducer(t *testing.T) {
 	// validate that the consumers are reading from the assigned partitions and match the messages produced into those
 	// partitions
 	for i, consumer := range consumers {
-		d, err := consumer.ReadBatch(ctx, 10, 10 * time.Second)
+		d, err := consumer.ReadBatch(ctx, 10, 10*time.Second)
 		assert.NoError(t, err)
 		for j, dd := range d {
 			assert.Equal(t, dd, msgs[i][j])

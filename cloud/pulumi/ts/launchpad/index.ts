@@ -250,22 +250,32 @@ const tierConfs: Record<number, TierConf> = {
 
 // map from plane id to its configuration.
 const dataPlaneConfs: Record<number, DataPlaneConf> = {
-    // this is used for test resources
-    2: {
-        protectResources: true,
+    // plane for test resources
+    5: {
+        protectResources: false,
 
         accountConf: {
+            // This account was already created previously through Fennel control plane
             existingAccount: {
-                roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
+                roleArn: account.DEV_ACCOUNT_ADMIN_ROLE_ARN,
             }
         },
 
+        planeName: "rexer-dev",
+        // Keeping planeId as 2, since due to previous failed plane creations have to lead to a state where
+        // reusing those plane ids in this (account, region) does not seem to be possible
+        //
+        // https://us-west-2.console.aws.amazon.com/msk/home?region=us-west-2#/workerConfigurations
+        // It seems that we can create a MSK Connector worker configuration but cannot delete it :/
         planeId: 2,
         region: "us-west-2",
         vpcConf: {
-            cidr: "10.102.0.0/16"
+            cidr: "10.105.0.0/16"
         },
         dbConf: {
+            // it is okay to keep min capacity to 8 since we run a bunch of tests which will all
+            // attempt to create a DB connection. DBs are configured with auto sleep, so they
+            // are essentially being charged as long as tests are running.
             minCapacity: 8,
             maxCapacity: 8,
             password: "foundationdb",
@@ -288,10 +298,10 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         eksConf: {
             nodeGroups: [
-                // Plane 2 does not run any tier-specific services, but needs to run
+                // Plane 5 does not run any tier-specific services, but needs to run
                 // plane-level services like nitrous etc.
                 {
-                    name: "p-2-common-ng",
+                    name: "p-5-common-ng",
                     instanceTypes: ["t3.medium"],
                     minSize: 1,
                     maxSize: 5,
@@ -299,26 +309,18 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
-                // TODO: For nitrous, we may need to spin up ARM specific node group
             ],
         },
 
-        nitrousConf: {
-            replicas: 1,
-            storageCapacityGB: 20,
-            storageClass: "local",
-            binlog: {
-                partitions: 2,
-                replicationFactor: 1,
-            },
-        },
+        // not setting up nitrous since our dev testing does not require one.
 
         // set up MSK cluster for integration tests
         mskConf: {
-            // compute cost = 0.0456 ($/hr) x 2 (#brokers) x 720 = $65.6
-            brokerType: "kafka.m5.large",
-            // this will place 1 broker node in each of the AZs
-            numberOfBrokerNodes: 4,
+            // compute cost = 0.0456 ($/hr) x 6 (#brokers) x 720 = $200
+            brokerType: "kafka.t3.small",
+            // this will place 3 broker nodes in each of the AZs - we require larger number of 
+            // smaller brokers.
+            numberOfBrokerNodes: 6,
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },

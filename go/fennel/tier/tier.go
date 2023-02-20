@@ -80,7 +80,7 @@ type KafkaConsumerCreator func(libkafka.ConsumerConfig) (libkafka.FConsumer, err
 func (args TierArgs) Valid() error {
 	missingFields := make([]string, 0)
 	if args.MskKafkaServer == "" {
-		missingFields = append(missingFields, "MSK_KAFKA_SERVER")
+		missingFields = append(missingFields, "MSK_KAFKA_SERVER_ADDRESS")
 	}
 	if args.MskKafkaUsername == "" {
 		missingFields = append(missingFields, "MSK_KAFKA_USERNAME")
@@ -113,16 +113,7 @@ func (args TierArgs) Valid() error {
 		missingFields = append(missingFields, "PLANE_ID")
 	}
 	if args.NitrousServer == "" {
-		missingFields = append(missingFields, "NITROUS_SERVER")
-	}
-	if args.MskKafkaServer != "" {
-		missingFields = append(missingFields, "MSK_KAFKA_SERVER")
-	}
-	if args.MskKafkaUsername == "" {
-		missingFields = append(missingFields, "MSK_KAFKA_USERNAME")
-	}
-	if args.MskKafkaPassword == "" {
-		missingFields = append(missingFields, "MSK_KAFKA_PASSWORD")
+		missingFields = append(missingFields, "NITROUS_SERVER_ADDRESS")
 	}
 	// TODO: require args when ready for s3, glue, modelStore, sagemaker, UnleashEndpoint
 	if len(missingFields) > 0 {
