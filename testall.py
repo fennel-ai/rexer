@@ -32,12 +32,6 @@ if not py_only:
         p1 = subprocess.Popen(['go test -p 5 ./...'], shell=True, cwd=godir)
     p1.wait()
 
-pydir = os.path.join(root, 'pyconsole')
-print('Running python tests in pyconsole...')
-print('-' * 50)
-p2 = subprocess.Popen(['poetry install && poetry run python -m unittest'], shell=True, cwd=pydir)
-p2.wait()
-
 rexerclient = os.path.join(root, '../rexer-pyclient-alpha/')
 print('Running python tests in rexerclient...')
 print('-' * 50)

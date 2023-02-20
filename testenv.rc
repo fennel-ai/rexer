@@ -20,17 +20,17 @@ export MOTHERSHIP_MYSQL_PASSWORD="pscale_pw_iOqKp0qepUAER8E-_APgydji6Ajj7fNQD7pf
 
 export BADGER_DIR="/tmp"
 
-export MODEL_STORE_S3_BUCKET="p-2-model-store"
+export MODEL_STORE_S3_BUCKET="p2-model-store"
 export MODEL_STORE_ENDPOINT="integration-test-endpoint"
-export SAGEMAKER_EXECUTION_ROLE="arn:aws:iam::030813887342:role/p-2-sagemaker-executionrole"
+export SAGEMAKER_EXECUTION_ROLE="arn:aws:iam::824489454832:role/p-2-sagemaker-executionrole"
 export SAGEMAKER_INSTANCE_TYPE="ml.c5.large"
 export SAGEMAKER_INSTANCE_COUNT=1
 
 export JOB_NAME_BY_AGG="topk=TopK,cf=CF"
-export OFFLINE_AGG_BUCKET="t-103-offline-aggregate-output"
+export OFFLINE_AGG_BUCKET="p2-offline-aggregate-bucket"
 export AWS_REGION="us-west-2"
 
-export BACKUP_BUCKET="nitrous-integration-test-backup"
+export BACKUP_BUCKET="p2-nitrous-integration-test"
 
 # in tests, we override this with a random tier ID but this is needed for prod
 export TIER_ID=103
