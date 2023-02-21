@@ -298,27 +298,26 @@ const tierConfs: Record<number, TierConf> = {
         // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
         // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
         // place the pods across the nodes based on utilization and `limit`
-        // TODO(abhay): Enable separate query server for lokal.
-        // queryServerConf: {
-        //     podConf: {
-        //         minReplicas: 2,
-        //         maxReplicas: 10,
-        //         resourceConf: {
-        //             // c6g.xlarge machines, set requests and limits accordingly
-        //             cpu: {
-        //                 request: "2500m",
-        //                 limit: "3000m"
-        //             },
-        //             memory: {
-        //                 request: "5G",
-        //                 limit: "7G",
-        //             }
-        //         },
-        //         nodeLabels: {
-        //             "node-group": "p-5-queryserver-ng"
-        //         },
-        //     }
-        // },
+        queryServerConf: {
+            podConf: {
+                minReplicas: 2,
+                maxReplicas: 10,
+                resourceConf: {
+                    // c6g.xlarge machines, set requests and limits accordingly
+                    cpu: {
+                        request: "2500m",
+                        limit: "3000m"
+                    },
+                    memory: {
+                        request: "5G",
+                        limit: "7G",
+                    }
+                },
+                nodeLabels: {
+                    "node-group": "p-5-queryserver-ng"
+                },
+            }
+        },
 
         sagemakerConf: {
             // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
@@ -331,7 +330,7 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 3,
         },
         // TODO(abhay): Enable airbyte
-        // airbyteConf: {},
+        airbyteConf: {},
         enableNitrous: true,
         plan: Plan.STARTUP,
         requestLimit: 0,
@@ -936,43 +935,42 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
 
                 // Query server node groups
-                // TODO(abhay): Add query server node group.
-                // {
-                //     name: "p-5-query-ng-arm",
-                //     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                //     //
-                //     // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                //     // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                //     // and should not be scheduled on these nodes
-                //     instanceTypes: ["c6g.xlarge"],
-                //     minSize: 1,
-                //     maxSize: 1,
-                //     amiType: DEFAULT_ARM_AMI_TYPE,
-                //     labels: {
-                //         "node-group": "p-5-queryserver-ng",
-                //         "rescheduler-label": "on-demand",
-                //     },
-                //     capacityType: ON_DEMAND_INSTANCE_TYPE,
-                //     expansionPriority: 1,
-                // },
-                // {
-                //     name: "p-5-query-ng-arm-spot",
-                //     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                //     //
-                //     // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                //     // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                //     // and should not be scheduled on these nodes
-                //     instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
-                //     minSize: 1,
-                //     maxSize: 10,
-                //     amiType: DEFAULT_ARM_AMI_TYPE,
-                //     labels: {
-                //         "node-group": "p-5-queryserver-ng",
-                //         "rescheduler-label": "spot",
-                //     },
-                //     capacityType: SPOT_INSTANCE_TYPE,
-                //     expansionPriority: 10,
-                // },
+                {
+                    name: "p-5-query-ng-arm",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "on-demand",
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-query-ng-arm-spot",
+                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
+                    //
+                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
+                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
+                    // and should not be scheduled on these nodes
+                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
+                    minSize: 1,
+                    maxSize: 10,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
+                    },
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
+                },
                 // Common node groups in case some container needs to be run on these
                 {
                     name: "p-5-common-ng-arm64",
