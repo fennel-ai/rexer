@@ -147,17 +147,6 @@ export const setup = async (input: inputType) => {
 
         // scheduled the pods on the dedicated node group created
         nodeSelector['node-group'] = ngName;
-
-        // create affinity such that they are not scheduled in the same zone, however do not make this as a "strict"
-        // restriction i.e. allow it to be scheduled in case both the nodes are in the same AZs as well (which should
-        // not ideally happen with Managed Node Groups).
-        topologySpreadConstraints = [{
-            // do not allow > 1 skew i.e. diff of pods on domain topologies should never be above 1
-            "maxSkew": 1,
-            // use zone as the domain topology i.e. pods in the same zone count towards computing maxSkew
-            "topologyKey": "topology.kubernetes.io/zone",
-            "whenUnsatisfiable": "ScheduleAnyway",
-        }];
     }
 
 
@@ -232,8 +221,26 @@ export const setup = async (input: inputType) => {
                 // See - https://www.getambassador.io/docs/emissary/latest/topics/running/ingress-controller/#when-to-use-an-ingress-instead-of-annotations-or-crds
                 "enabled": false,
             },
-            "topologySpreadConstraints": topologySpreadConstraints,
             "nodeSelector": nodeSelector,
+            // Create a pod affinity to not place multiple emissary ingress pods on the same node.
+            //
+            // Same node restriction is enforced by the `topologyKey` field. Pod anti affinity behavior is determined by the
+            // name of the pod which is `emissary-ingress`, hardcoded by the helm chart. 
+            "affinity": {
+                "podAntiAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": [{
+                            "labelSelector": {
+                                "matchExpressions": [{
+                                    "key": "app.kubernetes.io/name",
+                                    "operator": "In",
+                                    "values": ["emissary-ingress"]
+                                }]
+                            },
+                            "topologyKey": "kubernetes.io/hostname"
+                        }
+                    ],
+                },
+            },
 
             "agent": {
                 "enabled": false,
