@@ -225,18 +225,19 @@ export const setup = async (input: inputType) => {
             "affinity": {
                 "podAntiAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": [{
-                        "labelSelector": {
-                            "matchExpressions": [{
-                                "key": "app.kubernetes.io/name",
-                                "operator": "In",
-                                "values": ["emissary-ingress"]
-                            }]
-                        },
-                        "topologyKey": "kubernetes.io/hostname"
-                    }
+                            "labelSelector": {
+                                "matchExpressions": [{
+                                    "key": "app.kubernetes.io/name",
+                                    "operator": "In",
+                                    "values": ["emissary-ingress"]
+                                }]
+                            },
+                            "topologyKey": "kubernetes.io/hostname"
+                        }
                     ],
                 },
             },
+
             "agent": {
                 "enabled": false,
             },
