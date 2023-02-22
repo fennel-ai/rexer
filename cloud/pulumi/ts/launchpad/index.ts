@@ -883,8 +883,9 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         vpcConf: {
             cidr: "10.113.0.0/16"
         },
+        // TODO(mohit, abhay): Scale the DB down to 2 ACUs once Elasticache has good hit rate.
         dbConf: {
-            minCapacity: 2,
+            minCapacity: 8,
             maxCapacity: 64,
             password: "password",
             skipFinalSnapshot: false,
