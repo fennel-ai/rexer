@@ -50,6 +50,11 @@ const customers: Record<number, Customer> = {
         id: 3,
         domain: "getlokalapp.com",
         name: "lokal",
+    },
+    4: {
+        id: 4,
+        domain: "yext.com",
+        name: "yext",
     }
 };
 //================ Static data plane / tier configurations =====================
@@ -670,6 +675,110 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             storageVolumeSizeGiB: 1200,
         },
         customer: customers[3],
+        mothershipId: 12,
+    },
+    // Yext's production plane
+    14: {
+        protectResources: true,
+        accountConf: {
+            existingAccount: {
+                roleArn: "arn:aws:iam::893589383464:role/blood_orange",
+            }
+        },
+        planeId: 14,
+        region: "us-east-1",
+        vpcConf: {
+            cidr: "10.114.0.0/16"
+        },
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-14-common-ng-x86",
+                    instanceTypes: ["t3.medium"],
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-14-common-ng-arm64",
+                    instanceTypes: ["t4g.medium"],
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                // Nitrous node group.
+                {
+                    name: "p-14-nitrous-ng-arm",
+                    instanceTypes: ["c6gd.medium"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-14-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+                // Nitrous backup node group
+                {
+                    name: "p-14-nitrous-backup-ng-arm",
+                    instanceTypes: ["c6gd.medium"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-14-nitrous-backup-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+            ],
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 1,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.small",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 1,
+        },
+        prometheusConf: {
+            volumeSizeGiB: 256,
+            metricsRetentionDays: 60,
+        },
+        nitrousConf: {
+            replicas: 1,
+            storageCapacityGB: 50,
+            storageClass: "local",
+            binlog: {
+                partitions: 2,
+            },
+        },
+        // set up MSK cluster
+        mskConf: {
+            // compute cost = 0.21 ($/hr) x 2 (#brokers) x 720 = ~$300
+            brokerType: "kafka.m5.large",
+            // this will place 1 broker node in each of the AZs
+            numberOfBrokerNodes: 2,
+            // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
+            storageVolumeSizeGiB: 64,
+        },
+        customer: customers[2],
         mothershipId: 12,
     },
 }
