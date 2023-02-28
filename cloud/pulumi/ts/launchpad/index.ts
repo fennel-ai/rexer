@@ -718,7 +718,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // Nitrous node group.
                 {
                     name: "p-14-nitrous-ng-arm",
-                    instanceTypes: ["c6gd.medium"],
+                    instanceTypes: ["c6gd.large"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -732,7 +732,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // Nitrous backup node group
                 {
                     name: "p-14-nitrous-backup-ng-arm",
-                    instanceTypes: ["c6gd.medium"],
+                    instanceTypes: ["c6gd.large"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
@@ -768,10 +768,48 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         nitrousConf: {
             replicas: 1,
+            useAmd64: false,
             storageCapacityGB: 50,
             storageClass: "local",
+            resourceConf: {
+                cpu: {
+                    request: "1000m",
+                    limit: "2000m"
+                },
+                memory: {
+                    request: "1Gi",
+                    limit: "1200Mi",
+                }
+            },
             binlog: {
-                partitions: 2,
+                partitions: 16,
+                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
+                partition_retention_bytes: -1,
+                max_message_bytes: 2097164,
+                replicationFactor: 2,
+            },
+            nodeLabels: {
+                "node-group": "p-14-nitrous-ng",
+            },
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-14-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "60m",
+                remoteCopiesToKeep: 2,
+                resourceConf: {
+                    cpu: {
+                        request: "1000m",
+                        limit: "2000m"
+                    },
+                    memory: {
+                        request: "1Gi",
+                        limit: "1200Mi",
+                    }
+                },
+                storageCapacityGB: 50,
             },
         },
         // set up MSK cluster
