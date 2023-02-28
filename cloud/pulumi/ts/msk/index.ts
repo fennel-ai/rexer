@@ -76,7 +76,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     input.privateSubnets.apply(subnets => {
         if (input.numberOfBrokerNodes % subnets.length !== 0) {
             console.log('Number of broker nodes to be configured should be a multiple of subnets configured. ',
-            'Given number of nodes: ', input.numberOfBrokerNodes, ' configured subnets: ', subnets.length);
+                'Given number of nodes: ', input.numberOfBrokerNodes, ' configured subnets: ', subnets.length);
             process.exit(1);
         }
     });
@@ -247,7 +247,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     }, { provider: awsProvider });
     const secret = new aws.secretsmanager.Secret("msk-secret", {
         kmsKeyId: kmsKey.keyId,
-        name: `AmazonMSK_p-${input.planeId}-msk-secret`,
+        // MSK secrets must start with AmazonMSK_:
+        // https://docs.aws.amazon.com/msk/latest/developerguide/msk-password.html#msk-password-limitations
+        namePrefix: `AmazonMSK_p-${input.planeId}-msk-secret-`,
     }, { provider: awsProvider });
     const mskUserName = `p-${input.planeId}-username`;
     const mskPassword = `p-${input.planeId}-password`;
@@ -263,7 +265,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         secretArnLists: [secret.arn],
     }, { provider: awsProvider, dependsOn: [secretVersion] });
     const secretPolicy = secret.arn.apply(secretArn => {
-         return new aws.secretsmanager.SecretPolicy("msk-secret-policy", {
+        return new aws.secretsmanager.SecretPolicy("msk-secret-policy", {
             secretArn: secret.arn,
             policy: JSON.stringify({
                 Version: "2012-10-17",
@@ -307,12 +309,10 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         },
     }, { provider: awsProvider });
     const workerConf = new aws.mskconnect.WorkerConfiguration("msk-workerconf", {
-        name: `p-${input.planeId}-msk-jsonworkerconf`,
-        description: "",
         propertiesFileContent: `key.converter=org.apache.kafka.connect.storage.StringConverter
         value.converter=org.apache.kafka.connect.json.JsonConverter
         value.converter.schemas.enable=false`,
-    }, { provider: awsProvider });
+    }, { provider: awsProvider, id: "arn:aws:kafkaconnect:us-east-1:893589383464:worker-configuration/p-14-msk-jsonworkerconf/ea06a6e3-22ee-4b68-8e83-7bc0c0ee7cd7-2" });
 
     return pulumi.output({
         clusterName: cluster.clusterName,

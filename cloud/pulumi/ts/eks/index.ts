@@ -225,7 +225,8 @@ async function setupEKSLocalSSDProvisioner(cluster: eks.Cluster, awsProvider: aw
                         obj.spec.template.spec.containers[0].image = imgName;
                     }
                 },
-            ]}, { provider: cluster.provider });
+            ]
+        }, { provider: cluster.provider });
     });
 
     // Create resources for local-static-provisioner:
@@ -1023,7 +1024,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const linkerd = setupLinkerd(cluster.provider)
 
     // Install emissary-ingress CRDs after load-balancer controller.
-    await setupEmissaryIngressCrds(input, awsProvider, cluster)
+    // await setupEmissaryIngressCrds(input, awsProvider, cluster)
 
     // Setup fennel namespace.
     const ns = new k8s.core.v1.Namespace("fennel-ns", {

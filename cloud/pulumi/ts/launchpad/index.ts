@@ -904,6 +904,11 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         },
         planeId: 14,
         region: "us-east-1",
+        // Select AZs that support memorydb:
+        // https://docs.aws.amazon.com/memorydb/latest/devguide/subnetgroups.html.
+        // Note that different accounts will have different az names
+        // that support MemoryDB.
+        azs: ["us-east-1a", "us-east-1c"],
         vpcConf: {
             cidr: "10.114.0.0/16"
         },

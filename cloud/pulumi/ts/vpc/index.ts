@@ -3,6 +3,7 @@ import * as aws from "@pulumi/aws"
 import * as netmask from "netmask";
 
 import { fennelStdTags } from "../lib/util";
+import { assert } from "console";
 
 export const plugins = {
     "aws": "v5.0.0"
@@ -22,8 +23,9 @@ export type controlPlaneConfig = {
 }
 
 export type inputType = {
-    cidr: string
-    region: string
+    cidr: string,
+    region: string,
+    azs?: string[],
     roleArn: pulumi.Input<string>,
     controlPlane: controlPlaneConfig,
     planeId: number,
@@ -299,11 +301,16 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const vpcId = vpc.id;
 
     // Divide the vpc into 4 subnets: 2 private and 2 public.
-    const azs = await aws.getAvailabilityZones({}, { provider })
-
-    console.log("Availability zones ", azs.names)
-    const primaryAz = azs.names[0];
-    const secondaryAz = azs.names[1];
+    let azs = input.azs;
+    if (azs === undefined) {
+        const zones = await aws.getAvailabilityZones({}, { provider })
+        console.log("Availability zones ", zones.names)
+        azs = zones.names.slice(0, 2);
+    } else {
+        assert(azs.length == 2, "Must provide exactly 2 availability zones")
+    }
+    const primaryAz = azs[0];
+    const secondaryAz = azs[1];
 
     const [ip, mask] = input.cidr.split('/')
     const subnetMask = Number(mask) + 2
