@@ -312,7 +312,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         propertiesFileContent: `key.converter=org.apache.kafka.connect.storage.StringConverter
         value.converter=org.apache.kafka.connect.json.JsonConverter
         value.converter.schemas.enable=false`,
-    }, { provider: awsProvider });
+    }, { provider: awsProvider, id: "arn:aws:kafkaconnect:us-east-1:893589383464:worker-configuration/p-14-msk-jsonworkerconf/ea06a6e3-22ee-4b68-8e83-7bc0c0ee7cd7-2" });
 
     return pulumi.output({
         clusterName: cluster.clusterName,
