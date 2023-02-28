@@ -119,6 +119,7 @@ export type DataPlaneConf = {
 
     planeId: number,
     region: string,
+    azs?: string[],
     vpcConf: VpcConfig,
     mskConf: MskConf,
     dbConf: util.DBConfig,
@@ -210,6 +211,7 @@ const setupResources = async () => {
 
     const vpcOutput = await vpc.setup({
         region: input.region,
+        azs: input.azs,
         roleArn: roleArn,
         cidr: input.vpcConf.cidr,
         controlPlane: input.controlPlaneConf,

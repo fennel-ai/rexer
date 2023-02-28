@@ -225,7 +225,8 @@ async function setupEKSLocalSSDProvisioner(cluster: eks.Cluster, awsProvider: aw
                         obj.spec.template.spec.containers[0].image = imgName;
                     }
                 },
-            ]}, { provider: cluster.provider });
+            ]
+        }, { provider: cluster.provider });
     });
 
     // Create resources for local-static-provisioner:
