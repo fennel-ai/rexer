@@ -1024,7 +1024,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const linkerd = setupLinkerd(cluster.provider)
 
     // Install emissary-ingress CRDs after load-balancer controller.
-    // await setupEmissaryIngressCrds(input, awsProvider, cluster)
+    await setupEmissaryIngressCrds(input, awsProvider, cluster)
 
     // Setup fennel namespace.
     const ns = new k8s.core.v1.Namespace("fennel-ns", {
