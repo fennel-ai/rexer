@@ -301,16 +301,17 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     const vpcId = vpc.id;
 
     // Divide the vpc into 4 subnets: 2 private and 2 public.
-    let azs = input.azs;
-    if (azs === undefined) {
-        const zones = await aws.getAvailabilityZones({}, { provider })
-        azs = zones.names.slice(0, 2);
+    const availableAzs = (await aws.getAvailabilityZones({}, { provider })).names;
+    let selectedAzs = input.azs;
+    if (selectedAzs === undefined) {
+        selectedAzs = availableAzs.slice(0, 2);
     } else {
-        assert(azs.length == 2, "Must provide exactly 2 availability zones")
+        assert(selectedAzs.length == 2, "Must provide exactly 2 availability zones")
+        assert(selectedAzs.every((az) => availableAzs.includes(az)), "Must provide valid availability zones")
     }
-    console.log("Availability zones ", azs)
-    const primaryAz = azs[0];
-    const secondaryAz = azs[1];
+    console.log("Availability zones ", selectedAzs)
+    const primaryAz = selectedAzs[0];
+    const secondaryAz = selectedAzs[1];
 
     const [ip, mask] = input.cidr.split('/')
     const subnetMask = Number(mask) + 2
