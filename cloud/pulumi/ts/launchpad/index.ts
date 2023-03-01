@@ -237,7 +237,36 @@ const tierConfs: Record<number, TierConf> = {
         enableNitrous: true,
         plan: Plan.STARTUP,
         requestLimit: 0,
-    }
+    },
+    116: {
+        protectResources: true,
+        planeId: 14,
+        tierId: 116,
+        // set larger requests for the http + query server
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "1000m",
+                        limit: "2000m"
+                    },
+                    memory: {
+                        request: "3G",
+                        limit: "4G",
+                    }
+                }
+            },
+        },
+        // For now, disable reading from nitrous.
+        enableNitrous: false,
+        // Yext currently only works with offline aggregation jobs.
+        enableOfflineAggregationJobs: true,
+        plan: Plan.STARTUP,
+        requestLimit: 0,
+        enableCors: true,
+    },
 }
 
 // map from plane id to its configuration.
@@ -709,8 +738,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 {
                     name: "p-14-common-ng-arm64",
                     instanceTypes: ["t4g.medium"],
-                    minSize: 1,
-                    maxSize: 3,
+                    minSize: 2,
+                    maxSize: 4,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
