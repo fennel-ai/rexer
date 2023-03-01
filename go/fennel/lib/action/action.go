@@ -150,7 +150,7 @@ func (a Action) ToValueDict() (value.Dict, error) {
 
 func acceptablePastTimestamp(tsNow, ts, multiplier int64) bool {
 	// 2 years
-	return tsNow - ts <= 63072000 * multiplier
+	return tsNow-ts <= 63072000*multiplier
 }
 
 func FromValueDict(dict value.Dict) (Action, error) {
@@ -218,7 +218,7 @@ func FromValueDict(dict value.Dict) (Action, error) {
 			ts64 := int64(ts)
 			if ts64 > now.Unix() {
 				// ts in seconds could be in future or milliseconds past
-				if ts64 <= now.UnixMilli() && acceptablePastTimestamp(now.UnixMilli(), ts64, 1_000)  {
+				if ts64 <= now.UnixMilli() && acceptablePastTimestamp(now.UnixMilli(), ts64, 1_000) {
 					// this is milliseconds mostly
 					action.Timestamp = ftypes.Timestamp(ts64 / 1_000)
 				} else if ts64 <= now.UnixMicro() && acceptablePastTimestamp(now.UnixMicro(), ts64, 1_000_000) {
@@ -281,18 +281,6 @@ func ToList(actions []Action) (value.List, error) {
 		table.Append(d)
 	}
 	return table, nil
-}
-
-func ToJsonList(actions []Action) ([][]byte, error) {
-	res := make([][]byte, len(actions))
-	for i, action := range actions {
-		actionJson, err := action.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-		res[i] = actionJson
-	}
-	return res, nil
 }
 
 func (a Action) MarshalJSON() ([]byte, error) {

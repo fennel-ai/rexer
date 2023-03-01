@@ -14,17 +14,10 @@ import (
 )
 
 func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
-	var querySer []byte
-	var err error
-	if agg.Mode == aggregate.RQL {
-		querySer, err = ast.Marshal(agg.Query)
-		if err != nil {
-			return fmt.Errorf("failed to marshal query: %w", err)
-		}
-	} else {
-		querySer = agg.PythonQuery
+	querySer, err := ast.Marshal(agg.Query)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query: %w", err)
 	}
-
 	optionSer, err := proto.Marshal(aggregate.ToProtoOptions(agg.Options))
 	if err != nil {
 		return fmt.Errorf("failed to marshal options: %w", err)
@@ -32,8 +25,8 @@ func Store(ctx context.Context, tier tier.Tier, agg aggregate.Aggregate) error {
 	if len(agg.Name) > 255 {
 		return fmt.Errorf("aggregate name can not be longer than 255 chars")
 	}
-	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, source, mode, options_ser) VALUES (?, ?, ?, ?, ?, ?)`
-	_, err = tier.DB.QueryContext(ctx, sql, agg.Name, querySer, agg.Timestamp, agg.Source, agg.Mode, optionSer)
+	sql := `INSERT INTO aggregate_config (name, query_ser, timestamp, source, options_ser) VALUES (?, ?, ?, ?, ?)`
+	_, err = tier.DB.QueryContext(ctx, sql, agg.Name, querySer, agg.Timestamp, agg.Source, optionSer)
 	return err
 }
 

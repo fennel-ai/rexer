@@ -33,7 +33,6 @@ func TestRolling(t *testing.T) {
 		Name:      "mycounter",
 		Query:     ast.MakeInt(1),
 		Timestamp: 0,
-		Mode:      "rql",
 		Options: libaggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600 * 24, 3600 * 28},

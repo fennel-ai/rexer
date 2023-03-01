@@ -35,7 +35,6 @@ func TestValueAll(t *testing.T) {
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: ftypes.Timestamp(t0.Unix()),
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{6 * 3600, 3 * 3600, 48 * 3600},
@@ -46,7 +45,6 @@ func TestValueAll(t *testing.T) {
 		Name:      "minelem",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: ftypes.Timestamp(t0.Unix()),
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "min",
 			Durations: []uint32{24 * 3600, 3 * 3600, 3600},
@@ -181,7 +179,6 @@ func TestCachedValueAll(t *testing.T) {
 		Name:      "agg",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: ftypes.Timestamp(t0.Unix()),
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600},

@@ -487,7 +487,6 @@ func TestServer_AggregateValue_Valid(t *testing.T) {
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: ftypes.Timestamp(t0.Unix()),
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3 * 3600, 6 * 3600, 120},
@@ -569,7 +568,6 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		Name:      "mycounter",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: ftypes.Timestamp(t0.Unix()),
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3 * 3600, 6 * 3600, 1800},
@@ -579,7 +577,6 @@ func TestServer_BatchAggregateValue(t *testing.T) {
 		Name:      "maxelem",
 		Query:     agg_test.GetDummyAggQuery(),
 		Timestamp: ftypes.Timestamp(t0.Unix()),
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "max",
 			Durations: []uint32{3 * 3600, 6 * 3600},
@@ -715,7 +712,6 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	agg := aggregate.Aggregate{
 		Name:  "mycounter",
 		Query: ast.MakeInt(1),
-		Mode:  "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600 * 24, 3600 * 12},
@@ -735,7 +731,6 @@ func TestStoreRetrieveDeactivateAggregate(t *testing.T) {
 	agg2 := aggregate.Aggregate{
 		Name:  "mycounter",
 		Query: ast.MakeDouble(3.4),
-		Mode:  "rql",
 		Options: aggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{3600 * 24 * 2, 3600 * 24},

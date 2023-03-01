@@ -32,7 +32,6 @@ func TestAggValue_Apply(t *testing.T) {
 	agg := libaggregate.Aggregate{
 		Name: "counter1", Query: getQuery(), Timestamp: 123,
 		Source: libaggregate.SOURCE_ACTION,
-		Mode:   "rql",
 		Options: libaggregate.Options{
 			AggType:   "sum",
 			Durations: []uint32{6 * 3600, 3 * 3600, 2000},
@@ -42,7 +41,6 @@ func TestAggValue_Apply(t *testing.T) {
 	agg2 := libaggregate.Aggregate{
 		Name: "second_agg", Query: getQuery(), Timestamp: 123,
 		Source: libaggregate.SOURCE_ACTION,
-		Mode:   "rql",
 		Options: libaggregate.Options{
 			AggType:   "max",
 			Durations: []uint32{6 * 3600},
