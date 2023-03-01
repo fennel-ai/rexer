@@ -1,6 +1,3 @@
 [submodule "go/go/src/capnproto.org/go/capnp"]
 	path = go/go/src/capnproto.org/go/capnp
 	url = https://github.com/capnproto/go-capnproto2
-[submodule "go/src/capnproto.org/go/capnp"]
-	path = go/src/capnproto.org/go/capnp
-	url = https://github.com/capnproto/go-capnproto2

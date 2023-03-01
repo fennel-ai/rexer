@@ -34,7 +34,6 @@ with pkgs; mkShell {
     unstable.go_1_19
     pkgs.protoc-gen-go
     pkgs.protoc-gen-go-grpc
-    unstable.capnproto
 
     # Packages to build kafka go client
     pkgs.rdkafka
