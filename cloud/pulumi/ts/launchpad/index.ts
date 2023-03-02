@@ -412,7 +412,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         mskConf: {
             // compute cost = 0.0456 ($/hr) x 6 (#brokers) x 720 = $200
             brokerType: "kafka.t3.small",
-            // this will place 3 broker nodes in each of the AZs - we require larger number of 
+            // this will place 3 broker nodes in each of the AZs - we require larger number of
             // smaller brokers.
             numberOfBrokerNodes: 6,
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
@@ -945,39 +945,33 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 // Query server node groups
                 {
                     name: "p-5-query-ng-arm",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
+                    // TODO(mohit): Move to c7g if/when they become cheaper than
+                    // c6g instances in ap-south-1.
                     instanceTypes: ["c6g.xlarge"],
                     minSize: 1,
-                    maxSize: 1,
+                    maxSize: 20,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-queryserver-ng",
                         "rescheduler-label": "on-demand",
                     },
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
+                    expansionPriority: 10,
                 },
                 {
                     name: "p-5-query-ng-arm-spot",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
+                    // TODO(mohit): Move to c7g if/when they become cheaper than
+                    // c6g instances in ap-south-1.
                     instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
                     minSize: 1,
-                    maxSize: 10,
+                    maxSize: 20,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     labels: {
                         "node-group": "p-5-queryserver-ng",
                         "rescheduler-label": "spot",
                     },
                     capacityType: SPOT_INSTANCE_TYPE,
-                    expansionPriority: 10,
+                    expansionPriority: 1,
                 },
                 // Common node groups in case some container needs to be run on these
                 {
