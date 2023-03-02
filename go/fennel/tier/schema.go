@@ -217,4 +217,5 @@ var Schema = db.Schema{
 	24: `ALTER TABLE aggregate_config ADD COLUMN mode VARCHAR(64) DEFAULT 'rql';`,
 	26: `ALTER TABLE query_ast ADD COLUMN description VARCHAR(2048) DEFAULT '';`,
 	27: `ALTER TABLE query_ast ADD INDEX (name);`,
+	28: `ALTER TABLE aggregate_config DROP COLUMN mode;`,
 }

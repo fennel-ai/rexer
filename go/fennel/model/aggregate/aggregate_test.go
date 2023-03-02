@@ -22,7 +22,6 @@ func TestRetrieveStore(t *testing.T) {
 		Name:      "test_counter",
 		Query:     &ast.Atom{Type: ast.Int, Lexeme: "4"},
 		Timestamp: 1,
-		Mode:      "rql",
 		Options: aggregate.Options{
 			AggType:   "rolling_counter",
 			Durations: []uint32{3600 * 24 * 7},
@@ -68,7 +67,6 @@ func TestRetrieveActive(t *testing.T) {
 
 	agg := aggregate.Aggregate{
 		Timestamp: 1,
-		Mode:      "rql",
 		Options:   options,
 		Active:    true,
 	}
@@ -103,7 +101,6 @@ func TestRetrieveAll(t *testing.T) {
 			Timestamp: 1,
 			Options:   options,
 			Active:    true,
-			Mode:      "rql",
 			Query:     ast.MakeString(fmt.Sprintf("some query: %d", i)),
 		}
 		err := Store(ctx, tier, agg)
@@ -132,7 +129,6 @@ func TestLongStrings(t *testing.T) {
 		Timestamp: 1,
 		Options:   options,
 		Active:    true,
-		Mode:      "rql",
 		Query:     ast.MakeString("query"),
 	}
 	err := Store(ctx, tier, agg)
@@ -162,7 +158,6 @@ func TestDeactivate(t *testing.T) {
 		Timestamp: 1,
 		Options:   options,
 		Active:    true,
-		Mode:      "rql",
 		Query:     ast.MakeString("query"),
 	}
 

@@ -25,8 +25,6 @@ const (
 	CF             ftypes.AggType = "cf"
 	KNN            ftypes.AggType = "knn"
 	VAE            ftypes.AggType = "vae"
-	RQL            string         = "rql"
-	PANDAS         string         = "pandas"
 )
 
 var ValidTypes = []ftypes.AggType{
@@ -53,10 +51,6 @@ var ValidAutoMlAggregates = []ftypes.AggType{
 	VAE,
 }
 
-var ValidAggregateModes = []string{
-	RQL, PANDAS,
-}
-
 const (
 	SOURCE_ACTION  = ftypes.Source("action")
 	SOURCE_PROFILE = ftypes.Source("profile")
@@ -66,15 +60,13 @@ var ErrNotFound = errors.New("aggregate not found")
 var ErrNotActive = errors.New("aggregate is not active")
 
 type Aggregate struct {
-	Name        ftypes.AggName
-	Source      ftypes.Source
-	Mode        string
-	PythonQuery []byte
-	Query       ast.Ast
-	Timestamp   ftypes.Timestamp
-	Options     Options
-	Id          ftypes.AggId
-	Active      bool
+	Name      ftypes.AggName
+	Source    ftypes.Source
+	Query     ast.Ast
+	Timestamp ftypes.Timestamp
+	Options   Options
+	Id        ftypes.AggId
+	Active    bool
 }
 
 func IsValid(s ftypes.AggType, validTypes []ftypes.AggType) bool {
@@ -87,24 +79,12 @@ func IsValid(s ftypes.AggType, validTypes []ftypes.AggType) bool {
 	return false
 }
 
-func IsValidMode(s string) bool {
-	for _, m := range ValidAggregateModes {
-		if s == m {
-			return true
-		}
-	}
-	return false
-}
-
 func (agg Aggregate) Validate() error {
 	if !IsValid(agg.Options.AggType, ValidTypes) {
 		return fmt.Errorf("invalid aggregate type: '%v'; valid types are: %v", agg.Options.AggType, ValidTypes)
 	}
 	if len(agg.Name) == 0 {
 		return fmt.Errorf("aggregate name can not be of zero length")
-	}
-	if !IsValidMode(agg.Mode) {
-		return fmt.Errorf("invalid aggregate mode: '%v'; valid modes are: %v", agg.Mode, ValidAggregateModes)
 	}
 	options := agg.Options
 	aggtype := agg.Options.AggType
@@ -271,7 +251,6 @@ type GetAggValueRequest struct {
 type AggregateSer struct {
 	Name      ftypes.AggName   `db:"name"`
 	Source    ftypes.Source    `db:"source"`
-	Mode      string           `db:"mode"`
 	QuerySer  []byte           `db:"query_ser"`
 	Timestamp ftypes.Timestamp `db:"timestamp"`
 	OptionSer []byte           `db:"options_ser"`
@@ -291,15 +270,8 @@ func (ser AggregateSer) ToAggregate() (Aggregate, error) {
 	agg.Active = ser.Active
 	agg.Id = ser.Id
 	agg.Source = ser.Source
-	agg.Mode = ser.Mode
-	if agg.Mode == RQL {
-		if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
-			return Aggregate{}, err
-		}
-	} else if agg.Mode == PANDAS {
-		agg.PythonQuery = ser.QuerySer
-	} else {
-		return Aggregate{}, fmt.Errorf("unknown mode %s", agg.Mode)
+	if err := ast.Unmarshal(ser.QuerySer, &agg.Query); err != nil {
+		return Aggregate{}, err
 	}
 	return agg, nil
 }
