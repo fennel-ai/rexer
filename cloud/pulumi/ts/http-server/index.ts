@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
 import * as childProcess from "child_process";
-import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
+import { ReadinessProbe, serviceEnvs } from "../tier-consts/consts";
 import * as util from "../lib/util";
 
 const name = "http-server"
@@ -151,7 +151,7 @@ export const setup = async (input: inputType) => {
     const appPort = 2425;
     const healthPort = 8082;
 
-    const timeoutSeconds = 60;
+    const timeoutSeconds = 30;
     // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
     // has asked the container runtime to trigger TERM), since see this pod as a viable endpoint of the service.
     //

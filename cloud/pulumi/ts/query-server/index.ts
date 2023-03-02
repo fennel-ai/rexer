@@ -3,7 +3,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import * as process from "process";
-import {ReadinessProbe, serviceEnvs} from "../tier-consts/consts";
+import { ReadinessProbe, serviceEnvs } from "../tier-consts/consts";
 import * as util from "../lib/util";
 import * as uuid from "uuid";
 import childProcess from "child_process";
@@ -116,7 +116,7 @@ export const setup = async (input: inputType) => {
     const appPort = 2425;
     const healthPort = 8082;
 
-    const timeoutSeconds = 60;
+    const timeoutSeconds = 30;
     // NOTE: This is configured for "slow" clients who might, at the time of graceful shutdown (i.e. when the kubelet
     // has asked the container runtime to trigger TERM), since see this pod as a viable endpoint of the service.
     //
@@ -234,7 +234,7 @@ export const setup = async (input: inputType) => {
                     // this should be at least the timeout seconds so that any new request sent to the container
                     // could take this much time + `preStop` on linkerd is an artificial delay added to avoid
                     // failing requests downstream.
-                    terminationGracePeriodSeconds: timeoutSeconds + linkerdPreStopDelaySecs,
+                    terminationGracePeriodSeconds: (2 * timeoutSeconds) + linkerdPreStopDelaySecs,
                 },
             },
             strategy: {
@@ -309,9 +309,11 @@ export const setup = async (input: inputType) => {
                 // the request before desired (or Mapping configured) retries
                 "num_retries": 2,
                 // Use `per_try_timeout` - specifies the timeout for each retry.
+                // We keep this shorter than the request timeout so that we can retry the request
+                // before it times out.
                 // Default: this is the global request timeout (which is by default 3000ms, and is overridden per
                 // mapping)
-                "per_try_timeout": "60s"
+                "per_try_timeout": "10s"
             },
             "circuit_breakers": [{
                 // Specifies the maximum number of concurrent retries there could be to the upstream service
