@@ -6,33 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConvertToCapnValue(t *testing.T) {
-	values := []Value{
-		Int(1),
-		Int(-12),
-		Bool(true),
-		Bool(false),
-		String("this is a string"),
-		String(""),
-		Double(1.0),
-		Double(0.0),
-		Double(1e0),
-		Double(-1e0),
-		NewList(),
-		NewList(Int(1), Bool(false), String("hi"), NewList(Int(5))),
-		NewDict(map[string]Value{"a": Int(2), "b": NewDict(map[string]Value{}), "c": NewList(), "d": Double(-4.2)}),
-		Nil,
-	}
-
-	for _, v := range values {
-		cv, _, err := ToCapnValue(v)
-		assert.NoError(t, err)
-		v2, err := FromCapnValue(cv)
-		assert.NoError(t, err)
-		assert.Equal(t, v, v2)
-	}
-}
-
 func TestConvert(t *testing.T) {
 	values := []Value{
 		Int(1),

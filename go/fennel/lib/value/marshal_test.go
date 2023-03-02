@@ -2,10 +2,11 @@ package value
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -169,8 +170,6 @@ func generateValue(n int, t string) ([][]byte, []Value) {
 		sample := createVal(rand.Int(), 0)
 		samples[i] = sample
 		switch t {
-		case "captain":
-			arr[i], _ = CaptainMarshal(sample)
 		case "proto":
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
@@ -197,8 +196,6 @@ func smallValue(n int, t string) ([][]byte, []Value) {
 		sample := createVal(rand.Int(), 0)
 		samples[i] = sample
 		switch t {
-		case "captain":
-			arr[i], _ = CaptainMarshal(sample)
 		case "proto":
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
@@ -225,8 +222,6 @@ func commonValue(n int, t string) ([][]byte, []Value) {
 			sample.Set(RandStringRunes(5), l)
 		}
 		switch t {
-		case "captain":
-			arr[i], _ = CaptainMarshal(sample)
 		case "proto":
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
@@ -257,8 +252,6 @@ func largeValue(n int, t string) ([][]byte, []Value) {
 			sample.Set(RandStringRunes(5), l)
 		}
 		switch t {
-		case "captain":
-			arr[i], _ = CaptainMarshal(sample)
 		case "proto":
 			arr[i], _ = ProtoMarshal(sample)
 		case "json":
@@ -296,8 +289,6 @@ func benchMarkSerialization(b *testing.B, algo, sz string) {
 	for n := 0; n < b.N; n++ {
 		var err error
 		switch algo {
-		case "captain":
-			_, err = CaptainUnmarshal(arr[n])
 		case "proto":
 			_ = ProtoUnmarshal(arr[n], &v)
 		case "json":

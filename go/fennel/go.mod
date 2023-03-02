@@ -3,7 +3,6 @@ module fennel
 go 1.18
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha.3
 	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/Unleash/unleash-client-go/v3 v3.5.0
