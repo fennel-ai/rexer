@@ -839,13 +839,17 @@ async function setupClusterAutoscaler(awsProvider: aws.Provider, input: inputTyp
                 //
                 // For more details see - https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/expander/priority/readme.md
                 "expanderPriorities": expanderPriorities,
+                // "extraArgs" needs to be set to tune the autoscaler as per:
+                // https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#what-are-the-parameters-to-ca
                 "extraArgs": {
                     // set priority based expander where the cluster autoscaler will expand the specified node groups
                     // based on the configured priority
-                    "expander": "priority"
+                    "expander": "priority",
+                    // How long a node should be unneeded before it is eligible for scale down. Default is 10m.
+                    "scale-down-unneeded-time": "1m",
+                    // How long after scale up that scale down evaluation resumes. Default is 10m.
+                    "scale-down-delay-after-add": "3m",
                 }
-                // "extraArgs" needs to be set to tune the autoscaler as per:
-                // https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#what-are-the-parameters-to-ca
             }
         }, { provider: cluster.provider, deleteBeforeReplace: true });
     });
