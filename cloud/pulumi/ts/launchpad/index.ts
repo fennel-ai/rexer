@@ -312,7 +312,7 @@ const tierConfs: Record<number, TierConf> = {
                     // c6g.xlarge machines, set requests and limits accordingly
                     cpu: {
                         request: "2500m",
-                        limit: "3000m"
+                        limit: "4000m"
                     },
                     memory: {
                         request: "5G",
