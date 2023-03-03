@@ -956,7 +956,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                         "rescheduler-label": "on-demand",
                     },
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 10,
+                    expansionPriority: 1,
                 },
                 {
                     name: "p-5-query-ng-arm-spot",
@@ -971,7 +971,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                         "rescheduler-label": "spot",
                     },
                     capacityType: SPOT_INSTANCE_TYPE,
-                    expansionPriority: 1,
+                    expansionPriority: 10,
                 },
                 // Common node groups in case some container needs to be run on these
                 {
