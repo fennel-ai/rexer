@@ -149,7 +149,6 @@ export const setup = async (input: inputType) => {
         nodeSelector['node-group'] = ngName;
     }
 
-
     // Install emissary-ingress via helm.
     // NOTE: the name of the pulumi resource for the helm chart is also prefixed
     // to resource names. So if we're changing the name of the chart, we should also
@@ -157,56 +156,53 @@ export const setup = async (input: inputType) => {
     // spec and when looking up the URL.
     // We add a namespace to the name of the helm chart to avoid name collisions
     // with other ingresses in the same data plane.
-    const chartName = `aes-${input.namespace}`;
-    const emissaryIngress = new k8s.helm.v3.Chart(chartName, {
-        fetchOpts: {
+    const chartName = `${input.namespace}-aes`;
+    const version = "8.5.1";
+    const emissaryIngress = new k8s.helm.v3.Release("emissary-ingress", {
+        name: chartName,
+        atomic: true,
+        cleanupOnFail: true,
+        repositoryOpts: {
             repo: "https://app.getambassador.io"
         },
         // helm Chart resource creation does not respect namespace field in the
         // provided k8s provider, so we explicitly specify the namespace here.
         namespace: input.namespace,
         chart: "emissary-ingress",
-        version: "8.0.0",
-        transformations: [
-            (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Deployment" && obj.metadata.name === `${chartName}-emissary-ingress`) {
-                    const metadata = obj.spec.template.metadata || {}
-                    metadata.annotations = metadata.annotations || {}
-                    // We use inject=enabled instead of inject=ingress as per
-                    // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
-                    // Otherwise, we see the issue reported in the above bug report.
-                    metadata.annotations["linkerd.io/inject"] = "enabled"
-                    metadata.annotations["config.linkerd.io/skip-inbound-ports"] = "80,443"
-                    obj.spec.template.metadata = metadata
-                }
-            },
-            (obj: any, opts: pulumi.CustomResourceOptions) => {
-                if (obj.kind === "Service" && obj.spec.type === "LoadBalancer") {
-                    const metadata = obj.metadata || {}
-                    metadata.annotations = metadata.annotations || {}
-                    // Set load-balancer type as external to bypass k8s in-tree
-                    // load-balancer controller and use AWS Load Balancer Controller
-                    // instead.
-                    // https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.3/guide/service/nlb/#configuration
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-type"] = "external"
-                    // Use NLB in instance mode since we don't currently setup the VPC CNI plugin.
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"] = "instance"
-                    // Specify the load balancer scheme. Should be one of ["internal", "internet-facing"].
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-scheme"] = loadBalancerScheme
-                    // Specify the subnets in which to deploy the load balancer.
-                    // For internet-facing load-balancers this should be a list of public subnets and
-                    // for internal load-balancers this should be a list of private subnets.
-                    // metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = input.subnetIds
-                    metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets"] = subnetIds.toString()
-                    obj.metadata = metadata
-                    obj.spec["loadBalancerSourceRanges"] = input.loadBalancerSourceIpRanges != undefined ? input.loadBalancerSourceIpRanges : ["0.0.0.0/0"]
-                }
-            },
-        ],
+        version: version,
+        forceUpdate: true,
         // Emissary ingress supports working across namespaces. Since we create similar listeners for different
         // tiers on the same cluster, emissary ingress routes requests across them. We scope the ingress to
         // respect a single namespace (namespace it is created in i.e. tier id).
         values: {
+            "adminService": {
+                "loadBalancerSourceRanges": input.loadBalancerSourceIpRanges != undefined ? input.loadBalancerSourceIpRanges : ["0.0.0.0/0"]
+            },
+            "service": {
+                "annotations": {
+                    // Set load-balancer type as external to bypass k8s in-tree
+                    // load-balancer controller and use AWS Load Balancer Controller
+                    // instead.
+                    // https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.3/guide/service/nlb/#configuration
+                    "service.beta.kubernetes.io/aws-load-balancer-type": "external",
+                    // Use NLB in instance mode since we don't currently setup the VPC CNI plugin.
+                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "instance",
+                    // Specify the load balancer scheme. Should be one of ["internal", "internet-facing"].
+                    "service.beta.kubernetes.io/aws-load-balancer-scheme": loadBalancerScheme,
+                    // Specify the subnets in which to deploy the load balancer.
+                    // For internet-facing load-balancers this should be a list of public subnets and
+                    // for internal load-balancers this should be a list of private subnets.
+                    // metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-subnets": input.subnetIds
+                    "service.beta.kubernetes.io/aws-load-balancer-subnets": subnetIds.toString(),
+                },
+            },
+            "deploymentAnnotations": {
+                // We use inject=enabled instead of inject=ingress as per
+                // https://github.com/linkerd/linkerd2/issues/6650#issuecomment-898732177.
+                // Otherwise, we see the issue reported in the above bug report.
+                "linkerd.io/inject": "enabled",
+                "config.linkerd.io/skip-inbound-ports": "80,443",
+            },
             "replicaCount": `${replicas}`,
             "scope": {
                 "singleNamespace": true,
@@ -229,23 +225,21 @@ export const setup = async (input: inputType) => {
             "affinity": {
                 "podAntiAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": [{
-                            "labelSelector": {
-                                "matchExpressions": [{
-                                    "key": "app.kubernetes.io/name",
-                                    "operator": "In",
-                                    "values": ["emissary-ingress"]
-                                }]
-                            },
-                            "topologyKey": "kubernetes.io/hostname"
-                        }
+                        "labelSelector": {
+                            "matchExpressions": [{
+                                "key": "app.kubernetes.io/name",
+                                "operator": "In",
+                                "values": ["emissary-ingress"]
+                            }]
+                        },
+                        "topologyKey": "kubernetes.io/hostname"
+                    }
                     ],
                 },
             },
-
             "agent": {
                 "enabled": false,
             },
-
             // annotate emissary ingress pods such that the otel collector or self-hosted prometheus instance running
             // in the cluster is able to scrape the metrics reported by emissary ingress
             //
@@ -254,6 +248,31 @@ export const setup = async (input: inputType) => {
                 "prometheus.io/scrape": "true",
                 // the port is the default value for the port of the admin service
                 "prometheus.io/port": "8877",
+            },
+            "module": {
+                "add_linkerd_headers": true,
+                // https://www.getambassador.io/docs/edge-stack/latest/topics/using/circuit-breakers/ and
+                //
+                // https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/circuit_breaking.html
+                //
+                // NOTE: circuit breaker configured below is a GLOBAL circuit breaker. If there are more than one endpoint
+                // configured in the future, consider making these limits at a `MAPPING` level.
+                "circuit_breakers": {
+                    // Specifies the maximum number of connections that Ambassador Edge Stack will make to ALL hosts in the upstream cluster.
+                    "max_connections": 3072,
+                    // Specifies the maximum number of requests that will be queued while waiting for a connection.
+                    "max_pending_requests": 1024,
+                    // Specifies the maximum number of parallel outstanding requests to ALL hosts in a cluster at any given time.
+                    "max_requests": 3072,
+                    // default - "max_retries": 3,
+                },
+                // See: https://github.com/emissary-ingress/emissary/issues/4329
+                "envoy_log_type": "text",
+                "envoy_log_format": "%REQ(:METHOD)% %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% %DURATION%",
+                // Gzip enables Emissary-ingress to compress upstream data upon client request.
+                "gzip": {
+                    "compression_level": "BEST_SPEED",
+                },
             }
         },
     }, {
@@ -261,17 +280,16 @@ export const setup = async (input: inputType) => {
         // Note: We ensure that listeners are created before the ingress helm
         // chart is deployed. See PR-505 for more details.
         dependsOn: [httplistener, httpslistener],
-    })
+    });
 
-
-    const loadBalancerUrl = pulumi.all([input.namespace, emissaryIngress.ready]).apply(([namespace]) => {
-        const ingressResource = emissaryIngress.getResource("v1/Service", namespace, `${chartName}-emissary-ingress`);
-        return ingressResource.status.loadBalancer.ingress[0].hostname
-    })
+    const loadBalancerUrl = k8s.core.v1.Service.get("ingress-svc", `${input.namespace}/${chartName}-emissary-ingress`, {
+        provider: k8sProvider,
+        dependsOn: emissaryIngress,
+    }).status.loadBalancer.ingress[0].hostname;
 
     // Create TLS certificate for the generated url.
     // Setup root and issuer CA as per https://linkerd.io/2.11/tasks/generate-certificates/.
-    const cmd = loadBalancerUrl.apply(url => `step certificate create fennel cert.pem key.pem --profile=self-signed --subtle --san=${url} --no-password --insecure -kty=RSA --size 4096`)
+    const cmd = pulumi.interpolate`step certificate create fennel cert.pem key.pem --profile=self-signed --subtle --san=${loadBalancerUrl} --no-password --insecure -kty=RSA --size 4096`;
     const createCertificate = new local.Command(`${getPrefix(input.scope, input.scopeId)}-root-ca`, {
         create: cmd,
         delete: "rm -f cert.pem key.pem"
@@ -324,7 +342,7 @@ export const setup = async (input: inputType) => {
             ...fennelStdTags,
             "Name": `${input.namespace}-endpoint-service`
         },
-    }, { provider: awsProvider, dependsOn: emissaryIngress.ready })
+    }, { provider: awsProvider, dependsOn: emissaryIngress })
 
     const output: pulumi.Output<outputType> = pulumi.output({
         loadBalancerUrl,
