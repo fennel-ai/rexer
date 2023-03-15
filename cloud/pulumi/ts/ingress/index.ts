@@ -157,7 +157,7 @@ export const setup = async (input: inputType) => {
     // We add a namespace to the name of the helm chart to avoid name collisions
     // with other ingresses in the same data plane.
     const chartName = `${input.namespace}-aes`;
-    const version = "8.0.0";
+    const version = "8.5.1";
     const emissaryIngress = new k8s.helm.v3.Release("emissary-ingress", {
         name: chartName,
         atomic: true,
@@ -225,19 +225,18 @@ export const setup = async (input: inputType) => {
             "affinity": {
                 "podAntiAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": [{
-                            "labelSelector": {
-                                "matchExpressions": [{
-                                    "key": "app.kubernetes.io/name",
-                                    "operator": "In",
-                                    "values": ["emissary-ingress"]
-                                }]
-                            },
-                            "topologyKey": "kubernetes.io/hostname"
-                        }
+                        "labelSelector": {
+                            "matchExpressions": [{
+                                "key": "app.kubernetes.io/name",
+                                "operator": "In",
+                                "values": ["emissary-ingress"]
+                            }]
+                        },
+                        "topologyKey": "kubernetes.io/hostname"
+                    }
                     ],
                 },
             },
-
             "agent": {
                 "enabled": false,
             },
@@ -258,22 +257,21 @@ export const setup = async (input: inputType) => {
                 //
                 // NOTE: circuit breaker configured below is a GLOBAL circuit breaker. If there are more than one endpoint
                 // configured in the future, consider making these limits at a `MAPPING` level.
-                "circuit_breakers": [
-                    {
-                        // Specifies the maximum number of connections that Ambassador Edge Stack will make to ALL hosts in the upstream cluster.
-                        "max_connections": 3072,
-                        // Specifies the maximum number of requests that will be queued while waiting for a connection.
-                        "max_pending_requests": 1024,
-                        // Specifies the maximum number of parallel outstanding requests to ALL hosts in a cluster at any given time.
-                        "max_requests": 3072,
-                    }
-                ],
+                "circuit_breakers": {
+                    // Specifies the maximum number of connections that Ambassador Edge Stack will make to ALL hosts in the upstream cluster.
+                    "max_connections": 3072,
+                    // Specifies the maximum number of requests that will be queued while waiting for a connection.
+                    "max_pending_requests": 1024,
+                    // Specifies the maximum number of parallel outstanding requests to ALL hosts in a cluster at any given time.
+                    "max_requests": 3072,
+                    // default - "max_retries": 3,
+                },
                 // See: https://github.com/emissary-ingress/emissary/issues/4329
                 "envoy_log_type": "text",
                 "envoy_log_format": "%REQ(:METHOD)% %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% %DURATION%",
                 // Gzip enables Emissary-ingress to compress upstream data upon client request.
                 "gzip": {
-                    "compression_level": "DEFAULT_COMPRESSION",
+                    "compression_level": "BEST_SPEED",
                 },
             }
         },
