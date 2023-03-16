@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -89,7 +90,16 @@ var totalUnleashQueryRequestsDropped = promauto.NewCounter(
 
 func readRequest(req *http.Request) ([]byte, error) {
 	defer req.Body.Close()
-	return ioutil.ReadAll(req.Body)
+	if req.Header.Get("Content-Encoding") == "gzip" {
+		reader, err := gzip.NewReader(req.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read request body: %s", err)
+		}
+		defer reader.Close()
+		return ioutil.ReadAll(reader)
+	} else {
+		return ioutil.ReadAll(req.Body)
+	}
 }
 
 type server struct {
