@@ -52,9 +52,9 @@ const customers: Record<number, Customer> = {
         name: "lokal",
     },
     4: {
-        id: 4,
+        id: 5,
         domain: "yext.com",
-        name: "yext",
+        name: "Yext",
     }
 };
 //================ Static data plane / tier configurations =====================
@@ -1067,7 +1067,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
-        customer: customers[2],
+        customer: customers[4],
         mothershipId: 12,
     },
 }
@@ -1214,7 +1214,7 @@ if (process.argv.length == 4) {
 }
 
 const id = Number.parseInt(process.argv[process.argv.length - 1])
-// TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction. 
+// TODO(Amit): This is becoming hard to maintain, think of a stack builder abstraction.
 
 function getMothershipId(id: number | undefined): number | undefined {
     if (id === undefined || id in mothershipConfs) {
