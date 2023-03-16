@@ -52,9 +52,9 @@ const customers: Record<number, Customer> = {
         name: "lokal",
     },
     4: {
-        id: 4,
+        id: 5,
         domain: "yext.com",
-        name: "yext",
+        name: "Yext",
     }
 };
 //================ Static data plane / tier configurations =====================
@@ -850,7 +850,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
-        customer: customers[2],
+        customer: customers[4],
         mothershipId: 12,
     },
 }
