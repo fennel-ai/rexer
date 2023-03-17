@@ -245,6 +245,16 @@ async function setupEmissaryIngressCrds(input: inputType, awsProvider: aws.Provi
     const crdFile = path.join(root, "/deployment/artifacts/emissary-crds.yaml")
     const emissaryCrds = new k8s.yaml.ConfigFile("emissary-crds", {
         file: crdFile,
+        transformations: [
+            (obj: any, opts: pulumi.CustomResourceOptions) => {
+                if (obj.kind === "Deployment" && obj.metadata.name === `emissary-apiext`) {
+                    obj.spec.template.spec.nodeSelector = {
+                        "kubernetes.io/arch": "amd64",
+                    }
+                }
+            },
+        ]
+
     }, { provider: cluster.provider, dependsOn: lbc })
 
     // Configure default Module to add linkerd headers as per:
