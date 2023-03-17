@@ -61,22 +61,6 @@ const tierConfs: Record<number, TierConf> = {
         protectResources: true,
         planeId: 3,
         tierId: 108,
-        httpServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "1250m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                },
-            }
-        },
         ingressConf: {
             usePublicSubnets: true,
         },
@@ -211,81 +195,6 @@ const tierConfs: Record<number, TierConf> = {
 
 // map from plane id to its configuration.
 const dataPlaneConfs: Record<number, DataPlaneConf> = {
-    // plane for test resources
-    5: {
-        protectResources: false,
-
-        accountConf: {
-            // This account was already created previously through Fennel control plane
-            existingAccount: {
-                roleArn: account.DEV_ACCOUNT_ADMIN_ROLE_ARN,
-            }
-        },
-
-        planeName: "rexer-dev",
-        // Keeping planeId as 2, since due to previous failed plane creations have to lead to a state where
-        // reusing those plane ids in this (account, region) does not seem to be possible
-        //
-        // https://us-west-2.console.aws.amazon.com/msk/home?region=us-west-2#/workerConfigurations
-        // It seems that we can create a MSK Connector worker configuration but cannot delete it :/
-        planeId: 2,
-        region: "us-west-2",
-        vpcConf: {
-            cidr: "10.105.0.0/16"
-        },
-        dbConf: {
-            // it is okay to keep min capacity to 8 since we run a bunch of tests which will all
-            // attempt to create a DB connection. DBs are configured with auto sleep, so they
-            // are essentially being charged as long as tests are running.
-            minCapacity: 8,
-            maxCapacity: 8,
-            password: "foundationdb",
-            skipFinalSnapshot: true,
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            numShards: 1,
-            nodeType: "db.t4g.small",
-            numReplicasPerShard: 0,
-        },
-        cacheConf: {
-            numNodeGroups: 1,
-            nodeType: "cache.t4g.micro",
-            replicasPerNodeGroup: 0,
-        },
-        prometheusConf: {
-            volumeSizeGiB: 32,
-            metricsRetentionDays: 60,
-        },
-        eksConf: {
-            nodeGroups: [
-                // Plane 5 does not run any tier-specific services, but needs to run
-                // plane-level services like nitrous etc.
-                {
-                    name: "p-5-common-ng",
-                    instanceTypes: ["t3.medium"],
-                    minSize: 1,
-                    maxSize: 5,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-            ],
-        },
-
-        // not setting up nitrous since our dev testing does not require one.
-
-        // set up MSK cluster for integration tests
-        mskConf: {
-            // compute cost = 0.0456 ($/hr) x 6 (#brokers) x 720 = $200
-            brokerType: "kafka.t3.small",
-            // this will place 3 broker nodes in each of the AZs - we require larger number of
-            // smaller brokers.
-            numberOfBrokerNodes: 6,
-            // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
-            storageVolumeSizeGiB: 64,
-        },
-    },
     // Fennel's staging data plane to run dev tiers
     3: {
         protectResources: true,
@@ -329,9 +238,9 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         eksConf: {
             nodeGroups: [
                 {
-                    name: "p-3-common-ng-arm64",
-                    instanceTypes: ["c7g.2xlarge"],
-                    minSize: 1,
+                    name: "p-3-common-ng-arm64-new",
+                    instanceTypes: ["t4g.medium"],
+                    minSize: 4,
                     // since we create demo tiers on top of this plane, allow scaling this node group to a larger
                     // number to accommodate more servers
                     maxSize: 10,
@@ -340,9 +249,9 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     expansionPriority: 1,
                 },
                 {
-                    name: "p-3-common-ng-x86",
+                    name: "p-3-common-ng-x86-new",
                     instanceTypes: ["t3.medium"],
-                    minSize: 1,
+                    minSize: 3,
                     maxSize: 10,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
@@ -499,250 +408,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
         mothershipId: 12,
     },
     // plane 10 - for self serve pending account close
-
-    // lokal plane in their individual account
-    11: {
-        protectResources: true,
-
-        accountConf: {
-            newAccount: {
-                name: "lokal-prod",
-                email: "admin+lokal-prod@fennel.ai"
-            },
-        },
-        planeName: "lokal-prod",
-        planeId: 5,
-        region: "ap-south-1",
-        vpcConf: {
-            cidr: "10.112.0.0/16"
-        },
-        dbConf: {
-            minCapacity: 2,
-            maxCapacity: 64,
-            password: "password",
-            skipFinalSnapshot: false,
-        },
-        cacheConf: {
-            nodeType: "cache.t4g.medium",
-            // use smaller number of cache nodes - this is required for profiles, we are almost always ~99.9%
-            numNodeGroups: 2,
-            replicasPerNodeGroup: 1,
-        },
-        controlPlaneConf: controlPlane,
-        redisConf: {
-            // keep 1 shard for the existing users of redis - phaser and action dedup check logic
-            numShards: 1,
-            // this is only required for actions and streamlog deduplication - currently with a `db.r6g.large` instance
-            // the memory utilization is around 1%
-            nodeType: "db.t4g.small",
-            numReplicasPerShard: 1,
-        },
-        eksConf: {
-            nodeGroups: [
-                // HTTP server node group
-                {
-                    name: "p-5-httpserver-ng-arm64",
-                    instanceTypes: ["t4g.medium"],
-                    // at least have 2 nodes for fault tolerance
-                    minSize: 2,
-                    maxSize: 5,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-httpserver-ng"
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                // Countaggr server node group
-                {
-                    name: "p-5-countaggr-ng-arm64",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    instanceTypes: ["c6g.2xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-countaggr-ng"
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-
-                // Query server node groups
-                {
-                    name: "p-5-query-ng-arm",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
-                    instanceTypes: ["c6g.xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "on-demand",
-                    },
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-5-query-ng-arm-spot",
-                    // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                    //
-                    // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                    // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                    // and should not be scheduled on these nodes
-                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
-                    minSize: 1,
-                    maxSize: 10,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    labels: {
-                        "node-group": "p-5-queryserver-ng",
-                        "rescheduler-label": "spot",
-                    },
-                    capacityType: SPOT_INSTANCE_TYPE,
-                    expansionPriority: 10,
-                },
-
-                // Common node groups in case some container needs to be run on these
-                {
-                    name: "p-5-common-ng-arm64",
-                    instanceTypes: ["t4g.medium"],
-                    minSize: 1,
-                    maxSize: 5,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-                {
-                    name: "p-5-common-ng-x86",
-                    instanceTypes: ["t3.medium"],
-                    minSize: 1,
-                    maxSize: 5,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-
-                // Nitrous node group.
-                {
-                    name: "p-5-nitrous-4xl-ng-arm",
-                    // 16vCpu, 64GiB and 900GB of local SSD
-                    instanceTypes: ["m6gd.4xlarge"],
-                    minSize: 2,
-                    maxSize: 2,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    labels: {
-                        "node-group": "p-5-nitrous-ng",
-                        "aws.amazon.com/eks-local-ssd": "true",
-                    },
-                    expansionPriority: 1,
-                },
-                // Nitrous backup node group.
-                {
-                    name: "p-5-nitrous-backup-ng-arm",
-                    // 8vCpu, 64GiB and 475GB of local SSD - $0.299
-                    instanceTypes: ["r6gd.2xlarge"],
-                    minSize: 1,
-                    maxSize: 1,
-                    amiType: DEFAULT_ARM_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    labels: {
-                        "node-group": "p-5-nitrous-backup-ng",
-                        "aws.amazon.com/eks-local-ssd": "true",
-                    },
-                    expansionPriority: 1,
-                },
-            ],
-            spotReschedulerConf: {
-                spotNodeLabel: "rescheduler-label=spot",
-                onDemandNodeLabel: "rescheduler-label=on-demand",
-            }
-        },
-        prometheusConf: {
-            volumeSizeGiB: 256,
-            metricsRetentionDays: 60,
-        },
-
-        // Run nitrous on the plane.
-        nitrousConf: {
-            replicas: 2,
-            useAmd64: false,
-            storageCapacityGB: 850,
-            storageClass: "local",
-            resourceConf: {
-                cpu: {
-                    request: "15000m",
-                    limit: "16000m"
-                },
-                memory: {
-                    request: "57Gi",
-                    limit: "58Gi",
-                }
-            },
-            binlog: {
-                partitions: 32,
-                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
-                partition_retention_bytes: -1,
-                max_message_bytes: 2097164,
-                // TODO(mohit): Consider setting this to 2.
-                // it is recommended to have RF >= 3 in a 3 AZ cluster. With a 2 AZ cluster, this could be an overkill.
-                //
-                // NOTE: since we configure 4 brokers, setting to >=2 works with rolling updates to the cluster where
-                // a broker is "inactive".
-                //
-                // by default MSK sets this to 2 for the cluster configured in 2 AZs - this is bad for availability
-                // since it is possible that one of the AZ is unreachable and the broker in the same AZ is down
-                // (could be a rolling update affecting this broker)
-                replicationFactor: 2,
-                // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
-                // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
-                //
-                // For Confluent based topics, min in-sync replicas is 2
-            },
-            nodeLabels: {
-                "node-group": "p-5-nitrous-ng",
-            },
-
-            // backup configurations
-            backupConf: {
-                nodeLabelsForBackup: {
-                    "node-group": "p-5-nitrous-backup-ng",
-                },
-                backupFrequencyDuration: "60m",
-                remoteCopiesToKeep: 2,
-                // this needs to be consistent with the node group which this pod is going to get scheduled on
-                //
-                // currently r6gd.8xlarge
-                resourceConf: {
-                    cpu: {
-                        request: "6000m",
-                        limit: "8000m"
-                    },
-                    memory: {
-                        request: "55Gi",
-                        limit: "60Gi",
-                    }
-                },
-                storageCapacityGB: 400,
-            },
-        },
-
-        // set up MSK cluster
-        mskConf: {
-            // see - https://aws.amazon.com/msk/pricing/
-            brokerType: "kafka.m5.large",
-            // this will place 2 broker nodes in each of the AZs
-            numberOfBrokerNodes: 4,
-            storageVolumeSizeGiB: 750,
-        },
-        customer: customers[3],
-        mothershipId: 12,
-    },
-    // lokal plane in their organization.
+    // plane 11 - lokal plane in their organization, pending account close
     // Skipped 12 to avoid conflict with the mothership.
     13: {
         protectResources: true,
@@ -894,7 +560,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             spotReschedulerConf: {
                 spotNodeLabel: "rescheduler-label=spot",
                 onDemandNodeLabel: "rescheduler-label=on-demand",
-            }
+            },
         },
         prometheusConf: {
             volumeSizeGiB: 256,
@@ -984,15 +650,16 @@ const mothershipConfs: Record<number, MothershipConf> = {
             usePublicSubnets: true,
         },
         eksConf: {
-            nodeGroups: [{
-                name: "m-12-common-ng-x86",
-                instanceTypes: ["t3.medium"],
-                minSize: 1,
-                maxSize: 3,
-                amiType: DEFAULT_X86_AMI_TYPE,
-                capacityType: ON_DEMAND_INSTANCE_TYPE,
-                expansionPriority: 1,
-            },
+            nodeGroups: [
+                {
+                    name: "m-12-common-ng-x86",
+                    instanceTypes: ["t3.medium"],
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
             ],
         },
         bridgeServerConf: {
@@ -1042,15 +709,16 @@ const mothershipConfs: Record<number, MothershipConf> = {
             usePublicSubnets: false,
         },
         eksConf: {
-            nodeGroups: [{
-                name: "m-12-common-ng-x86",
-                instanceTypes: ["t3.medium"],
-                minSize: 1,
-                maxSize: 3,
-                amiType: DEFAULT_X86_AMI_TYPE,
-                capacityType: ON_DEMAND_INSTANCE_TYPE,
-                expansionPriority: 1,
-            },
+            nodeGroups: [
+                {
+                    name: "m-12-common-ng-x86",
+                    instanceTypes: ["t3.medium"],
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
             ],
         },
         bridgeServerConf: {
