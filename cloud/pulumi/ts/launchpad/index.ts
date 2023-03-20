@@ -64,6 +64,8 @@ const tierConfs: Record<number, TierConf> = {
         ingressConf: {
             usePublicSubnets: true,
         },
+        // enable separate query server svc.
+        queryServerConf: {},
         // enable nitrous
         enableNitrous: false,
         enableOfflineAggregationJobs: true,
@@ -358,7 +360,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-9-common-ng-x86",
                     instanceTypes: ["t3.medium"],
                     minSize: 1,
-                    maxSize: 3,
+                    maxSize: 4,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
@@ -367,7 +369,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-9-common-ng-arm64",
                     instanceTypes: ["t4g.medium"],
                     minSize: 1,
-                    maxSize: 3,
+                    maxSize: 4,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
