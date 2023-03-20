@@ -157,7 +157,7 @@ export const setup = async (input: inputType) => {
     // We add a namespace to the name of the helm chart to avoid name collisions
     // with other ingresses in the same data plane.
     const chartName = `${input.namespace}-aes`;
-    const version = "8.5.1";
+    const version = "8.0.0";
     const emissaryIngress = new k8s.helm.v3.Release("emissary-ingress", {
         name: chartName,
         atomic: true,
