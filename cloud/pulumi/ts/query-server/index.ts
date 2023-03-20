@@ -6,7 +6,7 @@ import * as process from "process";
 import { ReadinessProbe, serviceEnvs } from "../tier-consts/consts";
 import * as util from "../lib/util";
 import * as uuid from "uuid";
-import childProcess from "child_process";
+import * as childProcess from "child_process";
 
 const name = "query-server"
 
