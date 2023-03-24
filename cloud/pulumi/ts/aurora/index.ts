@@ -138,7 +138,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         skipFinalSnapshot: input.skipFinalSnapshot,
         finalSnapshotIdentifier: `${getPrefix(input.scope, input.planeId)}-${snapshotId}`,
         tags: { ...fennelStdTags }
-    }, { provider, protect: input.protect })
+    }, { provider, protect: input.protect, ignoreChanges: ["storageType"] })
 
     const output = pulumi.output({
         host: cluster.endpoint,
