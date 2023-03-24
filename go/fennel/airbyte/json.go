@@ -10,28 +10,30 @@ import (
 // ---------------------------------------------------------------------------------------------------------------------
 
 type ConnectorConfig struct {
-	Name                string   `json:"name"`
-	NamespaceDefinition string   `json:"namespaceDefinition"`
-	NamespaceFormat     string   `json:"namespaceFormat"`
-	Prefix              string   `json:"prefix"`
-	SourceId            string   `json:"sourceId"`
-	DestinationId       string   `json:"destinationId"`
-	SyncCatalog         Catalog  `json:"syncCatalog"`
-	Schedule            Schedule `json:"schedule"`
-	Status              string   `json:"status"`
+	Name                string       `json:"name"`
+	NamespaceDefinition string       `json:"namespaceDefinition"`
+	NamespaceFormat     string       `json:"namespaceFormat"`
+	Prefix              string       `json:"prefix"`
+	SourceId            string       `json:"sourceId"`
+	DestinationId       string       `json:"destinationId"`
+	SyncCatalog         Catalog      `json:"syncCatalog"`
+	ScheduleType        string       `json:"scheduleType"`
+	ScheduleData        ScheduleData `json:"schedule"`
+	Status              string       `json:"status"`
 }
 
 type UpdateConnectorConfig struct {
-	ConnectionId        string   `json:"connectionId"`
-	NamespaceDefinition string   `json:"namespaceDefinition"`
-	NamespaceFormat     string   `json:"namespaceFormat"`
-	Prefix              string   `json:"prefix"`
-	SyncCatalog         Catalog  `json:"syncCatalog"`
-	Schedule            Schedule `json:"schedule"`
-	Status              string   `json:"status"`
+	ConnectionId        string       `json:"connectionId"`
+	NamespaceDefinition string       `json:"namespaceDefinition"`
+	NamespaceFormat     string       `json:"namespaceFormat"`
+	Prefix              string       `json:"prefix"`
+	SyncCatalog         Catalog      `json:"syncCatalog"`
+	ScheduleType        string       `json:"scheduleType"`
+	ScheduleData        ScheduleData `json:"scheduleData"`
+	Status              string       `json:"status"`
 }
 
-type Schedule struct {
+type ScheduleData struct {
 	Units    int    `json:"units"`
 	TimeUnit string `json:"timeUnit"`
 }
