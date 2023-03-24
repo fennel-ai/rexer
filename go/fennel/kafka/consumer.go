@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/samber/mo"
 	"log"
 	"time"
+
+	"github.com/samber/mo"
+	"go.uber.org/zap"
 
 	"fennel/lib/timer"
 	"fennel/lib/utils/ptr"
@@ -302,14 +304,30 @@ func (conf RemoteConsumerConfig) Materialize() (resource.Resource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kafka consumer: %v", err)
 	}
+	var rebalanceCb func(c *kafka.Consumer, e kafka.Event) error
 	if conf.RebalanceCb.IsPresent() {
-		if err = consumer.Subscribe(topic, conf.RebalanceCb.MustGet()); err != nil {
-			return nil, fmt.Errorf("failed to subscribe to topic [%s]: %v", topic, err)
-		}
+		rebalanceCb = conf.RebalanceCb.MustGet()
 	} else {
-		if err = consumer.Subscribe(topic, nil); err != nil {
-			return nil, fmt.Errorf("failed to subscripe to topic [%s]: %v", topic, err)
+		// If a rebalanceCb is not provided, we use a reasonable default.
+		// This callback will resubscribe to the topic to get new partitions assigned
+		// in the event of partitions being revoked. This can happen when the
+		// consumer backlog is very large:
+		// https://github.com/confluentinc/confluent-kafka-go/issues/344
+		rebalanceCb = func(c *kafka.Consumer, e kafka.Event) error {
+			zap.L().Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("consumer", c.String()), zap.String("event", e.String()))
+			switch e.(type) {
+			case kafka.RevokedPartitions:
+				// Resubscribe to the topic to get new partitions assigned.
+				err := c.SubscribeTopics([]string{topic}, rebalanceCb)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		}
+	}
+	if err = consumer.Subscribe(topic, rebalanceCb); err != nil {
+		return nil, fmt.Errorf("failed to subscripe to topic [%s]: %v", topic, err)
 	}
 	return RemoteConsumer{consumer, conf.Scope, topic, conf.GroupID, nil}, nil
 }
