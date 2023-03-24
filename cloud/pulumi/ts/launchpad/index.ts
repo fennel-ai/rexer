@@ -694,64 +694,6 @@ const mothershipConfs: Record<number, MothershipConf> = {
         },
         dnsName: "app.fennel.ai",
     },
-    // Dogfood mothership.
-    13: {
-        protectResources: true,
-        planeId: 13,
-        vpcConf: controlPlane,
-        dbConf: {
-            minCapacity: 4,
-            maxCapacity: 8,
-            password: "foundationdb",
-            skipFinalSnapshot: false,
-        },
-        ingressConf: {
-            useDedicatedMachines: true,
-            replicas: 3,
-            usePublicSubnets: false,
-        },
-        eksConf: {
-            nodeGroups: [
-                {
-                    name: "m-12-common-ng-x86",
-                    instanceTypes: ["t3.medium"],
-                    minSize: 1,
-                    maxSize: 3,
-                    amiType: DEFAULT_X86_AMI_TYPE,
-                    capacityType: ON_DEMAND_INSTANCE_TYPE,
-                    expansionPriority: 1,
-                },
-            ],
-        },
-        bridgeServerConf: {
-            podConf: {
-                minReplicas: 1,
-                maxReplicas: 3,
-                resourceConf: {
-                    cpu: {
-                        request: "1250m",
-                        limit: "1500m"
-                    },
-                    memory: {
-                        request: "2G",
-                        limit: "3G",
-                    }
-                },
-                useAmd64: true,
-            },
-            envVars: [
-                {
-                    "name": "GIN_MODE",
-                    "value": "release"
-                },
-                {
-                    "name": "BRIDGE_SESSION_KEY",
-                    "value": "92975472fc84378f5a3bebfaf464ddc6cd4b908af4ebb447ae934ce6e6e4156b31667821e49019f86f2ff383f175212db8d5f4f856f68fa18f5c91a3cdcfc955"
-                }
-            ],
-        },
-
-    }
 }
 
 //==============================================================================
