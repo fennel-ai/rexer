@@ -215,7 +215,8 @@ func (c Client) createConnector(conn data_integration.Connector, source data_int
 	streamConfig.Config.Selected = true
 	connConfig.SyncCatalog.Streams = []StreamConfig{streamConfig}
 	connConfig.DestinationId = kafkaDestinationId
-	connConfig.Schedule = Schedule{
+	connConfig.ScheduleType = "basic"
+	connConfig.ScheduleData = ScheduleData{
 		Units:    REFRESH_FREQUENCY_MINUTES,
 		TimeUnit: "minutes",
 	}
@@ -252,7 +253,8 @@ func (c Client) updateConnector(conn data_integration.Connector, streamConfig St
 	streamConfig.Config.Selected = true
 	connConfig.SyncCatalog.Streams = []StreamConfig{streamConfig}
 	connConfig.ConnectionId = conn.ConnId
-	connConfig.Schedule = Schedule{
+	connConfig.ScheduleType = "basic"
+	connConfig.ScheduleData = ScheduleData{
 		Units:    REFRESH_FREQUENCY_MINUTES,
 		TimeUnit: "minutes",
 	}
