@@ -217,8 +217,10 @@ func (c Client) createConnector(conn data_integration.Connector, source data_int
 	connConfig.DestinationId = kafkaDestinationId
 	connConfig.ScheduleType = "basic"
 	connConfig.ScheduleData = ScheduleData{
-		Units:    REFRESH_FREQUENCY_MINUTES,
-		TimeUnit: "minutes",
+		BasicSchedule: BasicSchedule{
+			Units:    REFRESH_FREQUENCY_MINUTES,
+			TimeUnit: "minutes",
+		},
 	}
 	connConfig.Status = "active"
 	request, err := json.Marshal(connConfig)
@@ -255,8 +257,10 @@ func (c Client) updateConnector(conn data_integration.Connector, streamConfig St
 	connConfig.ConnectionId = conn.ConnId
 	connConfig.ScheduleType = "basic"
 	connConfig.ScheduleData = ScheduleData{
-		Units:    REFRESH_FREQUENCY_MINUTES,
-		TimeUnit: "minutes",
+		BasicSchedule: BasicSchedule{
+			Units:    REFRESH_FREQUENCY_MINUTES,
+			TimeUnit: "minutes",
+		},
 	}
 	connConfig.Status = state
 	request, err := json.Marshal(connConfig)
