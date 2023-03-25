@@ -18,7 +18,7 @@ type ConnectorConfig struct {
 	DestinationId       string       `json:"destinationId"`
 	SyncCatalog         Catalog      `json:"syncCatalog"`
 	ScheduleType        string       `json:"scheduleType"`
-	ScheduleData        ScheduleData `json:"schedule"`
+	ScheduleData        ScheduleData `json:"scheduleData"`
 	Status              string       `json:"status"`
 }
 
@@ -33,7 +33,12 @@ type UpdateConnectorConfig struct {
 	Status              string       `json:"status"`
 }
 
+// We only support schedules of type "basic".
 type ScheduleData struct {
+	BasicSchedule BasicSchedule `json:"basicSchedule,omitempty"`
+}
+
+type BasicSchedule struct {
 	Units    int    `json:"units"`
 	TimeUnit string `json:"timeUnit"`
 }
