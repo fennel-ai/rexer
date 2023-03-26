@@ -55,7 +55,37 @@ type Tailer struct {
 func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, store hangar.Hangar, processor EventsProcessor,
 	pollTimeout time.Duration, batchSize int) (*Tailer, error) {
 	logger := zap.L().Named(fmt.Sprintf("tailer-%s-%d", topic, toppar.Partition))
-	// Given the topic partitions, decode what offsets to start reading from.
+	var rebalanceCb func(c *kafka.Consumer, e kafka.Event) error
+	rebalanceCb = func(c *kafka.Consumer, e kafka.Event) error {
+		logger.Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
+		switch event := e.(type) {
+		case kafka.AssignedPartitions:
+			if len(event.Partitions) > 0 {
+				// fetch the last committed offsets for the topic partitions assigned to the consumer
+				var err error
+				toppars, err := decodeOffsets([]kafka.TopicPartition{toppar}, store)
+				if err != nil {
+					logger.Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
+				}
+				logger.Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
+				err = c.Assign(toppars)
+				if err != nil {
+					logger.Fatal("Failed to assign partitions", zap.Error(err))
+				}
+			}
+		case kafka.RevokedPartitions:
+			// Resubscribe to the topic to re-register with the broker.
+			// Note: Directly calling c.Assign(...) here leads to "Broker: Unknown member"
+			// when committing offsets. We circumvent this by calling c.Subscribe(...) instead.
+			// Note: we use toppar.Topic here instead of `topic` because the topic
+			// name might be prefixed with the plane Id to get the final topic name.
+			err := c.Subscribe(*toppar.Topic, rebalanceCb)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	consumer, err := n.KafkaConsumerFactory(fkafka.ConsumerConfig{
 		Scope: resource.NewPlaneScope(n.PlaneID),
 		Topic: topic,
@@ -70,26 +100,7 @@ func NewTailer(n nitrous.Nitrous, topic string, toppar kafka.TopicPartition, sto
 		// configuration events
 		GroupID:      n.Identity,
 		OffsetPolicy: fkafka.DefaultOffsetPolicy,
-		RebalanceCb: mo.Some(func(c *kafka.Consumer, e kafka.Event) error {
-			logger.Info("Got kafka partition rebalance event: ", zap.String("topic", topic), zap.String("groupid", n.Identity), zap.String("consumer", c.String()), zap.String("event", e.String()))
-			switch event := e.(type) {
-			case kafka.AssignedPartitions:
-				if len(event.Partitions) > 0 {
-					// fetch the last committed offsets for the topic partitions assigned to the consumer
-					var err error
-					toppars, err := decodeOffsets([]kafka.TopicPartition{toppar}, store)
-					if err != nil {
-						logger.Fatal("Failed to fetch latest offsets", zap.String("consumer", c.String()), zap.Error(err))
-					}
-					logger.Info("Discarding broker assigned partitions and assigning partitions to self", zap.String("consumer", c.String()), zap.String("toppars", fmt.Sprintf("%v", toppars)))
-					err = c.Assign(toppars)
-					if err != nil {
-						logger.Fatal("Failed to assign partitions", zap.Error(err))
-					}
-				}
-			}
-			return nil
-		}),
+		RebalanceCb:  mo.Some(rebalanceCb),
 		Configs: fkafka.ConsumerConfigs{
 			// `max.partition.fetch.bytes` dictates the initial maximum number of bytes requested per
 			// broker+partition.
