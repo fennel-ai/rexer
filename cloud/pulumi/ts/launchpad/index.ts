@@ -398,17 +398,30 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
-                // Convoy does not use nitrous, we setup a basic nitrous cluster with no backups
                 // Nitrous node group.
                 {
                     name: "p-9-nitrous-ng-arm",
-                    instanceTypes: ["m6gd.medium"],
+                    instanceTypes: ["c6gd.large"],
                     minSize: 1,
                     maxSize: 1,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     labels: {
                         "node-group": "p-9-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+                // Nitrous backup node group.
+                {
+                    name: "p-9-nitrous-backup-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-9-nitrous-backup-ng",
                         "aws.amazon.com/eks-local-ssd": "true",
                     },
                     expansionPriority: 1,
@@ -445,7 +458,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
-        // Convoy does not use nitrous, we setup a basic nitrous cluster.
         nitrousConf: {
             replicas: 1,
             useAmd64: false,
@@ -453,12 +465,12 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             storageClass: "local",
             resourceConf: {
                 cpu: {
-                    request: "200m",
+                    request: "1200m",
                     limit: "2000m"
                 },
                 memory: {
-                    request: "1Gi",
-                    limit: "1200Mi",
+                    request: "2Gi",
+                    limit: "4Gi",
                 }
             },
             binlog: {
@@ -470,6 +482,26 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             },
             nodeLabels: {
                 "node-group": "p-9-nitrous-ng",
+            },
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-9-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "60m",
+                remoteCopiesToKeep: 2,
+                resourceConf: {
+                    cpu: {
+                        request: "1200m",
+                        limit: "2000m"
+                    },
+                    memory: {
+                        request: "2Gi",
+                        limit: "4Gi",
+                    }
+                },
+                storageCapacityGB: 50,
             },
         },
         customer: customers[2],
