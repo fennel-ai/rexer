@@ -95,7 +95,6 @@ export type TierConf = {
     tierId: number,
     tierName?: string,
 
-    enableNitrous?: boolean,
     httpServerConf?: HttpServerConf,
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
@@ -174,8 +173,7 @@ type inputType = {
     queryServerConf?: QueryServerConf,
     countAggrConf?: CountAggrConf,
     counterCleanupConf?: CounterCleanupConf,
-    enableNitrous?: boolean,
-    nitrousBinLogPartitions?: number,
+    nitrousBinLogPartitions: number,
 
     // third-party services configuration
     sagemakerConf?: SagemakerConf,
@@ -243,8 +241,7 @@ const parseConfig = (): inputType => {
         queryServerConf: config.getObject(nameof<inputType>("queryServerConf")),
         countAggrConf: config.getObject(nameof<inputType>("countAggrConf")),
         counterCleanupConf: config.getObject(nameof<inputType>("counterCleanupConf")),
-        enableNitrous: config.getObject(nameof<inputType>("enableNitrous")),
-        nitrousBinLogPartitions: config.getNumber(nameof<inputType>("nitrousBinLogPartitions")),
+        nitrousBinLogPartitions: config.requireNumber(nameof<inputType>("nitrousBinLogPartitions")),
 
         sagemakerConf: config.getObject(nameof<inputType>("sagemakerConf")),
 
@@ -526,8 +523,8 @@ const setupResources = async () => {
                     "bucket": pprofBucketOutput.pprofStoreBucket,
                 } as Record<string, string>),
                 nitrousConfig: pulumi.output({
-                    "addr": input.enableNitrous ? `${nitrous.name}.${nitrous.namespace}:${nitrous.servicePort}` : "",
-                    "binlogPartitions": input.nitrousBinLogPartitions ? `${input.nitrousBinLogPartitions}` : "",
+                    "addr": `${nitrous.name}.${nitrous.namespace}:${nitrous.servicePort}`,
+                    "binlogPartitions": `${input.nitrousBinLogPartitions}`,
                 } as Record<string, string>),
                 airbyteConfig: pulumi.output({
                     "endpoint": airbyteServerEndpoint,
@@ -743,8 +740,7 @@ type TierInput = {
     queryServerConf?: QueryServerConf,
 
     // flag to enable nitrous.
-    enableNitrous?: boolean,
-    nitrousBinLogPartitions?: number,
+    nitrousBinLogPartitions: number,
 
     // countaggr configuration
     countAggrConf?: CountAggrConf,
@@ -802,11 +798,6 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
     await setupPlugins(stack)
 
     console.info("setting up config");
-
-    if (args.enableNitrous !== undefined && args.enableNitrous && (args.nitrousBinLogPartitions === undefined || args.nitrousBinLogPartitions <= 0)) {
-        console.log('Nitrous is enabled, but nitrous binlog partitions is either not set or set to <= 0');
-        process.exit(1);
-    }
 
     await stack.setConfig(nameof<inputType>("protect"), { value: String(args.protect) })
 
@@ -882,13 +873,7 @@ const setupTier = async (args: TierInput, preview?: boolean, destroy?: boolean) 
         await stack.setConfig(nameof<inputType>("counterCleanupConf"), { value: JSON.stringify(args.counterCleanupConf) })
     }
 
-    if (args.enableNitrous !== undefined) {
-        await stack.setConfig(nameof<inputType>("enableNitrous"), { value: JSON.stringify(args.enableNitrous) })
-    }
-
-    if (args.nitrousBinLogPartitions !== undefined) {
-        await stack.setConfig(nameof<inputType>("nitrousBinLogPartitions"), { value: `${args.nitrousBinLogPartitions}` })
-    }
+    await stack.setConfig(nameof<inputType>("nitrousBinLogPartitions"), { value: `${args.nitrousBinLogPartitions}` })
 
     if (args.sagemakerConf !== undefined) {
         await stack.setConfig(nameof<inputType>("sagemakerConf"), { value: JSON.stringify(args.sagemakerConf) })

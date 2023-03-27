@@ -71,8 +71,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         // enable separate query server svc.
         queryServerConf: {},
-        // enable nitrous
-        enableNitrous: false,
         enableOfflineAggregationJobs: true,
         // NOTE: We make the airbyte instance hosted on the staging tier public for unit, integration and e2e tests
         //
@@ -125,8 +123,6 @@ const tierConfs: Record<number, TierConf> = {
                 }
             },
         },
-        // For now, disable reading from nitrous.
-        enableNitrous: false,
         // Yext currently only works with offline aggregation jobs.
         enableOfflineAggregationJobs: true,
         plan: Plan.STARTUP,
@@ -223,7 +219,6 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 3,
         },
         airbyteConf: {},
-        enableNitrous: true,
         plan: Plan.STARTUP,
         requestLimit: 0,
     }
@@ -339,11 +334,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             binlog: {
                 partitions: 10,
             },
-            mskBinlog: {
-                partitions: 10,
-                // since we have created 2 broker nodes, RF has to be smaller than that
-                replicationFactor: 1,
-            },
             nodeLabels: {
                 "node-group": "p-3-nitrous-ng",
             },
@@ -408,6 +398,21 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
                 },
+                // Convoy does not use nitrous, we setup a basic nitrous cluster with no backups
+                // Nitrous node group.
+                {
+                    name: "p-9-nitrous-ng-arm",
+                    instanceTypes: ["m6gd.medium"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-9-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
             ],
         },
         dbConf: {
@@ -439,6 +444,33 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             numberOfBrokerNodes: 2,
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
+        },
+        // Convoy does not use nitrous, we setup a basic nitrous cluster.
+        nitrousConf: {
+            replicas: 1,
+            useAmd64: false,
+            storageCapacityGB: 50,
+            storageClass: "local",
+            resourceConf: {
+                cpu: {
+                    request: "200m",
+                    limit: "2000m"
+                },
+                memory: {
+                    request: "1Gi",
+                    limit: "1200Mi",
+                }
+            },
+            binlog: {
+                partitions: 16,
+                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
+                partition_retention_bytes: -1,
+                max_message_bytes: 2097164,
+                replicationFactor: 2,
+            },
+            nodeLabels: {
+                "node-group": "p-9-nitrous-ng",
+            },
         },
         customer: customers[2],
         mothershipId: 12,
@@ -989,7 +1021,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
     const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType
-    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")] !== undefined ? dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType : undefined
+    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType
 
     // Create/update/delete the tier.
     const tierId = tierConf.tierId;
@@ -1097,8 +1129,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
 
         httpServerConf: tierConf.httpServerConf,
         queryServerConf: tierConf.queryServerConf,
-        enableNitrous: tierConf.enableNitrous,
-        nitrousBinLogPartitions: nitrousOutput ? nitrousOutput.binlogPartitions : undefined,
+        nitrousBinLogPartitions: nitrousOutput.binlogPartitions,
 
         countAggrConf: tierConf.countAggrConf,
 

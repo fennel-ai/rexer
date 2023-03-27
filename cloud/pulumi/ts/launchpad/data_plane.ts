@@ -71,7 +71,6 @@ type NitrousConf = {
     storageCapacityGB: number
     forceLoadBackup?: boolean,
     binlog: nitrous.binlogConfig,
-    mskBinlog?: nitrous.binlogConfig,
     backupConf?: nitrous.backupConf,
 }
 
@@ -130,7 +129,7 @@ export type DataPlaneConf = {
     prometheusConf?: PrometheusConf,
     eksConf: util.EksConf,
     milvusConf?: MilvusConf,
-    nitrousConf?: NitrousConf,
+    nitrousConf: NitrousConf,
     // TODO(mohit): Make this default going forward
     modelMonitoringConf?: ModelMonitoringConf,
     // TODO(amit): Make this non optional going forward.
@@ -356,48 +355,45 @@ const setupResources = async () => {
         nodeInstanceRole: eksOutput.instanceRole,
     })
 
-    let nitrousOutput: nitrous.outputType | undefined;
-    if (input.nitrousConf !== undefined) {
-        nitrousOutput = await nitrous.setup({
-            planeId: input.planeId,
-            planeName: input.planeName,
+    const nitrousOutput = await nitrous.setup({
+        planeId: input.planeId,
+        planeName: input.planeName,
 
-            region: input.region,
-            roleArn: roleArn,
-            nodeInstanceRole: eksOutput.instanceRole,
-            kubeconfig: eksOutput.kubeconfig,
-            otlpEndpoint: telemetryOutput.otelCollectorEndpoint,
+        region: input.region,
+        roleArn: roleArn,
+        nodeInstanceRole: eksOutput.instanceRole,
+        kubeconfig: eksOutput.kubeconfig,
+        otlpEndpoint: telemetryOutput.otelCollectorEndpoint,
 
-            replicas: input.nitrousConf.replicas,
-            useAmd64: input.nitrousConf.useAmd64,
-            enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
-            resourceConf: input.nitrousConf.resourceConf,
-            nodeLabels: input.nitrousConf.nodeLabels,
+        replicas: input.nitrousConf.replicas,
+        useAmd64: input.nitrousConf.useAmd64,
+        enforceReplicaIsolation: input.nitrousConf.enforceReplicaIsolation,
+        resourceConf: input.nitrousConf.resourceConf,
+        nodeLabels: input.nitrousConf.nodeLabels,
 
-            storageCapacityGB: input.nitrousConf.storageCapacityGB,
-            storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],
+        storageCapacityGB: input.nitrousConf.storageCapacityGB,
+        storageClass: eksOutput.storageclasses[input.nitrousConf.storageClass],
 
-            forceLoadBackup: input.nitrousConf.forceLoadBackup,
+        forceLoadBackup: input.nitrousConf.forceLoadBackup,
 
-            kafka: {
-                username: mskOutput.mskUsername,
-                password: mskOutput.mskPassword,
-                bootstrapServers: mskOutput.bootstrapBrokers,
-            },
+        kafka: {
+            username: mskOutput.mskUsername,
+            password: mskOutput.mskPassword,
+            bootstrapServers: mskOutput.bootstrapBrokers,
+        },
 
-            binlog: {
-                partitions: input.nitrousConf.binlog.partitions,
-                replicationFactor: input.nitrousConf.binlog.replicationFactor,
-                retention_ms: input.nitrousConf.binlog.retention_ms,
-                partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
-                max_message_bytes: input.nitrousConf.binlog.max_message_bytes,
-            },
+        binlog: {
+            partitions: input.nitrousConf.binlog.partitions,
+            replicationFactor: input.nitrousConf.binlog.replicationFactor,
+            retention_ms: input.nitrousConf.binlog.retention_ms,
+            partition_retention_bytes: input.nitrousConf.binlog.partition_retention_bytes,
+            max_message_bytes: input.nitrousConf.binlog.max_message_bytes,
+        },
 
-            backupConf: input.nitrousConf.backupConf,
+        backupConf: input.nitrousConf.backupConf,
 
-            protect: input.protectResources,
-        })
-    }
+        protect: input.protectResources,
+    })
 
     const offlineAggregateSourceFiles = await offlineAggregateSources.setup({
         region: input.region,
