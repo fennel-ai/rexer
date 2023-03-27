@@ -257,21 +257,22 @@ export const setup = async (input: inputType) => {
                 //
                 // NOTE: circuit breaker configured below is a GLOBAL circuit breaker. If there are more than one endpoint
                 // configured in the future, consider making these limits at a `MAPPING` level.
-                "circuit_breakers": {
-                    // Specifies the maximum number of connections that Ambassador Edge Stack will make to ALL hosts in the upstream cluster.
-                    "max_connections": 3072,
-                    // Specifies the maximum number of requests that will be queued while waiting for a connection.
-                    "max_pending_requests": 1024,
-                    // Specifies the maximum number of parallel outstanding requests to ALL hosts in a cluster at any given time.
-                    "max_requests": 3072,
-                    // default - "max_retries": 3,
-                },
+                "circuit_breakers": [
+                    {
+                        // Specifies the maximum number of connections that Ambassador Edge Stack will make to ALL hosts in the upstream cluster.
+                        "max_connections": 3072,
+                        // Specifies the maximum number of requests that will be queued while waiting for a connection.
+                        "max_pending_requests": 1024,
+                        // Specifies the maximum number of parallel outstanding requests to ALL hosts in a cluster at any given time.
+                        "max_requests": 3072,
+                    }
+                ],
                 // See: https://github.com/emissary-ingress/emissary/issues/4329
                 "envoy_log_type": "text",
                 "envoy_log_format": "%REQ(:METHOD)% %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% %DURATION%",
                 // Gzip enables Emissary-ingress to compress upstream data upon client request.
                 "gzip": {
-                    "compression_level": "BEST_SPEED",
+                    "compression_level": "DEFAULT_COMPRESSION",
                 },
             }
         },

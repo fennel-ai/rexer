@@ -191,27 +191,26 @@ const tierConfs: Record<number, TierConf> = {
         // TODO(mohit): Currently the requests are configured such that each replica is going to be scheduled
         // in different node in the node group, ideally we should try to reduce the `request` and let the scheduler
         // place the pods across the nodes based on utilization and `limit`
-        // TODO(abhay): Enable separate query server for lokal.
-        // queryServerConf: {
-        //     podConf: {
-        //         minReplicas: 2,
-        //         maxReplicas: 10,
-        //         resourceConf: {
-        //             // c6g.xlarge machines, set requests and limits accordingly
-        //             cpu: {
-        //                 request: "2500m",
-        //                 limit: "3000m"
-        //             },
-        //             memory: {
-        //                 request: "5G",
-        //                 limit: "7G",
-        //             }
-        //         },
-        //         nodeLabels: {
-        //             "node-group": "p-5-queryserver-ng"
-        //         },
-        //     }
-        // },
+        queryServerConf: {
+            podConf: {
+                minReplicas: 2,
+                maxReplicas: 10,
+                resourceConf: {
+                    // c6g.xlarge machines, set requests and limits accordingly
+                    cpu: {
+                        request: "2500m",
+                        limit: "4000m"
+                    },
+                    memory: {
+                        request: "5G",
+                        limit: "7G",
+                    }
+                },
+                nodeLabels: {
+                    "node-group": "p-5-queryserver-ng"
+                },
+            }
+        },
 
         sagemakerConf: {
             // this is the cheapest sagemaker instance type other than burstable instances (t3, t4g.. - but they are
@@ -223,8 +222,7 @@ const tierConfs: Record<number, TierConf> = {
             useDedicatedMachines: true,
             replicas: 3,
         },
-        // TODO(abhay): Enable airbyte
-        // airbyteConf: {},
+        airbyteConf: {},
         enableNitrous: true,
         plan: Plan.STARTUP,
         requestLimit: 0,
@@ -661,43 +659,36 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 },
 
                 // Query server node groups
-                // TODO(abhay): Add query server node group.
-                // {
-                //     name: "p-5-query-ng-arm",
-                //     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                //     //
-                //     // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                //     // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                //     // and should not be scheduled on these nodes
-                //     instanceTypes: ["c6g.xlarge"],
-                //     minSize: 1,
-                //     maxSize: 1,
-                //     amiType: DEFAULT_ARM_AMI_TYPE,
-                //     labels: {
-                //         "node-group": "p-5-queryserver-ng",
-                //         "rescheduler-label": "on-demand",
-                //     },
-                //     capacityType: ON_DEMAND_INSTANCE_TYPE,
-                //     expansionPriority: 1,
-                // },
-                // {
-                //     name: "p-5-query-ng-arm-spot",
-                //     // TODO(mohit): Move to c7g once they are supported in ap-south-1
-                //     //
-                //     // TODO(mohit): Consider using NVMe SSD backed instances as well - these should be okay for
-                //     // query servers which are "stateless" anyways. However we do run few binaries which are stateful
-                //     // and should not be scheduled on these nodes
-                //     instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
-                //     minSize: 1,
-                //     maxSize: 10,
-                //     amiType: DEFAULT_ARM_AMI_TYPE,
-                //     labels: {
-                //         "node-group": "p-5-queryserver-ng",
-                //         "rescheduler-label": "spot",
-                //     },
-                //     capacityType: SPOT_INSTANCE_TYPE,
-                //     expansionPriority: 10,
-                // },
+                {
+                    name: "p-5-query-ng-arm",
+                    // TODO(mohit): Move to c7g if/when they become cheaper than
+                    // c6g instances in ap-south-1.
+                    instanceTypes: ["c6g.xlarge"],
+                    minSize: 1,
+                    maxSize: 20,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "on-demand",
+                    },
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-5-query-ng-arm-spot",
+                    // TODO(mohit): Move to c7g if/when they become cheaper than
+                    // c6g instances in ap-south-1.
+                    instanceTypes: ["c6g.xlarge", "c6gn.xlarge", "c6gd.xlarge"],
+                    minSize: 1,
+                    maxSize: 20,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    labels: {
+                        "node-group": "p-5-queryserver-ng",
+                        "rescheduler-label": "spot",
+                    },
+                    capacityType: SPOT_INSTANCE_TYPE,
+                    expansionPriority: 10,
+                },
                 // Common node groups in case some container needs to be run on these
                 {
                     name: "p-5-common-ng-arm64",
@@ -780,20 +771,8 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
                 partition_retention_bytes: -1,
                 max_message_bytes: 2097164,
-                // TODO(mohit): Consider setting this to 2.
-                // it is recommended to have RF >= 3 in a 3 AZ cluster. With a 2 AZ cluster, this could be an overkill.
-                //
-                // NOTE: since we configure 4 brokers, setting to >=2 works with rolling updates to the cluster where
-                // a broker is "inactive".
-                //
-                // by default MSK sets this to 2 for the cluster configured in 2 AZs - this is bad for availability
-                // since it is possible that one of the AZ is unreachable and the broker in the same AZ is down
-                // (could be a rolling update affecting this broker)
                 replicationFactor: 2,
-                // TODO(mohit): min in-sync replicas is set to 1, since we have 2 AZs.
-                // see - https://docs.aws.amazon.com/msk/latest/developerguide/msk-default-configuration.html
-                //
-                // For Confluent based topics, min in-sync replicas is 2
+                // min in-sync replicas = 1
             },
             nodeLabels: {
                 "node-group": "p-5-nitrous-ng",
@@ -808,7 +787,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                 remoteCopiesToKeep: 2,
                 // this needs to be consistent with the node group which this pod is going to get scheduled on
                 //
-                // currently r6gd.8xlarge
+                // currently r6gd.2xlarge
                 resourceConf: {
                     cpu: {
                         request: "6000m",
@@ -829,7 +808,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             brokerType: "kafka.m5.large",
             // this will place 1 broker nodes in each of the AZs
             numberOfBrokerNodes: 2,
-            storageVolumeSizeGiB: 600,
+            storageVolumeSizeGiB: 1200,
         },
         customer: customers[3],
         mothershipId: 12,

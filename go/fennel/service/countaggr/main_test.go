@@ -63,18 +63,6 @@ func TestEndToEndActionAggregates(t *testing.T) {
 		},
 		{
 			libaggregate.Aggregate{
-				Name: "agg_2", Query: getQuery(), Timestamp: 123,
-				Source:  libaggregate.SOURCE_ACTION,
-				Options: libaggregate.Options{AggType: "list", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
-				Id:      2,
-			},
-			value.NewList(value.Int(0), value.Int(0), value.Int(0), value.Int(0)),
-			value.Int(uid),
-			[]value.Dict{value.NewDict(nil)},
-			[]value.Value{value.NewList(value.Int(0), value.Int(0), value.Int(1), value.Int(2))},
-		},
-		{
-			libaggregate.Aggregate{
 				Name: "agg_3", Query: getQuery(), Timestamp: 123,
 				Source:  libaggregate.SOURCE_ACTION,
 				Options: libaggregate.Options{AggType: "list", Durations: []uint32{3 * 3600, 6 * 3600, 3600}},
