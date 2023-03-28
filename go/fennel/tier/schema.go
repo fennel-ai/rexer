@@ -218,4 +218,8 @@ var Schema = db.Schema{
 	26: `ALTER TABLE query_ast ADD COLUMN description VARCHAR(2048) DEFAULT '';`,
 	27: `ALTER TABLE query_ast ADD INDEX (name);`,
 	28: `ALTER TABLE aggregate_config DROP COLUMN mode;`,
+	29: `ALTER TABLE actionlog MODIFY actor_id VARCHAR(128);`,
+	30: `ALTER TABLE actionlog MODIFY target_id VARCHAR(128);`,
+	31: `ALTER TABLE actionlog MODIFY request_id VARCHAR(128);`,
+	32: `ALTER TABLE profile MODIFY oid VARCHAR(128);`,
 }

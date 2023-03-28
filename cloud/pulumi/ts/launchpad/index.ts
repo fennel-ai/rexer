@@ -50,6 +50,11 @@ const customers: Record<number, Customer> = {
         id: 3,
         domain: "getlokalapp.com",
         name: "lokal",
+    },
+    4: {
+        id: 5,
+        domain: "yext.com",
+        name: "Yext",
     }
 };
 //================ Static data plane / tier configurations =====================
@@ -66,8 +71,6 @@ const tierConfs: Record<number, TierConf> = {
         },
         // enable separate query server svc.
         queryServerConf: {},
-        // enable nitrous
-        enableNitrous: false,
         enableOfflineAggregationJobs: true,
         // NOTE: We make the airbyte instance hosted on the staging tier public for unit, integration and e2e tests
         //
@@ -98,6 +101,33 @@ const tierConfs: Record<number, TierConf> = {
 
         plan: Plan.STARTUP,
         requestLimit: 0,
+    },
+    116: {
+        protectResources: true,
+        planeId: 14,
+        tierId: 116,
+        // set larger requests for the http + query server
+        httpServerConf: {
+            podConf: {
+                minReplicas: 1,
+                maxReplicas: 4,
+                resourceConf: {
+                    cpu: {
+                        request: "1000m",
+                        limit: "2000m"
+                    },
+                    memory: {
+                        request: "3G",
+                        limit: "4G",
+                    }
+                }
+            },
+        },
+        // Yext currently only works with offline aggregation jobs.
+        enableOfflineAggregationJobs: true,
+        plan: Plan.STARTUP,
+        requestLimit: 0,
+        enableCors: true,
     },
     // Lokal prod tier in their account.
     130: {
@@ -189,7 +219,6 @@ const tierConfs: Record<number, TierConf> = {
             replicas: 3,
         },
         airbyteConf: {},
-        enableNitrous: true,
         plan: Plan.STARTUP,
         requestLimit: 0,
     }
@@ -305,11 +334,6 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             binlog: {
                 partitions: 10,
             },
-            mskBinlog: {
-                partitions: 10,
-                // since we have created 2 broker nodes, RF has to be smaller than that
-                replicationFactor: 1,
-            },
             nodeLabels: {
                 "node-group": "p-3-nitrous-ng",
             },
@@ -360,7 +384,7 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-9-common-ng-x86",
                     instanceTypes: ["t3.medium"],
                     minSize: 1,
-                    maxSize: 4,
+                    maxSize: 5,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
@@ -369,9 +393,37 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
                     name: "p-9-common-ng-arm64",
                     instanceTypes: ["t4g.medium"],
                     minSize: 1,
-                    maxSize: 4,
+                    maxSize: 5,
                     amiType: DEFAULT_ARM_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                // Nitrous node group.
+                {
+                    name: "p-9-nitrous-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-9-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+                // Nitrous backup node group.
+                {
+                    name: "p-9-nitrous-backup-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-9-nitrous-backup-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
                     expansionPriority: 1,
                 },
             ],
@@ -406,10 +458,203 @@ const dataPlaneConfs: Record<number, DataPlaneConf> = {
             // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
             storageVolumeSizeGiB: 64,
         },
+        nitrousConf: {
+            replicas: 1,
+            useAmd64: false,
+            storageCapacityGB: 50,
+            storageClass: "local",
+            resourceConf: {
+                cpu: {
+                    request: "1200m",
+                    limit: "2000m"
+                },
+                memory: {
+                    request: "2Gi",
+                    limit: "4Gi",
+                }
+            },
+            binlog: {
+                partitions: 16,
+                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
+                partition_retention_bytes: -1,
+                max_message_bytes: 2097164,
+                replicationFactor: 2,
+            },
+            nodeLabels: {
+                "node-group": "p-9-nitrous-ng",
+            },
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-9-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "60m",
+                remoteCopiesToKeep: 2,
+                resourceConf: {
+                    cpu: {
+                        request: "1200m",
+                        limit: "2000m"
+                    },
+                    memory: {
+                        request: "2Gi",
+                        limit: "4Gi",
+                    }
+                },
+                storageCapacityGB: 50,
+            },
+        },
         customer: customers[2],
         mothershipId: 12,
     },
     // plane 10 - for self serve pending account close
+    // Yext's production plane
+    14: {
+        protectResources: true,
+        accountConf: {
+            existingAccount: {
+                roleArn: "arn:aws:iam::893589383464:role/blood_orange",
+            }
+        },
+        planeId: 14,
+        region: "us-east-1",
+        // Select AZs that support memorydb:
+        // https://docs.aws.amazon.com/memorydb/latest/devguide/subnetgroups.html.
+        // Note that different accounts will have different az names
+        // that support MemoryDB.
+        azs: ["us-east-1a", "us-east-1c"],
+        vpcConf: {
+            cidr: "10.114.0.0/16"
+        },
+        eksConf: {
+            nodeGroups: [
+                {
+                    name: "p-14-common-ng-x86",
+                    instanceTypes: ["t3.medium"],
+                    minSize: 1,
+                    maxSize: 3,
+                    amiType: DEFAULT_X86_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                {
+                    name: "p-14-common-ng-arm64",
+                    instanceTypes: ["t4g.medium"],
+                    minSize: 2,
+                    maxSize: 4,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    expansionPriority: 1,
+                },
+                // Nitrous node group.
+                {
+                    name: "p-14-nitrous-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-14-nitrous-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+                // Nitrous backup node group
+                {
+                    name: "p-14-nitrous-backup-ng-arm",
+                    instanceTypes: ["c6gd.large"],
+                    minSize: 1,
+                    maxSize: 1,
+                    amiType: DEFAULT_ARM_AMI_TYPE,
+                    capacityType: ON_DEMAND_INSTANCE_TYPE,
+                    labels: {
+                        "node-group": "p-14-nitrous-backup-ng",
+                        "aws.amazon.com/eks-local-ssd": "true",
+                    },
+                    expansionPriority: 1,
+                },
+            ],
+        },
+        dbConf: {
+            minCapacity: 1,
+            maxCapacity: 4,
+            password: "password",
+            skipFinalSnapshot: true,
+        },
+        controlPlaneConf: controlPlane,
+        redisConf: {
+            numShards: 1,
+            nodeType: "db.t4g.medium",
+            numReplicasPerShard: 1,
+        },
+        cacheConf: {
+            nodeType: "cache.t4g.small",
+            numNodeGroups: 1,
+            replicasPerNodeGroup: 1,
+        },
+        prometheusConf: {
+            volumeSizeGiB: 256,
+            metricsRetentionDays: 60,
+        },
+        nitrousConf: {
+            replicas: 1,
+            useAmd64: false,
+            storageCapacityGB: 50,
+            storageClass: "local",
+            resourceConf: {
+                cpu: {
+                    request: "1000m",
+                    limit: "2000m"
+                },
+                memory: {
+                    request: "1Gi",
+                    limit: "1200Mi",
+                }
+            },
+            binlog: {
+                partitions: 16,
+                retention_ms: 30 * 24 * 60 * 60 * 1000,  // 30 days
+                partition_retention_bytes: -1,
+                max_message_bytes: 2097164,
+                replicationFactor: 2,
+            },
+            nodeLabels: {
+                "node-group": "p-14-nitrous-ng",
+            },
+
+            // backup configurations
+            backupConf: {
+                nodeLabelsForBackup: {
+                    "node-group": "p-14-nitrous-backup-ng",
+                },
+                backupFrequencyDuration: "60m",
+                remoteCopiesToKeep: 2,
+                resourceConf: {
+                    cpu: {
+                        request: "1000m",
+                        limit: "2000m"
+                    },
+                    memory: {
+                        request: "1Gi",
+                        limit: "1200Mi",
+                    }
+                },
+                storageCapacityGB: 50,
+            },
+        },
+        // set up MSK cluster
+        mskConf: {
+            // compute cost = 0.21 ($/hr) x 2 (#brokers) x 720 = ~$300
+            brokerType: "kafka.m5.large",
+            // this will place 1 broker node in each of the AZs
+            numberOfBrokerNodes: 2,
+            // storage cost = 0.10 ($/GB-month) x 64 = 6.4$
+            storageVolumeSizeGiB: 64,
+        },
+        customer: customers[4],
+        mothershipId: 12,
+    },
     // plane 11 - lokal plane in their organization, pending account close
     // Skipped 12 to avoid conflict with the mothership.
     13: {
@@ -808,7 +1053,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
     const telemetryOutput = dataplane[nameof<PlaneOutput>("telemetry")].value as telemetry.outputType
     const milvusOutput = dataplane[nameof<PlaneOutput>("milvus")].value as milvus.outputType
     const mskOutput = dataplane[nameof<PlaneOutput>("msk")].value as msk.outputType
-    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")] !== undefined ? dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType : undefined
+    const nitrousOutput = dataplane[nameof<PlaneOutput>("nitrous")].value as nitrous.outputType
 
     // Create/update/delete the tier.
     const tierId = tierConf.tierId;
@@ -916,8 +1161,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
 
         httpServerConf: tierConf.httpServerConf,
         queryServerConf: tierConf.queryServerConf,
-        enableNitrous: tierConf.enableNitrous,
-        nitrousBinLogPartitions: nitrousOutput ? nitrousOutput.binlogPartitions : undefined,
+        nitrousBinLogPartitions: nitrousOutput.binlogPartitions,
 
         countAggrConf: tierConf.countAggrConf,
 
@@ -936,5 +1180,7 @@ async function setupTierWrapperFn(tierConf: TierConf, dataplane: OutputMap, plan
         airbyteConf: tierConf.airbyteConf,
         plan: tierConf.plan,
         requestLimit: tierConf.requestLimit,
+
+        enableCors: tierConf.enableCors,
     }, preview, destroy).catch(err => console.log(err))
 }
