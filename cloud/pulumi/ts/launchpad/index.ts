@@ -160,7 +160,7 @@ const tierConfs: Record<number, TierConf> = {
         queryServerConf: {
             podConf: {
                 minReplicas: 2,
-                maxReplicas: 10,
+                maxReplicas: 20,
                 resourceConf: {
                     // c6g.xlarge machines, set requests and limits accordingly
                     cpu: {
