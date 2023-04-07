@@ -33,4 +33,4 @@ sudo systemctl enable --now tailscaled
 # 10.123.0.0/16: Demo data plane for feature engineering
 sudo tailscale up \
   --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16,10.104.0.0/16,10.105.0.0/16,10.109.0.0/16,10.111.0.0/16,10.112.0.0/16,10.121.0.0/16,10.122.0.0/16,10.113.0.0/16,10.114.0.0/16,10.123.0.0/16 \
-  --authkey tskey-auth-kkQazx3CNTRL-kXaAE3zD1oiJdv89QJVWoiEfQiqtLuAz
+  --authkey %TAILSCALE_AUTHKEY%
