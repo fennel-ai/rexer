@@ -29,10 +29,10 @@ const controlPlane: vpc.controlPlaneConfig = {
     roleArn: account.MASTER_ACCOUNT_ADMIN_ROLE_ARN,
     routeTableId: "rtb-07afe7458db9c4479",
     cidrBlock: "172.31.0.0/16",
-    primaryPrivateSubnet: "subnet-07aa4b44ebd42517e",
-    secondaryPrivateSubnet: "subnet-091ccb4e147da9859",
-    primaryPublicSubnet: "subnet-00801991ba653e52c",
-    secondaryPublicSubnet: "subnet-0f3a7cbfd18588331",
+    primaryPrivateSubnet: "subnet-09927ea3f70675eff",
+    secondaryPrivateSubnet: "subnet-0717483b092b91e73",
+    primaryPublicSubnet: "subnet-0405bd564c9c0c456",
+    secondaryPublicSubnet: "subnet-0f30e65832c38a357",
 }
 
 const customers: Record<number, Customer> = {
@@ -1005,23 +1005,23 @@ const mothershipConfs: Record<number, MothershipConf> = {
         planeId: 12,
         vpcConf: controlPlane,
         dbConf: {
-            minCapacity: 4,
+            minCapacity: 1,
             maxCapacity: 8,
             password: "foundationdb",
             skipFinalSnapshot: false,
         },
         ingressConf: {
-            useDedicatedMachines: true,
-            replicas: 3,
+            useDedicatedMachines: false,
             usePublicSubnets: true,
+            replicas: 2,
         },
         eksConf: {
             nodeGroups: [
                 {
                     name: "m-12-common-ng-x86",
                     instanceTypes: ["t3.medium"],
-                    minSize: 1,
-                    maxSize: 3,
+                    minSize: 4,
+                    maxSize: 6,
                     amiType: DEFAULT_X86_AMI_TYPE,
                     capacityType: ON_DEMAND_INSTANCE_TYPE,
                     expansionPriority: 1,
