@@ -175,10 +175,8 @@ export const setup = async (input: inputType) => {
         // tiers on the same cluster, emissary ingress routes requests across them. We scope the ingress to
         // respect a single namespace (namespace it is created in i.e. tier id).
         values: {
-            "adminService": {
-                "loadBalancerSourceRanges": input.loadBalancerSourceIpRanges != undefined ? input.loadBalancerSourceIpRanges : ["0.0.0.0/0"]
-            },
             "service": {
+                "loadBalancerSourceRanges": input.loadBalancerSourceIpRanges != undefined ? input.loadBalancerSourceIpRanges : ["0.0.0.0/0"],
                 "annotations": {
                     // Set load-balancer type as external to bypass k8s in-tree
                     // load-balancer controller and use AWS Load Balancer Controller
@@ -221,7 +219,7 @@ export const setup = async (input: inputType) => {
             // Create a pod affinity to not place multiple emissary ingress pods on the same node.
             //
             // Same node restriction is enforced by the `topologyKey` field. Pod anti affinity behavior is determined by the
-            // name of the pod which is `emissary-ingress`, hardcoded by the helm chart. 
+            // name of the pod which is `emissary-ingress`, hardcoded by the helm chart.
             "affinity": {
                 "podAntiAffinity": {
                     "requiredDuringSchedulingIgnoredDuringExecution": [{
