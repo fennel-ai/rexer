@@ -23,7 +23,7 @@ jobs:
   unittest:
     name: unittest
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64, unit-tests]
+    runs-on: [self-hosted]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -70,7 +70,7 @@ jobs:
   race-detector:
     name: race-detector
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64, unit-tests-race]
+    runs-on: [self-hosted]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -117,7 +117,7 @@ jobs:
   e2e:
     name: e2e
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64, e2e-tests]
+    runs-on: [self-hosted]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
