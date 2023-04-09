@@ -29,9 +29,6 @@ export const setup = async (input: inputType) => {
         kubeconfig: input.kubeconfig,
     })
     const prefix = getPrefix(input.scope, input.scopeId)
-    const certManagerCRDS = new k8s.yaml.ConfigFile(`${prefix}-cert-manager-crds`, {
-        file: "https://github.com/jetstack/cert-manager/releases/download/v1.9.1/cert-manager.crds.yaml"
-    }, { provider: k8sProvider })
     // Create cert-manager namespace.
     const certManagerNamespace = new k8s.core.v1.Namespace(`${prefix}-cert-manager-ns`,
         {
@@ -54,6 +51,16 @@ export const setup = async (input: inputType) => {
         namespace: "cert-manager",
         values: {
             installCRDs: true,
+            global: {
+                leaderElection: {
+                    namespace: "cert-manager"
+                }
+            },
+            // https://cert-manager.io/docs/configuration/acme/dns01/#setting-nameservers-for-dns01-self-check
+            extraArgs: [
+                "--dns01-recursive-nameservers-only",
+                "--dns01-recursive-nameservers=8.8.8.8:53,1.1.1.1:53",
+            ]
         }
     }, { provider: k8sProvider, dependsOn: certManagerNamespace })
 
