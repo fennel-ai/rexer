@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var S3Bucket = "phaser-test-data"
+var S3Bucket = "phaser-testing-data"
 
 func TestCreateRedisFileString(t *testing.T) {
 	itemListPq := "item_score_list.json"
