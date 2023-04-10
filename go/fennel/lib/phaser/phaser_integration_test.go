@@ -82,7 +82,7 @@ func TestPollS3Bucket(t *testing.T) {
 	defer test.Teardown(tier)
 	ctx := context.Background()
 
-	err := NewPhaser("testNamespace", "testIdentifier", "phaser-test-data", "integration-tests", time.Minute*time.Duration(5), tier)
+	err := NewPhaser("testNamespace", "testIdentifier", "phaser-testing-data", "integration-tests", time.Minute*time.Duration(5), tier)
 	assert.NoError(t, err)
 
 	phasers, err := RetrieveAll(ctx, tier)

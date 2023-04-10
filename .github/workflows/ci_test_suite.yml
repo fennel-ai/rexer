@@ -23,13 +23,19 @@ jobs:
   unittest:
     name: unittest
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64, unit-tests]
+    runs-on: [self-hosted]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Install build essentials
       - name: install build essential
-        run: sudo apt-get --assume-yes install build-essential
+        run: |
+          sudo apt-get update
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
+          sudo apt-get --assume-yes install libssl-dev libzstd-dev
+          export RDK_PREFIX=/opt/librdkafka
+          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -44,10 +50,10 @@ jobs:
       # https://github.com/actions/checkout/issues/197#issuecomment-829560171
       - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
 
-      # Install go (we use 1.18 version, so we will stick to it)
+      # Install go (we use 1.19 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.18'
+          go-version: '1.19'
 
       # -count 1 is required to force override test caches
       - name: run go unit tests
@@ -59,7 +65,10 @@ jobs:
           REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
         run: |
           cd go/fennel
-          go test -v ./... -count 1
+          export RDK_PREFIX=/opt/librdkafka
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
+          export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
+          go test -v ./... -tags dynamic -count 1
       # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
       - name: Remove rexer-client dir
         if: always()
@@ -70,13 +79,19 @@ jobs:
   race-detector:
     name: race-detector
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64, unit-tests-race]
+    runs-on: [self-hosted]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Install build essentials
       - name: install build essential
-        run: sudo apt-get --assume-yes install build-essential
+        run: |
+          sudo apt-get update
+          sudo apt-get --assume-yes install build-essential
+          sudo apt-get --assume-yes install pkg-config
+          sudo apt-get --assume-yes install libssl-dev libzstd-dev
+          export RDK_PREFIX=/opt/librdkafka
+          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
@@ -91,10 +106,10 @@ jobs:
       # https://github.com/actions/checkout/issues/197#issuecomment-829560171
       - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
 
-      # Install go (we use 1.18 version, so we will stick to it)
+      # Install go (we use 1.19 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.18'
+          go-version: '1.19'
 
       # -count 1 is required to force override test caches
       - name: run go unit tests
@@ -106,7 +121,10 @@ jobs:
           REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
         run: |
           cd go/fennel
-          go test -race -v ./... -count 1
+          export RDK_PREFIX=/opt/librdkafka
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
+          export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
+          go test -race -v ./... -tags dynamic -count 1
      # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
       - name: Remove rexer-client dir
         if: always()
@@ -117,7 +135,7 @@ jobs:
   e2e:
     name: e2e
     # The type of runner that the job will run on
-    runs-on: [self-hosted, Linux, X64, e2e-tests]
+    runs-on: [self-hosted]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -127,19 +145,24 @@ jobs:
       # Install prerequisites
       - name: install build essential and pkg-config
         run: |
+          sudo apt-get update
           sudo apt-get --assume-yes install build-essential
           sudo apt-get --assume-yes install pkg-config
           sudo apt-get --assume-yes install libssl-dev libzstd-dev
-          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure && sudo make && sudo make install
+          export RDK_PREFIX=/opt/librdkafka
+          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
 
-      # Install go (we use 1.18 version, so we will stick to it)
+      # Install go (we use 1.19 version, so we will stick to it)
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.18'
+          go-version: '1.19'
 
       - name: Install go module (required for running go subprocesses)
         run: |
           cd go/fennel
+          export RDK_PREFIX=/opt/librdkafka
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
+          export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
           go mod download
       - uses: actions/setup-python@v2
         with:
@@ -183,7 +206,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: 1.19
       - uses: actions/checkout@v3
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -218,10 +241,10 @@ jobs:
 #       # https://github.com/actions/checkout/issues/197#issuecomment-829560171
 #       - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
 
-#       # Install go (we use 1.18 version, so we will stick to it)
+#       # Install go (we use 1.19 version, so we will stick to it)
 #       - uses: actions/setup-go@v2
 #         with:
-#           go-version: '1.18'
+#           go-version: '1.19'
 
 #       - name: run go integration tests
 #         env:
