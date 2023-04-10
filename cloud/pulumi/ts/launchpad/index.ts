@@ -52,7 +52,7 @@ const customers: Record<number, Customer> = {
         name: "lokal",
     },
     4: {
-        id: 5,
+        id: 4,
         domain: "yext.com",
         name: "Yext",
     }
