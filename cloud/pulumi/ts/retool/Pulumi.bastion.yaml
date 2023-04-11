@@ -1,6 +1,0 @@
-config:
-  retool:ami: ami-066333d9c572b0680
-  retool:region: us-west-2
-  retool:role: arn:aws:iam::030813887342:role/admin
-  retool:subnet: subnet-0f3a7cbfd18588331
-  retool:vpcId: vpc-0d9942e83f94c049c
