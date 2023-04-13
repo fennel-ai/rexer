@@ -870,10 +870,9 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
     // Create an EKS cluster with the default configuration.
     const cluster = new eks.Cluster(`${getPrefix(input.scope, input.planeId)}-eks-cluster`, {
         vpcId,
+        // Only enable private access to the EKS API server endpoint.
         endpointPrivateAccess: true,
-        // TODO: disable public access once we figure out how to get the cluster
-        // up and running when nodes are running in private subnet.
-        endpointPublicAccess: true,
+        endpointPublicAccess: false,
         publicSubnetIds: publicSubnets,
         privateSubnetIds: privateSubnets,
         // setup version for k8s control plane
@@ -890,7 +889,7 @@ export const setup = async (input: inputType): Promise<pulumi.Output<outputType>
         //
         // Allow values - ["api", "audit", "authenticator", "controllerManager", "scheduler"]
         // See: https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html
-        enabledClusterLogTypes: ["api", "authenticator", "controllerManager", "scheduler"],
+        enabledClusterLogTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"],
     }, { provider: awsProvider });
 
     // setup cluster autoscaler
