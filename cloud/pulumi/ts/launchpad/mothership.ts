@@ -68,6 +68,7 @@ const setupResources = async () => {
         vpcId: pulumi.output(input.vpcConf.vpcId),
         publicSubnets: pulumi.output([input.vpcConf.primaryPublicSubnet, input.vpcConf.secondaryPublicSubnet]),
         privateSubnets: pulumi.output([input.vpcConf.primaryPrivateSubnet, input.vpcConf.secondaryPrivateSubnet]),
+        connectedVpcCidrs: [input.vpcConf.cidrBlock],
         planeId: input.planeId,
         nodeGroups: input.eksConf.nodeGroups,
         spotReschedulerConf: input.eksConf.spotReschedulerConf,
