@@ -19,18 +19,14 @@ sudo systemctl enable --now tailscaled
 
 # TODO: Don't save the tailscale authkey in plaintext.
 # 172.31.0.0/16 : Control plane
-# 10.101.0.0/16: Test data plane for feature engineering world
-# 10.102.0.0/16: Test data plane
-# 10.103.0.0/16: Dev data plane
-# 10.105.0.0/16: Lokal prod data plane
+# 10.102.0.0/16: Rexer test data plane
+# 10.104.0.0/16: Dev plane
+# 10.106.0.0/16: Epifi POC plane
+# 10.107.0.0/16: Cricut POC plane
 # 10.109.0.0/16: Convoy production plane
-# 10.111.0.0/16: Data plane for self serve.
-# 10.112.0.0/16: Data plane for lokal in independent account
-# 10.113.0.0/16: Data plane for lokal in their organization
-# 10.114.0.0/16: Data plane for yext in their account in us-east-1
-# 10.121.0.0/16: Data plane for oslash in their account
-# 10.122.0.0/16: Data plane for oslash in their account in us-east-1
-# 10.123.0.0/16: Demo data plane for feature engineering
+# 10.125.0.0/16: Demo plane
+# 10.127.0.0/16: Load testing plane
+# 10.128.0.0/16: Epifi testing plane
 sudo tailscale up \
-  --advertise-routes=172.31.0.0/16,10.101.0.0/16,10.102.0.0/16,10.103.0.0/16,10.104.0.0/16,10.105.0.0/16,10.109.0.0/16,10.111.0.0/16,10.112.0.0/16,10.121.0.0/16,10.122.0.0/16,10.113.0.0/16,10.114.0.0/16,10.123.0.0/16 \
+  --advertise-routes=172.31.0.0/16,10.102.0.0/16,10.104.0.0/16,10.106.0.0/16,10.107.0.0/16,10.109.0.0/16,10.125.0.0/16,10.127.0.0/16,10.128.0.0/16 \
   --authkey %TAILSCALE_AUTHKEY%
