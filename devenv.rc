@@ -1,3 +1,5 @@
+# NOTE: The following resources do not exist anymore.
+
 export PLANE_ID=3
 export KAFKA_SERVER_ADDRESS="pkc-pgq85.us-west-2.aws.confluent.cloud:9092"
 export KAFKA_USERNAME="SJLSMRYRKYALJ4Q4"
