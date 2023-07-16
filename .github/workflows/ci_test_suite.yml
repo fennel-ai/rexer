@@ -20,184 +20,184 @@ jobs:
   #  - integration tests: go integration tests
 
   # go unit tests
-  unittest:
-    name: unittest
-    # The type of runner that the job will run on
-    runs-on: [self-hosted]
+  # unittest:
+  #   name: unittest
+  #   # The type of runner that the job will run on
+  #   runs-on: [self-hosted]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Install build essentials
-      - name: install build essential
-        run: |
-          sudo apt-get update
-          sudo apt-get --assume-yes install build-essential
-          sudo apt-get --assume-yes install pkg-config
-          sudo apt-get --assume-yes install libssl-dev libzstd-dev
-          export RDK_PREFIX=/opt/librdkafka
-          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Install build essentials
+  #     - name: install build essential
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get --assume-yes install build-essential
+  #         sudo apt-get --assume-yes install pkg-config
+  #         sudo apt-get --assume-yes install libssl-dev libzstd-dev
+  #         export RDK_PREFIX=/opt/librdkafka
+  #         git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
 
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v3
-        with:
-          path: rexer-pyclient-alpha
-          repository: fennel-ai/rexer-pyclient-alpha
-          token: ${{ secrets.ACCESS_TOKEN }}
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         path: rexer-pyclient-alpha
+  #         repository: fennel-ai/rexer-pyclient-alpha
+  #         token: ${{ secrets.ACCESS_TOKEN }}
 
-      # Move the repo explicitly, sadly github actions doesn't support this by default..
-      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
-      - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
+  #     # Move the repo explicitly, sadly github actions doesn't support this by default..
+  #     # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+  #     - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
 
-      # Install go (we use 1.19 version, so we will stick to it)
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '1.19'
+  #     # Install go (we use 1.19 version, so we will stick to it)
+  #     - uses: actions/setup-go@v2
+  #       with:
+  #         go-version: '1.19'
 
-      # -count 1 is required to force override test caches
-      - name: run go unit tests
-        env:
-          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
-          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
-          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
-        run: |
-          cd go/fennel
-          export RDK_PREFIX=/opt/librdkafka
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
-          export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
-          go test -v ./... -tags dynamic -count 1
-      # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
-      - name: Remove rexer-client dir
-        if: always()
-        run: |
-          sudo rm -rf ../rexer-pyclient-alpha
+  #     # -count 1 is required to force override test caches
+  #     - name: run go unit tests
+  #       env:
+  #         MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+  #         MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+  #         MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+  #         MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  #         REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+  #       run: |
+  #         cd go/fennel
+  #         export RDK_PREFIX=/opt/librdkafka
+  #         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
+  #         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
+  #         go test -v ./... -tags dynamic -count 1
+  #     # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
+  #     - name: Remove rexer-client dir
+  #       if: always()
+  #       run: |
+  #         sudo rm -rf ../rexer-pyclient-alpha
   
-  # go race detector
-  race-detector:
-    name: race-detector
-    # The type of runner that the job will run on
-    runs-on: [self-hosted]
+  # # go race detector
+  # race-detector:
+  #   name: race-detector
+  #   # The type of runner that the job will run on
+  #   runs-on: [self-hosted]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Install build essentials
-      - name: install build essential
-        run: |
-          sudo apt-get update
-          sudo apt-get --assume-yes install build-essential
-          sudo apt-get --assume-yes install pkg-config
-          sudo apt-get --assume-yes install libssl-dev libzstd-dev
-          export RDK_PREFIX=/opt/librdkafka
-          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Install build essentials
+  #     - name: install build essential
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get --assume-yes install build-essential
+  #         sudo apt-get --assume-yes install pkg-config
+  #         sudo apt-get --assume-yes install libssl-dev libzstd-dev
+  #         export RDK_PREFIX=/opt/librdkafka
+  #         git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
 
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - uses: actions/checkout@v3
 
-      - uses: actions/checkout@v3
-        with:
-          path: rexer-pyclient-alpha
-          repository: fennel-ai/rexer-pyclient-alpha
-          token: ${{ secrets.ACCESS_TOKEN }}
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         path: rexer-pyclient-alpha
+  #         repository: fennel-ai/rexer-pyclient-alpha
+  #         token: ${{ secrets.ACCESS_TOKEN }}
 
-      # Move the repo explicitly, sadly github actions doesn't support this by default..
-      # https://github.com/actions/checkout/issues/197#issuecomment-829560171
-      - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
+  #     # Move the repo explicitly, sadly github actions doesn't support this by default..
+  #     # https://github.com/actions/checkout/issues/197#issuecomment-829560171
+  #     - run: mv rexer-pyclient-alpha ../rexer-pyclient-alpha
 
-      # Install go (we use 1.19 version, so we will stick to it)
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '1.19'
+  #     # Install go (we use 1.19 version, so we will stick to it)
+  #     - uses: actions/setup-go@v2
+  #       with:
+  #         go-version: '1.19'
 
-      # -count 1 is required to force override test caches
-      - name: run go unit tests
-        env:
-          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
-          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
-          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
-        run: |
-          cd go/fennel
-          export RDK_PREFIX=/opt/librdkafka
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
-          export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
-          go test -race -v ./... -tags dynamic -count 1
-     # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
-      - name: Remove rexer-client dir
-        if: always()
-        run: |
-          sudo rm -rf ../rexer-pyclient-alpha
+  #     # -count 1 is required to force override test caches
+  #     - name: run go unit tests
+  #       env:
+  #         MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+  #         MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+  #         MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+  #         MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  #         REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+  #       run: |
+  #         cd go/fennel
+  #         export RDK_PREFIX=/opt/librdkafka
+  #         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
+  #         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
+  #         go test -race -v ./... -tags dynamic -count 1
+  #    # Remove the client directory. Github actions removes the one installed using `actions/checkout@v2` which is now empty since we moved the content
+  #     - name: Remove rexer-client dir
+  #       if: always()
+  #       run: |
+  #         sudo rm -rf ../rexer-pyclient-alpha
 
-  # end-to-end tests
-  e2e:
-    name: e2e
-    # The type of runner that the job will run on
-    runs-on: [self-hosted]
+  # # end-to-end tests
+  # e2e:
+  #   name: e2e
+  #   # The type of runner that the job will run on
+  #   runs-on: [self-hosted]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - uses: actions/checkout@v3
 
-      # Install prerequisites
-      - name: install build essential and pkg-config
-        run: |
-          sudo apt-get update
-          sudo apt-get --assume-yes install build-essential
-          sudo apt-get --assume-yes install pkg-config
-          sudo apt-get --assume-yes install libssl-dev libzstd-dev
-          export RDK_PREFIX=/opt/librdkafka
-          git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
+  #     # Install prerequisites
+  #     - name: install build essential and pkg-config
+  #       run: |
+  #         sudo apt-get update
+  #         sudo apt-get --assume-yes install build-essential
+  #         sudo apt-get --assume-yes install pkg-config
+  #         sudo apt-get --assume-yes install libssl-dev libzstd-dev
+  #         export RDK_PREFIX=/opt/librdkafka
+  #         git clone https://github.com/edenhill/librdkafka.git && cd librdkafka && sudo ./configure --prefix=$RDK_PREFIX && sudo make && sudo make install
 
-      # Install go (we use 1.19 version, so we will stick to it)
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '1.19'
+  #     # Install go (we use 1.19 version, so we will stick to it)
+  #     - uses: actions/setup-go@v2
+  #       with:
+  #         go-version: '1.19'
 
-      - name: Install go module (required for running go subprocesses)
-        run: |
-          cd go/fennel
-          export RDK_PREFIX=/opt/librdkafka
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
-          export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
-          go mod download
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
+  #     - name: Install go module (required for running go subprocesses)
+  #       run: |
+  #         cd go/fennel
+  #         export RDK_PREFIX=/opt/librdkafka
+  #         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$RDK_PREFIX/lib
+  #         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$RDK_PREFIX/lib/pkgconfig
+  #         go mod download
+  #     - uses: actions/setup-python@v2
+  #       with:
+  #         python-version: '3.x'
 
-      - name: install pip
-        run: |
-          python -m ensurepip --upgrade
-      - name: install rexerclient using pip
-        run: |
-          pip install pandas
-          pip install cloudpickle
-          pip install --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/${{ secrets.PACKAGR_HASH_ID }}/ -U rexerclient
+  #     - name: install pip
+  #       run: |
+  #         python -m ensurepip --upgrade
+  #     - name: install rexerclient using pip
+  #       run: |
+  #         pip install pandas
+  #         pip install cloudpickle
+  #         pip install --extra-index-url=https://token:${{ secrets.PACKAGR_ACCESS_TOKEN }}@api.packagr.app/${{ secrets.PACKAGR_HASH_ID }}/ -U rexerclient
 
-      # Run the test
-      - name: Run test
-        env:
-          FENNEL_ROOT: ${{ github.workspace }}
-          KAFKA_SERVER_ADDRESS: ${{ secrets.KAFKA_SERVER_ADDRESS }}
-          KAFKA_USERNAME: ${{ secrets.KAFKA_USERNAME }}
-          KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
-          MSK_KAFKA_SERVER_ADDRESS: ${{ secrets.MSK_KAFKA_SERVER_ADDRESS }}
-          MSK_KAFKA_USERNAME: ${{ secrets.MSK_KAFKA_USERNAME }}
-          MSK_KAFKA_PASSWORD: ${{ secrets.MSK_KAFKA_PASSWORD }}
-          MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
-          MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
-          MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
-          CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
-          TIER_ID: ${{ secrets.TIER_ID }}
-          PLANE_ID: ${{ secrets.PLANE_ID }}
-          BADGER_DIR: ${{ secrets.BADGER_DIR }}
-        run: |
-          python -m unittest discover e2etests -p "teste2e.py"
+  #     # Run the test
+  #     - name: Run test
+  #       env:
+  #         FENNEL_ROOT: ${{ github.workspace }}
+  #         KAFKA_SERVER_ADDRESS: ${{ secrets.KAFKA_SERVER_ADDRESS }}
+  #         KAFKA_USERNAME: ${{ secrets.KAFKA_USERNAME }}
+  #         KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
+  #         MSK_KAFKA_SERVER_ADDRESS: ${{ secrets.MSK_KAFKA_SERVER_ADDRESS }}
+  #         MSK_KAFKA_USERNAME: ${{ secrets.MSK_KAFKA_USERNAME }}
+  #         MSK_KAFKA_PASSWORD: ${{ secrets.MSK_KAFKA_PASSWORD }}
+  #         MYSQL_SERVER_ADDRESS: ${{ secrets.MYSQL_SERVER_ADDRESS }}
+  #         MYSQL_DATABASE_NAME: ${{ secrets.MYSQL_DATABASE_NAME }}
+  #         MYSQL_USERNAME: ${{ secrets.MYSQL_USERNAME }}
+  #         MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+  #         REDIS_SERVER_ADDRESS: ${{ secrets.REDIS_SERVER_ADDRESS }}
+  #         CACHE_PRIMARY: ${{ secrets.CACHE_PRIMARY }}
+  #         TIER_ID: ${{ secrets.TIER_ID }}
+  #         PLANE_ID: ${{ secrets.PLANE_ID }}
+  #         BADGER_DIR: ${{ secrets.BADGER_DIR }}
+  #       run: |
+  #         python -m unittest discover e2etests -p "teste2e.py"
           
   # go lint
   golangci:

@@ -1,3 +1,5 @@
+# NOTE: The following resources do not exist anymore.
+
 export PLANE_ID=2
 
 export MSK_KAFKA_SERVER_ADDRESS="b-1.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096,b-2.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096,b-3.p2kafkacluster.69unmf.c2.kafka.us-west-2.amazonaws.com:9096"

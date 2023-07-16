@@ -1,7 +1,0 @@
-config:
-  aws:profile: admin
-  aws:region: us-west-2
-  tailscale:ami: ami-066333d9c572b0680
-  tailscale:authKey:
-    secure: AAABAGPGk+FN/kJCD3uFPn/YYO9QOKzfVQNcFMeywFKe+d26+4HZ5mtaR2WFUHaowCsuV9LifjuHN4de0l+H/3XqeZDSlARB6Y5T/9w0uu0tSAgP3FBSNQ==
-  tailscale:subnet: subnet-09927ea3f70675eff

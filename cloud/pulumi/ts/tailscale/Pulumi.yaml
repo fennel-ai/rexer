@@ -1,3 +1,0 @@
-name: tailscale
-runtime: nodejs
-description: Pulumi program to setup our internal VPC
